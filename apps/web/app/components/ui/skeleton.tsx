@@ -1,0 +1,31 @@
+import { cva, type VariantProps } from 'class-variance-authority';
+import { clsx } from 'clsx';
+import type { ComponentProps } from 'react';
+
+const skeletonVariants = cva(
+  'animate-pulse rounded-md bg-gray-300 dark:bg-gray-700',
+  {
+    variants: {
+      variant: {
+        default: '',
+        dark: 'bg-gray-700',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  },
+);
+
+type SkeletonProps = ComponentProps<'div'> &
+  VariantProps<typeof skeletonVariants>;
+
+export const Skeleton = ({ className, variant, ...props }: SkeletonProps) => {
+  return (
+    <div
+      data-slot="skeleton"
+      className={clsx(skeletonVariants({ variant }), className)}
+      {...props}
+    />
+  );
+};

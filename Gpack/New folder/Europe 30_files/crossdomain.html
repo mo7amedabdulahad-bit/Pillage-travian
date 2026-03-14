@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<!-- saved from url=(0056)https://cdn.consentmanager.net/delivery/crossdomain.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+ 
+ <title>Cookie Banner</title>
+ <script>
+  
+  function handleMessage (event)
+  {
+   try
+   {
+    if (localStorage)
+    {
+     var msg = typeof event.data === 'string' ? event.data : '';
+     if (msg.substring(0, 10) == 'cmpcd:req:')
+     {
+      var key = msg.substring(10, 9999);
+      var itm = localStorage.getItem(key);
+      if (itm !== null && typeof (itm) === 'string')
+      {
+       event.source.postMessage('cmpcd:resp:' + key + '=' + itm, '*');
+      }
+     }
+     else if (msg.substring(0, 10) == 'cmpcd:set:')
+     {
+      var key = msg.substring(10, 9999);
+      var p   = key.indexOf('=');
+      if (p > 0)
+      {
+       var val = key.substring(p + 1, 99999);
+       key     = key.substring(0, p);
+       localStorage.setItem(key, val);
+       event.source.postMessage('cmpcd:resp:' + key + '=' + val, '*');
+      }
+      else
+      {
+       event.source.postMessage('cmpcd:setno:' + key, '*');
+      }
+     }
+     else if (msg.substring(0, 10) == 'cmpcd:rem:')
+     {
+      var key = msg.substring(10, 9999);
+      var p   = key.indexOf('=');
+      if (p > 0)
+      {
+       var val = key.substring(p, 99999);
+       key     = key.substring(0, p);
+       localStorage.setItem(key, val);
+       event.source.postMessage('cmpcd:resp:' + key + '=', '*');
+      }
+      else
+      {
+       event.source.postMessage('cmpcd:remno:' + key, '*');
+      }
+     }
+    }
+   }
+   catch(e){}
+  }
+  
+  if (window.addEventListener)
+  {
+   window.addEventListener('message', handleMessage, false);
+  }
+  else if (window.attachEvent)
+  {
+   window.attachEvent('onmessage', handleMessage);
+  }
+  
+  try
+  {
+   if (localStorage && localStorage.length)
+   {
+    for (var i = 0; i < localStorage.length; i++)
+    {
+     var key = localStorage.key(i);
+     var val = localStorage.getItem(key);
+     parent.postMessage('cmpcd:resp:' + key + '=' + val, '*');
+    }
+   }
+  }
+  catch(e){}
+  parent.postMessage('cmpcd:load:done', '*');
+ 
+ </script>
+</head>
+<body data-new-gr-c-s-check-loaded="14.1276.0" data-gr-ext-installed=""><a href="https://www.consentmanager.net/en/cookie-banner/">Cookie Banner powered by consentmanager.net</a>
+
+</body><grammarly-desktop-integration data-grammarly-shadow-root="true"><template shadowrootmode="open"><style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style><div aria-label="grammarly-integration" role="group" tabindex="-1" class="grammarly-desktop-integration" data-content="{&quot;mode&quot;:&quot;full&quot;,&quot;isActive&quot;:true,&quot;isUserDisabled&quot;:false}"></div></template></grammarly-desktop-integration></html>

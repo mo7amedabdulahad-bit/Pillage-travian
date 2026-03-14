@@ -1,0 +1,28 @@
+import type { GameEvent, GameEventType } from './models/game-event';
+
+type EventKey =
+  | 'event:database-initialization-success'
+  | 'event:database-initialization-error'
+  | 'event:success'
+  | 'event:error';
+
+export type ApiNotificationEvent = {
+  eventKey: EventKey;
+};
+
+export type DatabaseInitializationErrorEvent = {
+  eventKey: EventKey;
+  error: Error;
+};
+
+export type ControllerErrorEvent = {
+  eventKey: EventKey;
+  error: Error;
+  reason?: string;
+};
+
+export type EventApiNotificationEvent<
+  T extends GameEventType | undefined = undefined,
+> = GameEvent<T> & {
+  eventKey: EventKey;
+};

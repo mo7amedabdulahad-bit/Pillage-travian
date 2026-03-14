@@ -1,0 +1,15 @@
+// Resource fields now use background images from resourceField*.png
+// No background-color needed - the resource field background shows the field type
+
+.building-resource {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+// Village buildings placeholder (to be implemented later)
+@each $skinVariantSelector, $imagesPath in $skinVariantPaths {
+  :global(html.skin-variant-#{$skinVariantSelector}) .building {
+    $base: '#{$imagesPath}/buildings';
+  }
+}

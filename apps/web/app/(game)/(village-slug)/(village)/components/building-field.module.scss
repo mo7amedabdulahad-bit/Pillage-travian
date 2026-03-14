@@ -1,0 +1,74 @@
+@use "sass:list";
+
+// Travian resource field positions converted from exact pixel coordinates
+// Container dimensions: 473px width x 304px height
+$resource-field-positions: (
+  1: (4.276% 36.152%),
+  2: (4.605% 55.180%),
+  3: (8.553% 69.556%),
+  4: (17.105% 23.890%),
+  5: (21.382% 47.780%),
+  6: (23.684% 59.831%),
+  7: (23.026% 77.801%),
+  8: (33.882% 11.205%),
+  9: (33.882% 28.330%),
+  10: (34.211% 68.499%),
+  11: (34.211% 87.104%),
+  12: (53.947% 12.896%),
+  13: (50.658% 28.330%),
+  14: (62.500% 57.082%),
+  15: (52.303% 82.875%),
+  16: (80.263% 34.884%),
+  17: (81.908% 54.123%),
+  18: (74.342% 73.150%),
+);
+
+// Village view building positions remain as percentages for responsive behavior
+$village-building-positions: (
+  19: (30.833% 29.766%),
+  20: (24.722% 37.109%),
+  21: (22.639% 45.781%),
+  22: (24.583% 55.078%),
+  23: (32.222% 61.797%),
+  24: (38.194% 25.234%),
+  25: (40.556% 65.469%),
+  26: (39.167% 34.219%),
+  27: (59.028% 26.953%),
+  28: (49.583% 24.688%),
+  29: (31.389% 50.859%),
+  30: (50.139% 35.078%),
+  31: (39.306% 46.563%),
+  32: (57.639% 41.641%),
+  33: (50.972% 65.547%),
+  34: (66.250% 34.297%),
+  35: (57.639% 52.344%),
+  36: (62.222% 60.234%),
+  37: (68.889% 43.047%),
+  38: (67.083% 52.266%),
+  39: (42.639% 57.188%),
+  40: (19.028% 20.391%),
+  41: (76.944% 37.188%),
+  42: (77.083% 49.219%),
+  43: (75.139% 59.531%),
+  44: (82.083% 55.469%),
+);
+
+.building-field {
+  position: absolute;
+
+  // Resource fields (1-18) use pixel-perfect positions
+  @each $id, $coords in $resource-field-positions {
+    &--#{$id} {
+      top: list.nth($coords, 1);
+      left: list.nth($coords, 2);
+    }
+  }
+
+  // Village buildings (19-44) use percentage positions
+  @each $id, $coords in $village-building-positions {
+    &--#{$id} {
+      top: list.nth($coords, 1);
+      left: list.nth($coords, 2);
+    }
+  }
+}

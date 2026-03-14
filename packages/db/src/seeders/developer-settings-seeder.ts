@@ -1,0 +1,24 @@
+import type { DbFacade } from '@pillage-first/utils/facades/database';
+
+export const developerSettingsSeeder = (database: DbFacade): void => {
+  database.exec({
+    sql: `
+      INSERT INTO
+        developer_settings (
+        is_instant_building_construction_enabled,
+        is_instant_unit_training_enabled,
+        is_instant_unit_improvement_enabled,
+        is_instant_unit_research_enabled,
+        is_instant_unit_travel_enabled,
+        is_free_building_construction_enabled,
+        is_free_unit_training_enabled,
+        is_free_unit_improvement_enabled,
+        is_free_unit_research_enabled,
+        is_instant_hero_revive_enabled,
+        is_free_hero_revive_enabled
+      )
+      VALUES
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    `,
+  });
+};

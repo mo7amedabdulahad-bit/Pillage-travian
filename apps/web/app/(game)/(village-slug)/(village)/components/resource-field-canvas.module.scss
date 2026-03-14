@@ -1,0 +1,83 @@
+// Minimal style for Travian-like resource field canvas
+.container {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: contain;
+}
+
+.field-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.field-path {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 2;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  pointer-events: all;
+}
+
+.field-hovered {
+  fill: rgba(255, 255, 255, 0.2) !important;
+  stroke: rgba(255, 255, 255, 0.7) !important;
+}
+
+.field-active {
+  fill: rgba(255, 255, 255, 0.35) !important;
+  stroke: rgba(255, 255, 255, 0.8) !important;
+}
+
+.slots-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.village-center {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.village-center-hovered {
+  filter: brightness(1.15);
+}
+
+.village-center-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.village-center-path {
+  fill: transparent;
+  stroke: transparent;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.village-center-path-hovered {
+  fill: rgba(255, 255, 255, 0.15);
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 2;
+}

@@ -1,0 +1,112 @@
+@each $skinVariantSelector, $imagesPath in $skinVariantPaths {
+  :global(html.skin-variant-#{$skinVariantSelector}) {
+    .background-image {
+      background-position: center top;
+      background-repeat: no-repeat;
+      background-size: auto;
+      min-height: 100dvh;
+
+      &--resources {
+        background-color: #67772e;
+      }
+
+      &--village {
+        background-color: #6f725d;
+      }
+    }
+  }
+
+  :global(html.skin-variant-#{$skinVariantSelector}.time-of-day-day) {
+    $base: '#{$imagesPath}/day/backgrounds';
+
+    .background-image {
+      &--resources {
+        background-image: url('#{$base}/bgResources.jpg');
+      }
+
+      &--village {
+        background-image: url('#{$base}/bgBuildings.jpg');
+      }
+    }
+  }
+
+  :global(html.skin-variant-#{$skinVariantSelector}.time-of-day-night) {
+    $base: '#{$imagesPath}/night/backgrounds';
+
+    .background-image {
+      &--resources {
+        background-image: url('#{$base}/bgResources.webp');
+        background-color: #1c2625;
+      }
+
+      &--village {
+        background-image: url('#{$base}/bgBuildings.webp');
+        background-color: #040606;
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 1440px) {
+  @each $skinVariantSelector, $imagesPath in $skinVariantPaths {
+    :global(html.skin-variant-#{$skinVariantSelector}.time-of-day-day) {
+      $base: '#{$imagesPath}/day/backgrounds';
+
+      .background-image {
+        &--resources {
+          background-image: url('#{$base}/bgResources_narrow.jpg');
+        }
+
+        &--village {
+          background-image: url('#{$base}/bgBuildings_narrow.jpg');
+        }
+      }
+    }
+
+    :global(html.skin-variant-#{$skinVariantSelector}.time-of-day-night) {
+      $base: '#{$imagesPath}/night/backgrounds';
+
+      .background-image {
+        &--resources {
+          background-image: url('#{$base}/bgResources_narrow.jpg');
+        }
+
+        &--village {
+          background-image: url('#{$base}/bgBuildings_narrow.jpg');
+        }
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 620px) and (orientation: portrait) {
+  @each $skinVariantSelector, $imagesPath in $skinVariantPaths {
+    :global(html.skin-variant-#{$skinVariantSelector}.time-of-day-day) {
+      $base: '#{$imagesPath}/day/backgrounds';
+
+      .background-image {
+        &--resources {
+          background-image: url('#{$base}/bgResources_mobile.jpg');
+        }
+
+        &--village {
+          background-image: url('#{$base}/bgBuildings_mobile.jpg');
+        }
+      }
+    }
+
+    :global(html.skin-variant-#{$skinVariantSelector}.time-of-day-night) {
+      $base: '#{$imagesPath}/night/backgrounds';
+
+      .background-image {
+        &--resources {
+          background-image: url('#{$base}/bgResources_mobile.jpg');
+        }
+
+        &--village {
+          background-image: url('#{$base}/bgBuildings_mobile.jpg');
+        }
+      }
+    }
+  }
+}

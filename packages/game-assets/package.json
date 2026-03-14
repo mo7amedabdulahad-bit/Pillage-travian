@@ -1,0 +1,92 @@
+{
+  "$schema": "https://www.schemastore.org/package.json",
+  "name": "@pillage-first/game-assets",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "author": "Jure Rotar <hello@jurerotar.com>",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jurerotar/Pillage-First-Ask-Questions-Later",
+    "directory": "packages/game-assets"
+  },
+  "exports": {
+    "./buildings": {
+      "default": "./src/buildings.ts"
+    },
+    "./units": {
+      "default": "./src/units.ts"
+    },
+    "./items": {
+      "default": "./src/items.ts"
+    },
+    "./quests": {
+      "default": "./src/quests.ts"
+    },
+    "./player": {
+      "default": "./src/player.ts"
+    },
+    "./factions": {
+      "default": "./src/factions.ts"
+    },
+    "./reputation": {
+      "default": "./src/reputation.ts"
+    },
+    "./village": {
+      "default": "./src/village.ts"
+    },
+    "./resources-page-assets": {
+      "default": "./src/resources-page-assets.ts"
+    },
+    "./resource-icons": {
+      "default": "./src/resource-icons.ts"
+    },
+    "./troop-icons": {
+      "default": "./src/troop-icons.ts"
+    },
+    "./building-icons": {
+      "default": "./src/building-icons.ts"
+    },
+    "./merchants": {
+      "default": "./src/merchants.ts"
+    },
+    "./utils/quests": {
+      "default": "./src/utils/quests.ts"
+    },
+    "./utils/hero": {
+      "default": "./src/utils/hero.ts"
+    },
+    "./utils/buildings": {
+      "default": "./src/utils/buildings.ts"
+    },
+    "./utils/items": {
+      "default": "./src/utils/items.ts"
+    },
+    "./utils/adventures": {
+      "default": "./src/utils/adventures.ts"
+    },
+    "./utils/units": {
+      "default": "./src/utils/units.ts"
+    },
+    "./factories/unit-research": {
+      "default": "./src/factories/unit-research.ts"
+    }
+  },
+  "scripts": {
+    "lint:check": "biome lint --no-errors-on-unmatched",
+    "lint": "biome lint --fix --no-errors-on-unmatched",
+    "lint:check/oxlint": "oxlint --type-aware",
+    "lint/oxlint": "oxlint --type-aware --fix",
+    "format:check": "biome ci --linter-enabled=false",
+    "format": "biome check --write --no-errors-on-unmatched",
+    "test": "vitest",
+    "type-check": "tsgo"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "*",
+    "@typescript/native-preview": "*",
+    "typescript": "*",
+    "vitest": "*"
+  }
+}
