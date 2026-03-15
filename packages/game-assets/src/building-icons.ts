@@ -1,4 +1,5 @@
 import type { BuildingId } from '@pillage-first/types/models/building';
+import type { Resource } from '@pillage-first/types/models/resource';
 import type { Tribe } from '@pillage-first/types/models/tribe';
 
 export const BUILDINGS_BASE_PATH = '/graphic-packs/day/buildings' as const;
@@ -33,6 +34,16 @@ export const RESOURCE_BUILDING_FIELD_NUMBERS: Record<
   CLAY_PIT: 6,
   IRON_MINE: 7,
   WHEAT_FIELD: 8,
+};
+
+export const RESOURCE_BUILDING_TO_RESOURCE: Record<
+  ResourceBuildingId,
+  Resource
+> = {
+  WOODCUTTER: 'wood',
+  CLAY_PIT: 'clay',
+  IRON_MINE: 'iron',
+  WHEAT_FIELD: 'wheat',
 };
 
 export const BUILDING_ICON_SIZES: Record<

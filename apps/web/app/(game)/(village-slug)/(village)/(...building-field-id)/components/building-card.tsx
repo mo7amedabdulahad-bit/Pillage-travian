@@ -7,7 +7,11 @@ import {
   useMemo,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { isResourceBuilding } from '@pillage-first/game-assets/building-icons';
+import {
+  isResourceBuilding,
+  RESOURCE_BUILDING_TO_RESOURCE,
+  type ResourceBuildingId,
+} from '@pillage-first/game-assets/building-icons';
 import {
   type CalculatedCumulativeEffect,
   calculateBuildingEffectValues,
@@ -29,9 +33,8 @@ import { VillageBuildingLink } from 'app/(game)/(village-slug)/components/villag
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useComputedEffect } from 'app/(game)/(village-slug)/hooks/use-computed-effect';
 import { useEffectServerValue } from 'app/(game)/(village-slug)/hooks/use-effect-server-value';
-import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
-import { BuildingBigImage } from 'app/components/building-icon';
 import { Icon } from 'app/components/icon';
+import { ResourceIcon } from 'app/components/resource-icon';
 import { Text } from 'app/components/text';
 import { Alert } from 'app/components/ui/alert';
 import { formatTime } from 'app/utils/time';
@@ -90,7 +93,6 @@ export const BuildingOverview = ({
   const { t } = useTranslation();
   const { buildingId } = use(BuildingCardContext);
   const { buildingFieldId } = use(BuildingFieldContext);
-  const tribe = useTribe();
   const { actualLevel, virtualLevel } = useBuildingVirtualLevel(
     buildingId,
     buildingFieldId,
@@ -106,9 +108,11 @@ export const BuildingOverview = ({
   return (
     <section data-testid="building-overview-title-section">
       {showBuildingImage && (
-        <BuildingBigImage
-          buildingId={buildingId}
-          tribe={tribe}
+        <ResourceIcon
+          resource={
+            RESOURCE_BUILDING_TO_RESOURCE[buildingId as ResourceBuildingId]
+          }
+          size="huge"
           className="size-24 mb-2"
         />
       )}
