@@ -13,7 +13,6 @@ import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-villa
 import { useDeveloperSettings } from 'app/(game)/(village-slug)/hooks/use-developer-settings';
 import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero.ts';
 import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
-import { Icon } from 'app/components/icon.tsx';
 import { ResourceIcon } from 'app/components/resource-icon';
 import { Text } from 'app/components/text.tsx';
 import { Button } from 'app/components/ui/button';

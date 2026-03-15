@@ -36,7 +36,10 @@ export const BuildingField = ({ buildingFieldId }: BuildingFieldProps) => {
   };
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: This is a custom interactive SVG element
     <div
+      role="button"
+      tabIndex={0}
       className={clsx(
         positioningStyles,
         'absolute flex items-center justify-center -translate-x-1/2 -translate-y-1/2',

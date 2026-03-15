@@ -11,7 +11,6 @@ import {
 import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero';
 import { useServer } from 'app/(game)/(village-slug)/hooks/use-server';
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe.ts';
-import { Icon } from 'app/components/icon';
 import { ResourceIcon } from 'app/components/resource-icon';
 import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';

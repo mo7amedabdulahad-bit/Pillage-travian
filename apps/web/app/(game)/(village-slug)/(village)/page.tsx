@@ -1,6 +1,5 @@
 import { Activity, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import type { ITooltip as ReactTooltipProps } from 'react-tooltip';
 import type { Route } from '@react-router/types/app/(game)/(village-slug)/(village)/+types/page';
 import { BuildingField } from 'app/(game)/(village-slug)/(village)/components/building-field';
@@ -8,7 +7,6 @@ import { ResourceFieldCanvas } from 'app/(game)/(village-slug)/(village)/compone
 import { BuildingFieldTooltip } from 'app/(game)/(village-slug)/components/building-field-tooltip';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
-import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
 import layoutStyles from 'app/(game)/(village-slug)/layout.module.scss';
 import { Tooltip } from 'app/components/tooltip';
 
@@ -29,7 +27,6 @@ const VillagePage = (props: Route.ComponentProps) => {
   const { t } = useTranslation();
   const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
   const { currentVillage } = useCurrentVillage();
-  const tribe = useTribe();
 
   const isResourcesPageOpen = matches.some(
     (match) => match?.id === 'resources-page',
@@ -83,6 +80,7 @@ const VillagePage = (props: Route.ComponentProps) => {
             <ResourceFieldCanvas
               composition={currentVillage.resourceFieldComposition}
             >
+              {/* biome-ignore lint/complexity/noUselessFragments: Fragment needed to satisfy ReactElement type */}
               <>
                 {resourceViewBuildingFieldIds.map((buildingFieldId) => (
                   <BuildingField
@@ -93,18 +91,15 @@ const VillagePage = (props: Route.ComponentProps) => {
               </>
             </ResourceFieldCanvas>
           )}
-          {isVillagePageOpen && (
-            <>
-              {villageViewBuildingFieldIds.map((buildingFieldId) => (
-                <Activity
-                  mode={isVillagePageOpen ? 'visible' : 'hidden'}
-                  key={buildingFieldId}
-                >
-                  <BuildingField buildingFieldId={buildingFieldId} />
-                </Activity>
-              ))}
-            </>
-          )}
+          {isVillagePageOpen &&
+            villageViewBuildingFieldIds.map((buildingFieldId) => (
+              <Activity
+                mode={isVillagePageOpen ? 'visible' : 'hidden'}
+                key={buildingFieldId}
+              >
+                <BuildingField buildingFieldId={buildingFieldId} />
+              </Activity>
+            ))}
         </div>
       </main>
     </>

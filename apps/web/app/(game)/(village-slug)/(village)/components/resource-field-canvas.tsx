@@ -96,13 +96,18 @@ export const ResourceFieldCanvas = ({
         style={{ backgroundImage: `url(${backgroundImage})` }}
       >
         <svg
+          role="img"
+          aria-label="Resource fields"
           className={styles['field-canvas']}
           viewBox="0 0 473 304"
           preserveAspectRatio="xMidYMid meet"
         >
           {Object.entries(fieldPaths).map(([slotId, path]) => (
+            // biome-ignore lint/a11y/useSemanticElements: SVG path element for interactive map
             <path
               key={slotId}
+              role="button"
+              tabIndex={0}
               d={path}
               className={`
                 ${styles['field-path']}
@@ -121,11 +126,16 @@ export const ResourceFieldCanvas = ({
           className={`${styles['village-center']} ${isVillageCenterHovered ? styles['village-center-hovered'] : ''}`}
         />
         <svg
+          role="img"
+          aria-label="Village center"
           className={styles['village-center-svg']}
           viewBox="0 0 473 304"
           preserveAspectRatio="xMidYMid meet"
         >
+          {/* biome-ignore lint/a11y/useSemanticElements: SVG path element for interactive village center */}
           <path
+            role="button"
+            tabIndex={0}
             d="M223 109c-14.5 4.4-17.7 5.5-18.8 6.3-1.9 1.5-7.4 4.6-10.2 5.8-1.4.6-3.8 1.7-5.5 2.4-1.6.7-5 1.9-7.4 2.7-5.7 1.7-6.9 3.5-4.8 7.7 1.2 2.3 1.3 3.9.6 6.3-1.2 4.2-.3 6.7 2.6 7.4 2 .5 2.5 1.4 3.1 6 .7 5.6 3.4 10.4 6 10.4.8 0 2.2.9 3.1 2 1 1.1 2.9 2 4.3 2s4.8.9 7.6 1.9c3.1 1.2 10.2 2.4 18 3.1 7.1.6 16 1.5 19.7 2 8.1 1 10 .3 15.6-6.2 4-4.4 8-6.5 16.5-8.4 3.3-.8 4.1-4.1 4.8-4.1.5-1.8 1.7-3.4 2.8-3.8 2.4-.8 2.5-1.8.5-4.9-1.2-1.8-1.3-2.9-.5-5.2.8-1.9.8-3.5.1-4.9-.5-1.1-1.2-4.5-1.6-7.7-.6-5.4-.8-5.7-4.4-7.2-3.5-1.3-7.4-5-8.3-7.7-.2-.6-2.6-1.2-5.3-1.4-2.8-.1-5.7-.5-6.5-.8-1.6-.7-20.1-3.6-26-4.1-1.9-.2-4.6 0-6 .4z"
             className={`${styles['village-center-path']} ${isVillageCenterHovered ? styles['village-center-path-hovered'] : ''}`}
             onMouseEnter={() => setIsVillageCenterHovered(true)}

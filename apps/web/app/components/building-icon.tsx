@@ -1,4 +1,3 @@
-import { clsx } from 'clsx';
 import type { CSSProperties } from 'react';
 import {
   BUILDING_ICON_SIZES,
