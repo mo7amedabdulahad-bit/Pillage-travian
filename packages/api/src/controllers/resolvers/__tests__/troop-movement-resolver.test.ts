@@ -257,11 +257,11 @@ describe('findNewVillageMovementResolver', () => {
         level: z.number(),
       }),
     });
-    // buildingFieldsFactory 'player' size creates 18 resource fields + Rally Point (39) + Main Building (38) + Wall (40) = 21 fields
+    // buildingFieldsFactory 'player' size creates 18 resource fields + Rally Point (39) + Main Building (26) + Wall (40) = 21 fields
     expect(buildingFields.length).toBe(21);
 
-    // Check Main Building level 1
-    const mainBuilding = buildingFields.find((f) => f.field_id === 38);
+    // Check Main Building level 1 (field 26)
+    const mainBuilding = buildingFields.find((f) => f.field_id === 26);
     expect(mainBuilding?.level).toBe(1);
 
     // Verify resource site
