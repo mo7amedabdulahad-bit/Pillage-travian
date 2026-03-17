@@ -5,7 +5,13 @@
   width: 100%;
   height: auto;
   z-index: 1;
-  pointer-events: auto;
+  pointer-events: none;
+
+  & img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
 }
 
 .wall-bottom {
@@ -15,5 +21,11 @@
   width: 100%;
   height: auto;
   z-index: 1;
-  pointer-events: auto;
+  pointer-events: none;
+
+  & img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
 }

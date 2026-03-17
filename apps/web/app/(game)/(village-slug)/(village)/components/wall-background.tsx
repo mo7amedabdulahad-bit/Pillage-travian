@@ -1,6 +1,5 @@
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
 import {
   getWallBottomPath,
   getWallTopPath,
@@ -12,7 +11,6 @@ import styles from './wall-background.module.scss';
 export function WallBackground() {
   const { t } = useTranslation();
   const tribe = useTribe();
-  const navigate = useNavigate();
   const { currentVillage } = useCurrentVillage();
 
   const wallBuildingField = currentVillage.buildingFields.find(
@@ -23,47 +21,25 @@ export function WallBackground() {
   const wallTopPath = getWallTopPath(tribe, 'default', 'day');
   const wallBottomPath = getWallBottomPath(tribe, 'default', 'day');
 
-  const handleWallClick = () => {
-    navigate('../40');
-  };
-
   return (
     <>
-      {/* Wall Top */}
-      <button
-        type="button"
-        onClick={handleWallClick}
-        className={clsx(
-          styles['wall-top'],
-          'absolute top-0 left-0 w-full z-10 cursor-pointer',
-        )}
-        aria-label={t(`BUILDINGS.${wallBuildingId}.NAME`)}
-        data-testid="wall-top"
-      >
+      {/* Wall Top - decorative only, clickable via building slot field 40 */}
+      <div className={clsx(styles['wall-top'])}>
         <img
           src={wallTopPath}
           alt={t(`BUILDINGS.${wallBuildingId}.NAME`)}
           className="w-full h-auto"
         />
-      </button>
+      </div>
 
-      {/* Wall Bottom */}
-      <button
-        type="button"
-        onClick={handleWallClick}
-        className={clsx(
-          styles['wall-bottom'],
-          'absolute bottom-0 left-0 w-full z-10 cursor-pointer',
-        )}
-        aria-label={t(`BUILDINGS.${wallBuildingId}.NAME`)}
-        data-testid="wall-bottom"
-      >
+      {/* Wall Bottom - decorative only, clickable via building slot field 40 */}
+      <div className={clsx(styles['wall-bottom'])}>
         <img
           src={wallBottomPath}
           alt={t(`BUILDINGS.${wallBuildingId}.NAME`)}
           className="w-full h-auto"
         />
-      </button>
+      </div>
     </>
   );
 }
