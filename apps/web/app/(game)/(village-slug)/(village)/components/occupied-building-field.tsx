@@ -83,6 +83,85 @@ const AVAILABLE_BUILDING_GIDS = [
   '49',
 ];
 
+const GID_MAP: Record<string, string> = {
+  SAWMILL: '5',
+  BRICKYARD: '6',
+  IRON_FOUNDRY: '7',
+  GRAIN_MILL: '8',
+  BAKERY: '9',
+  WAREHOUSE: '10',
+  GRANARY: '11',
+  BLACKSMITH: '12',
+  ARMOURY: '13',
+  STABLE: '14',
+  WORKSHOP: '21',
+  TOURNAMENT_SQUARE: '16',
+  MAIN_BUILDING: '15',
+  EMBASSY: '18',
+  MARKETPLACE: '17',
+  BARRACKS: '19',
+  ACADEMY: '22',
+  CRANNY: '23',
+  TOWN_HALL: '24',
+  RESIDENCE: '25',
+  PALACE: '26',
+  TREASURY: '27',
+  TRADE_OFFICE: '28',
+  GREAT_BARRACKS: '29',
+  GREAT_STABLE: '30',
+  CITY_WALL: '32',
+  EARTH_WALL: '32',
+  STONE_WALL: '32',
+  PALISADE: '32',
+  ST_MASONS_LODGE: '34',
+  HORSE_DRINKING_TROUGH: '35',
+  GREAT_WAREHOUSE: '36',
+  GREAT_GRANARY: '37',
+  WORLD_WONDER: '40',
+  RALLY_POINT: '16',
+  HOSPITAL: '21',
+  WATERWORKS: '38',
+  TRAPPER: '39',
+  BREWERY: '41',
+  COMMAND_CENTER: '42',
+  SMITHY: '13',
+  ROMAN_WALL: '32',
+  SPARTAN_WALL: '32',
+  TEUTONIC_WALL: '32',
+  HEROS_MANSION: '37',
+  HUN_WALL: '32',
+  GAUL_WALL: '32',
+  EGYPTIAN_WALL: '32',
+  NATURE_WALL: '0',
+  NATAR_WALL: '32',
+  CLAY_PIT: '2',
+  WHEAT_FIELD: '4',
+  WOODCUTTER: '1',
+  IRON_MINE: '3',
+};
+
+const WALL_BUILDING_IDS = [
+  'CITY_WALL',
+  'EARTH_WALL',
+  'STONE_WALL',
+  'PALISADE',
+  'ROMAN_WALL',
+  'SPARTAN_WALL',
+  'TEUTONIC_WALL',
+  'HUN_WALL',
+  'GAUL_WALL',
+  'EGYPTIAN_WALL',
+  'NATAR_WALL',
+];
+
+const getGidFromBuildingId = (bid: string): string => {
+  return GID_MAP[bid] || '0';
+};
+
+const isWallBuilding = (bid: string): boolean => {
+  return WALL_BUILDING_IDS.includes(bid);
+};
+
 const getVillageBuildingImagePath = (tribe: Tribe, gid: string): string => {
   const tribeFolder = TRIBE_FOLDER_NAMES[tribe] || 'teuton';
 
@@ -272,66 +351,6 @@ const OccupiedBuildingFieldContent = ({
   const hasEvent = !!currentBuildingFieldBuildingEvent;
   const isVillageBuilding = buildingFieldId >= 19;
 
-  const getGidFromBuildingId = (bid: string): string => {
-    const gidMap: Record<string, string> = {
-      SAWMILL: '5',
-      BRICKYARD: '6',
-      IRON_FOUNDRY: '7',
-      GRAIN_MILL: '8',
-      BAKERY: '9',
-      WAREHOUSE: '10',
-      GRANARY: '11',
-      BLACKSMITH: '12',
-      ARMOURY: '13',
-      STABLE: '14',
-      WORKSHOP: '21',
-      TOURNAMENT_SQUARE: '16',
-      MAIN_BUILDING: '15',
-      EMBASSY: '18',
-      MARKETPLACE: '17',
-      BARRACKS: '19',
-      ACADEMY: '22',
-      CRANNY: '23',
-      TOWN_HALL: '24',
-      RESIDENCE: '25',
-      PALACE: '26',
-      TREASURY: '27',
-      TRADE_OFFICE: '28',
-      GREAT_BARRACKS: '29',
-      GREAT_STABLE: '30',
-      CITY_WALL: '32',
-      EARTH_WALL: '32',
-      STONE_WALL: '32',
-      PALISADE: '32',
-      ST_MASONS_LODGE: '34',
-      HORSE_DRINKING_TROUGH: '35',
-      GREAT_WAREHOUSE: '36',
-      GREAT_GRANARY: '37',
-      WORLD_WONDER: '40',
-      RALLY_POINT: '16',
-      HOSPITAL: '21',
-      WATERWORKS: '38',
-      TRAPPER: '39',
-      BREWERY: '41',
-      COMMAND_CENTER: '42',
-      SMITHY: '13',
-      ROMAN_WALL: '32',
-      SPARTAN_WALL: '32',
-      TEUTONIC_WALL: '32',
-      HEROS_MANSION: '37',
-      HUN_WALL: '32',
-      GAUL_WALL: '32',
-      EGYPTIAN_WALL: '32',
-      NATURE_WALL: '0',
-      NATAR_WALL: '32',
-      CLAY_PIT: '2',
-      WHEAT_FIELD: '4',
-      WOODCUTTER: '1',
-      IRON_MINE: '3',
-    };
-    return gidMap[bid] || '0';
-  };
-
   const getTribeClass = (tribeValue: Tribe): string => {
     const tribeMap: Record<Tribe, string> = {
       teutons: 'teuton',
@@ -344,23 +363,6 @@ const OccupiedBuildingFieldContent = ({
       natars: 'natars',
     };
     return tribeMap[tribeValue] || 'teuton';
-  };
-
-  const isWallBuilding = (bid: string): boolean => {
-    const wallBuildingIds = [
-      'CITY_WALL',
-      'EARTH_WALL',
-      'STONE_WALL',
-      'PALISADE',
-      'ROMAN_WALL',
-      'SPARTAN_WALL',
-      'TEUTONIC_WALL',
-      'HUN_WALL',
-      'GAUL_WALL',
-      'EGYPTIAN_WALL',
-      'NATAR_WALL',
-    ];
-    return wallBuildingIds.includes(bid);
   };
 
   const dorf2Classes = isVillageBuilding
