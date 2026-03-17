@@ -1,18 +1,46 @@
 @reference '../../styles/app.css';
 
 .changelog {
-  @apply relative ml-2 pl-4 border-l-2 border-success flex flex-col gap-4;
+  @apply relative ml-2 pl-4 border-l-2 border-success flex flex-col gap-6;
 
   & > section {
-    @apply relative flex flex-col gap-2;
+    @apply relative flex flex-col gap-3;
+
+    & h2 {
+      @apply text-xl font-bold text-foreground;
+    }
+
+    & h3,
+    & h4 {
+      @apply text-sm font-medium text-muted-foreground;
+    }
 
     & div[role="alert"] {
       @apply my-2;
+    }
+
+    & ul {
+      @apply list-disc list-inside flex flex-col gap-1 ml-2 text-foreground;
+
+      & li {
+        @apply leading-relaxed;
+      }
     }
 
     &::before {
       content: "";
       @apply absolute -left-8.25 size-3 rounded-full bg-success border-10 border-background box-content;
     }
+  }
+}
+
+.featuresBlock,
+.bugFixesBlock,
+.performanceBlock,
+.technicalImprovementBlock {
+  @apply flex flex-col gap-1 mt-2;
+
+  & > div:first-child {
+    @apply flex gap-2 items-center;
   }
 }

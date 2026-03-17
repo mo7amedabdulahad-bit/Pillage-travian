@@ -15,6 +15,20 @@ export const TRIBE_FOLDER_NAMES: Record<Tribe, string> = {
   nature: 'nature',
 } as const;
 
+export const WALL_GID_MAP: Record<string, string> = {
+  roman: '31',
+  teuton: '32',
+  gaul: '31',
+  egyptian: '32',
+  hun: '32',
+  spartan: '33',
+  natar: '32',
+};
+
+export function getWallBuildingIdForTribe(tribe: Tribe): string {
+  return TRIBE_FOLDER_NAMES[tribe];
+}
+
 export type BuildingImageSize = 'small' | 'medium' | 'big';
 
 export const RESOURCE_BUILDING_IDS = [

@@ -4,6 +4,7 @@ import type { ITooltip as ReactTooltipProps } from 'react-tooltip';
 import type { Route } from '@react-router/types/app/(game)/(village-slug)/(village)/+types/page';
 import { BuildingField } from 'app/(game)/(village-slug)/(village)/components/building-field';
 import { ResourceFieldCanvas } from 'app/(game)/(village-slug)/(village)/components/resource-field-canvas';
+import { WallBackground } from 'app/(game)/(village-slug)/(village)/components/wall-background';
 import { BuildingFieldTooltip } from 'app/(game)/(village-slug)/components/building-field-tooltip';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
@@ -27,6 +28,12 @@ const VillagePage = (props: Route.ComponentProps) => {
   const { t } = useTranslation();
   const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
   const { currentVillage } = useCurrentVillage();
+
+  const wallBuildingField = currentVillage.buildingFields.find(
+    (bf) => bf.id === 40,
+  );
+  const wallLevel = wallBuildingField?.level ?? 0;
+  const isWallBuilt = wallLevel > 0;
 
   const isResourcesPageOpen = matches.some(
     (match) => match?.id === 'resources-page',
@@ -76,6 +83,7 @@ const VillagePage = (props: Route.ComponentProps) => {
       />
       <main className="flex flex-col items-center justify-center mx-auto lg:mt-20 lg:mb-0 max-h-[calc(100dvh-12rem)] standalone:max-h-[calc(100dvh-15rem)] h-screen lg:h-auto lg:max-h-none overflow-x-hidden">
         <div className="relative aspect-[16/10] scrollbar-hidden min-w-[460px] max-w-5xl w-full">
+          {isWallBuilt && <WallBackground />}
           {isResourcesPageOpen && (
             <ResourceFieldCanvas
               composition={currentVillage.resourceFieldComposition}

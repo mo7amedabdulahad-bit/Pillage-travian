@@ -293,70 +293,70 @@ const villageSizeToVillageBuildingFieldsMap = new Map<
     'player',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     'xxs',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     'xs',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     'sm',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     'md',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     'lg',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     'xl',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     '2xl',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     '3xl',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
   [
     '4xl',
     [
       { field_id: 39, building_id: 'RALLY_POINT', level: 1 },
-      { field_id: 38, building_id: 'MAIN_BUILDING', level: 1 },
+      { field_id: 26, building_id: 'MAIN_BUILDING', level: 1 },
     ],
   ],
 ]);

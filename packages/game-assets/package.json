@@ -39,6 +39,9 @@
     "./resources-page-assets": {
       "default": "./src/resources-page-assets.ts"
     },
+    "./village-page-assets": {
+      "default": "./src/village-page-assets.ts"
+    },
     "./resource-icons": {
       "default": "./src/resource-icons.ts"
     },
