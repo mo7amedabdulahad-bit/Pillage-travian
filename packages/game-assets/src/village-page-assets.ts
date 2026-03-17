@@ -33,7 +33,7 @@ export function getWallTopPath(
   const gid = WALL_GID_MAP[getWallBuildingIdForTribe(tribe)];
   const tribeFolder = TRIBE_FOLDER_NAMES[tribe];
   const variantSuffix = variant === 'default' ? '' : `_${variant}`;
-  return `${BUILDINGS_BASE_PATH}/${theme}/buildings/${tribeFolder}/g${gid}Top${variantSuffix}.png`;
+  return `/graphic-packs/${theme}/buildings/${tribeFolder}/g${gid}Top${variantSuffix}.png`;
 }
 
 export function getWallBottomPath(
@@ -44,7 +44,7 @@ export function getWallBottomPath(
   const gid = WALL_GID_MAP[getWallBuildingIdForTribe(tribe)];
   const tribeFolder = TRIBE_FOLDER_NAMES[tribe];
   const variantSuffix = variant === 'default' ? '' : `_${variant}`;
-  return `${BUILDINGS_BASE_PATH}/${theme}/buildings/${tribeFolder}/g${gid}Bottom${variantSuffix}.png`;
+  return `/graphic-packs/${theme}/buildings/${tribeFolder}/g${gid}Bottom${variantSuffix}.png`;
 }
 
 export function getVillageAssets(
