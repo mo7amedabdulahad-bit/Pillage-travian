@@ -1,0 +1,49 @@
+﻿
+> type-check
+> tsgo
+
+src/building-icons.ts(82,10): error TS2304: Cannot find name 'TimeOfDay'.
+src/building-icons.ts(97,10): error TS2304: Cannot find name 'TimeOfDay'.
+node.exe : npm error 
+Lifecycle script 
+`type-check` failed 
+with error:
+At line:1 char:1
++ & "C:\Program Files\
+nodejs/node.exe" "C:\U
+sers\Mohamed\AppData\R
+oamin ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (npm error    
+ Lifec...led with     
+error::String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+npm error code 2
+npm error path C:\User
+s\Mohamed\OneDrive\Des
+ktop\Pillage-First-Ask
+-Questions-Later-maste
+r\packages\game-assets
+npm error workspace @p
+illage-first/game-asse
+ts
+npm error location C:\
+Users\Mohamed\OneDrive
+\Desktop\Pillage-First
+-Ask-Questions-Later-m
+aster\packages\game-as
+sets
+npm error command 
+failed
+npm error command C:\W
+INDOWS\system32\cmd.ex
+e /d /s /c tsgo

@@ -27,6 +27,7 @@ import {
 } from 'app/(game)/(village-slug)/providers/building-upgrade-status-provider';
 import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
 import { useLongPress } from 'app/hooks/use-long-press';
+import { CookieContext } from 'app/providers/cookie-provider';
 
 const TRIBE_FOLDER_NAMES: Record<Tribe, string> = {
   teutons: 'teuton',
@@ -369,6 +370,7 @@ const OccupiedBuildingFieldContent = ({
   const { t } = useTranslation();
   const { currentVillage } = useCurrentVillage();
   const tribe = useTribe();
+  const { timeOfDay } = use(CookieContext);
 
   const { id: buildingFieldId, buildingId, level } = buildingField;
   const _hasEvent = !!currentBuildingFieldBuildingEvent;
@@ -435,7 +437,7 @@ const OccupiedBuildingFieldContent = ({
             src={getVillageBuildingImagePath(
               tribe,
               getGidFromBuildingId(buildingId),
-              'day',
+              timeOfDay,
             )}
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
@@ -471,7 +473,7 @@ const OccupiedBuildingFieldContent = ({
       {isVillageBuilding && isWallBuilding(buildingId) && (
         <>
           <img
-            src={getWallBottomPath(tribe, 'default', 'day')}
+            src={getWallBottomPath(tribe, 'default', timeOfDay)}
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
               'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none group-hover:brightness-125',
@@ -485,7 +487,7 @@ const OccupiedBuildingFieldContent = ({
             }}
           />
           <img
-            src={getWallTopPath(tribe, 'default', 'day')}
+            src={getWallTopPath(tribe, 'default', timeOfDay)}
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
               'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none group-hover:brightness-125',

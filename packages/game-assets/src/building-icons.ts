@@ -1,4 +1,5 @@
 import type { BuildingId } from '@pillage-first/types/models/building';
+import type { TimeOfDay } from '@pillage-first/types/models/preferences';
 import type { Resource } from '@pillage-first/types/models/resource';
 import type { Tribe } from '@pillage-first/types/models/tribe';
 
@@ -79,27 +80,29 @@ export function getBuildingIconPath(
   tribe: Tribe,
   buildingId: BuildingId,
   size: BuildingImageSize = 'small',
+  theme: TimeOfDay = 'day',
 ): string {
   const tribeFolder = TRIBE_FOLDER_NAMES[tribe];
 
   if (!isResourceBuilding(buildingId)) {
-    return `${BUILDINGS_BASE_PATH}/default/icon/type0_${size}.png`;
+    return `${BUILDINGS_BASE_PATH}/${theme}/buildings/default/icon/type0_${size}.png`;
   }
 
   const fieldNumber = RESOURCE_BUILDING_FIELD_NUMBERS[buildingId];
-  return `${BUILDINGS_BASE_PATH}/${tribeFolder}/icon/type${fieldNumber}_${size}.png`;
+  return `${BUILDINGS_BASE_PATH}/${theme}/buildings/${tribeFolder}/icon/type${fieldNumber}_${size}.png`;
 }
 
 export function getBuildingBigImagePath(
   tribe: Tribe,
   buildingId: BuildingId,
+  theme: TimeOfDay = 'day',
 ): string {
   const tribeFolder = TRIBE_FOLDER_NAMES[tribe];
 
   if (!isResourceBuilding(buildingId)) {
-    return `${BUILDINGS_BASE_PATH}/default/big/g0.png`;
+    return `${BUILDINGS_BASE_PATH}/${theme}/buildings/default/big/g0.png`;
   }
 
   const fieldNumber = RESOURCE_BUILDING_FIELD_NUMBERS[buildingId];
-  return `${BUILDINGS_BASE_PATH}/${tribeFolder}/big/g${fieldNumber}.png`;
+  return `${BUILDINGS_BASE_PATH}/${theme}/buildings/${tribeFolder}/big/g${fieldNumber}.png`;
 }
