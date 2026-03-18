@@ -1,11 +1,21 @@
-import { glob, readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, resolve, dirname } from 'node:path';
+import { glob, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const EXPORT_PATH = join('node_modules', '@pillage-first', 'dev');
-const SEEDER_STATEMENTS_EXPORT_PATH = join(EXPORT_PATH, 'seeder-statements.sql');
+const SEEDER_STATEMENTS_EXPORT_PATH = join(
+  EXPORT_PATH,
+  'seeder-statements.sql',
+);
 
-const FUNCTIONS = ['selectObjects', 'selectValue', 'selectValues', 'selectObject', 'exec', 'prepare'];
+const FUNCTIONS = [
+  'selectObjects',
+  'selectValue',
+  'selectValues',
+  'selectObject',
+  'exec',
+  'prepare',
+];
 
 (async (): Promise<void> => {
   const sqlStatements = new Set<string>();
@@ -17,7 +27,8 @@ const FUNCTIONS = ['selectObjects', 'selectValue', 'selectValues', 'selectObject
     const content = await readFile(entry, 'utf8');
 
     // Find exported const strings
-    const constRegex = /export\s+const\s+(\w+)\s*=\s*(`[\s\S]*?`|'[\s\S]*?'|"[\s\S]*?");/g;
+    const constRegex =
+      /export\s+const\s+(\w+)\s*=\s*(`[\s\S]*?`|'[\s\S]*?'|"[\s\S]*?");/g;
     let constMatch;
     while ((constMatch = constRegex.exec(content)) !== null) {
       const name = constMatch[1];
@@ -32,7 +43,10 @@ const FUNCTIONS = ['selectObjects', 'selectValue', 'selectValues', 'selectObject
       // database.func({ sql: `sql` })
       // database.func({ sql: variable })
       // database.func({ sql })
-      const funcRegex = new RegExp(`(?:database|db|this)\\.${func}\\(\\s*(?:\\{\\s*sql:\\s*)?(\`[\\s\\S]*?\`|'[^']*?'|"[^"]*?"|\\w+)`, 'g');
+      const funcRegex = new RegExp(
+        `(?:database|db|this)\\.${func}\\(\\s*(?:\\{\\s*sql:\\s*)?(\`[\\s\\S]*?\`|'[^']*?'|"[^"]*?"|\\w+)`,
+        'g',
+      );
       let funcMatch;
       while ((funcMatch = funcRegex.exec(content)) !== null) {
         const arg = funcMatch[1];
@@ -46,7 +60,10 @@ const FUNCTIONS = ['selectObjects', 'selectValue', 'selectValues', 'selectObject
       }
 
       // Handle { sql } shorthand
-      const shorthandRegex = new RegExp(`(?:database|db|this)\\.${func}\\(\\s*\\{\\s*(\\w+)\\s*(?:,[\\s\\S]*?)?\\s*\\}`, 'g');
+      const shorthandRegex = new RegExp(
+        `(?:database|db|this)\\.${func}\\(\\s*\\{\\s*(\\w+)\\s*(?:,[\\s\\S]*?)?\\s*\\}`,
+        'g',
+      );
       let shorthandMatch;
       while ((shorthandMatch = shorthandRegex.exec(content)) !== null) {
         const arg = shorthandMatch[1];
@@ -60,7 +77,8 @@ const FUNCTIONS = ['selectObjects', 'selectValue', 'selectValues', 'selectObject
   // Resolve pending variables
   for await (const entry of glob('packages/db/src/seeders/**/*.ts')) {
     const content = await readFile(entry, 'utf8');
-    const constRegex = /(?:export\s+)?const\s+(\w+)\s*=\s*(`[\s\S]*?`|'[\s\S]*?'|"[\s\S]*?");/g;
+    const constRegex =
+      /(?:export\s+)?const\s+(\w+)\s*=\s*(`[\s\S]*?`|'[\s\S]*?'|"[\s\S]*?");/g;
     let constMatch;
     while ((constMatch = constRegex.exec(content)) !== null) {
       const name = constMatch[1];
@@ -78,8 +96,8 @@ const FUNCTIONS = ['selectObjects', 'selectValue', 'selectValues', 'selectObject
   }
 
   const sortedStatements = Array.from(sqlStatements)
-    .filter(s => s.length > 0)
-    .map(s => {
+    .filter((s) => s.length > 0)
+    .map((s) => {
       let cleaned = s.trim();
       if (!cleaned.endsWith(';')) {
         cleaned += ';';
@@ -92,16 +110,13 @@ const FUNCTIONS = ['selectObjects', 'selectValue', 'selectValues', 'selectObject
     '-- Extracted Seeder SQL statements',
     `-- Generated: ${new Date().toISOString()}`,
     '',
-    ...sortedStatements.flatMap((s, i) => [
-      `-- Statement ${i + 1}`,
-      s,
-      ''
-    ]),
+    ...sortedStatements.flatMap((s, i) => [`-- Statement ${i + 1}`, s, '']),
   ].join('\n');
 
   await mkdir(dirname(SEEDER_STATEMENTS_EXPORT_PATH), { recursive: true });
   await writeFile(SEEDER_STATEMENTS_EXPORT_PATH, output, 'utf8');
 
-  const statementsUrl = pathToFileURL(resolve(SEEDER_STATEMENTS_EXPORT_PATH)).href;
-  console.log(`✅ Extracted ${sortedStatements.length} Seeder SQL statements to: ${statementsUrl}`);
+  const _statementsUrl = pathToFileURL(
+    resolve(SEEDER_STATEMENTS_EXPORT_PATH),
+  ).href;
 })();

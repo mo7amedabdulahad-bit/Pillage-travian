@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { Activity, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ITooltip as ReactTooltipProps } from 'react-tooltip';
@@ -74,8 +75,22 @@ const VillagePage = (props: Route.ComponentProps) => {
         hidden={!isWiderThanLg}
         render={renderTooltip}
       />
-      <main className="flex flex-col items-center mx-auto lg:mt-0 lg:mb-0 max-h-[calc(100dvh-12rem)] standalone:max-h-[calc(100dvh-15rem)] h-screen lg:h-auto lg:max-h-none overflow-x-hidden">
-        <div className="relative aspect-[16/9] scrollbar-hidden min-w-[460px] max-w-7xl w-full">
+      <main
+        className={clsx(
+          'w-full flex flex-col items-center z-0 overflow-visible',
+          isVillagePageOpen
+            ? 'absolute top-0 left-0'
+            : 'relative mt-4 lg:mt-20',
+        )}
+      >
+        <div
+          className={clsx(
+            'relative scrollbar-hidden w-full max-w-7xl overflow-visible',
+            isVillagePageOpen && 'mt-[100px] lg:mt-0',
+            isResourcesPageOpen &&
+              'aspect-[16/9] min-w-[460px] overflow-hidden',
+          )}
+        >
           {isResourcesPageOpen && (
             <ResourceFieldCanvas
               composition={currentVillage.resourceFieldComposition}

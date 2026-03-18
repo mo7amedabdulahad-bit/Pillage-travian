@@ -18,10 +18,7 @@
     "restriction": "error",
     "suspicious": "error"
   },
-  "ignorePatterns": [
-    ".turbo",
-    "node_modules"
-  ],
+  "ignorePatterns": [".turbo", "node_modules"],
   "rules": {
     "eslint/*": "error",
     "eslint/no-await-in-loop": "warn",

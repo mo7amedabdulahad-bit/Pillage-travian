@@ -10,17 +10,16 @@ import {
 import type { Building } from '@pillage-first/types/models/building';
 import type { BuildingField as BuildingFieldType } from '@pillage-first/types/models/building-field';
 import type { BuildingEvent } from '@pillage-first/types/models/game-event';
+import type { TimeOfDay } from '@pillage-first/types/models/preferences';
 import type { ResourceFieldComposition } from '@pillage-first/types/models/resource-field-composition';
 import type { Tribe } from '@pillage-first/types/models/tribe';
 import buildingFieldStyles from 'app/(game)/(village-slug)/(village)/components/occupied-building-field.module.scss';
 import { useBuildingActions } from 'app/(game)/(village-slug)/(village)/hooks/use-building-actions';
 import { BuildingUpgradeIndicator } from 'app/(game)/(village-slug)/components/building-upgrade-indicator';
-import { Countdown } from 'app/(game)/(village-slug)/components/countdown';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
 import { useBookmarks } from 'app/(game)/(village-slug)/hooks/use-bookmarks';
 import { useBuildingUpgradeStatus } from 'app/(game)/(village-slug)/hooks/use-building-level-change-status';
-import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
 import {
   BuildingUpgradeStatusContext,
@@ -28,6 +27,7 @@ import {
 } from 'app/(game)/(village-slug)/providers/building-upgrade-status-provider';
 import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
 import { useLongPress } from 'app/hooks/use-long-press';
+import { CookieContext } from 'app/providers/cookie-provider';
 
 const TRIBE_FOLDER_NAMES: Record<Tribe, string> = {
   teutons: 'teuton',
@@ -184,21 +184,25 @@ const isWallBuilding = (bid: string): boolean => {
   return WALL_BUILDING_IDS.includes(bid);
 };
 
-const getVillageBuildingImagePath = (tribe: Tribe, gid: string): string => {
+const getVillageBuildingImagePath = (
+  tribe: Tribe,
+  gid: string,
+  theme: TimeOfDay,
+): string => {
   const tribeFolder = TRIBE_FOLDER_NAMES[tribe] || 'teuton';
 
   if (AVAILABLE_BUILDING_GIDS.includes(gid)) {
     if (gid === '32') {
-      return `/graphic-packs/day/buildings/${tribeFolder}/g32Top.png`;
+      return `/graphic-packs/${theme}/buildings/${tribeFolder}/g32Top.png`;
     }
-    return `/graphic-packs/day/buildings/${tribeFolder}/g${gid}.png`;
+    return `/graphic-packs/${theme}/buildings/${tribeFolder}/g${gid}.png`;
   }
 
   const fallbackGids = ['15', '16', '17', '18', '19', '22', '23', '26', '34'];
   const fallbackGid =
     fallbackGids.find((fg) => AVAILABLE_BUILDING_GIDS.includes(fg)) || '26';
 
-  return `/graphic-packs/day/buildings/${tribeFolder}/g${fallbackGid}.png`;
+  return `/graphic-packs/${theme}/buildings/${tribeFolder}/g${fallbackGid}.png`;
 };
 
 const transformBuildingIdIntoCssClass = (
@@ -365,12 +369,10 @@ const OccupiedBuildingFieldContent = ({
 }: OccupiedBuildingFieldContentProps) => {
   const { t } = useTranslation();
   const { currentVillage } = useCurrentVillage();
-  const { preferences } = usePreferences();
   const tribe = useTribe();
 
   const { id: buildingFieldId, buildingId, level } = buildingField;
-  const { shouldShowBuildingNames } = preferences;
-  const hasEvent = !!currentBuildingFieldBuildingEvent;
+  const _hasEvent = !!currentBuildingFieldBuildingEvent;
   const isVillageBuilding = buildingFieldId >= 19;
 
   const getTribeClass = (tribeValue: Tribe): string => {
@@ -413,6 +415,7 @@ const OccupiedBuildingFieldContent = ({
       data-name={t(`BUILDINGS.${buildingId}.NAME`)}
       tabIndex={0}
       className={clsx(
+        'group',
         // size handles standard vs non standard
         isVillageBuilding && 'building-slot',
         dorf2Classes,
@@ -427,28 +430,17 @@ const OccupiedBuildingFieldContent = ({
       )}
       {...props}
     >
-      {isVillageBuilding && (
-        <div
-          className={clsx(
-            'labelLayer absolute flex items-center justify-center text-white font-bold text-xs lg:text-sm z-10',
-            isWallBuilding(buildingId)
-              ? 'left-1/2 -translate-x-1/2 bottom-[15%]'
-              : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-          )}
-        >
-          {level}
-        </div>
-      )}
       {isVillageBuilding && !isWallBuilding(buildingId) && (
         <>
           <img
             src={getVillageBuildingImagePath(
               tribe,
               getGidFromBuildingId(buildingId),
+              'day',
             )}
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
-              'absolute max-w-none transition-all duration-200 pointer-events-none',
+              'absolute max-w-none transition-all duration-200 pointer-events-none group-hover:brightness-125',
               `g${getGidFromBuildingId(buildingId)}`,
               getTribeClass(tribe),
             )}
@@ -456,7 +448,6 @@ const OccupiedBuildingFieldContent = ({
               left: '50%',
               top: '50%',
               transform: 'translate(-50%, -50%)',
-              filter: isHovered ? 'brightness(1.2)' : 'none',
             }}
           />
           <svg
@@ -484,7 +475,7 @@ const OccupiedBuildingFieldContent = ({
             src={getWallBottomPath(tribe, 'default', 'day')}
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
-              'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none',
+              'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none group-hover:brightness-125',
               'g32Bottom',
               getTribeClass(tribe),
             )}
@@ -492,14 +483,13 @@ const OccupiedBuildingFieldContent = ({
               zIndex: 42,
               width: '100%',
               height: '100%',
-              filter: isHovered ? 'brightness(1.2)' : 'none',
             }}
           />
           <img
             src={getWallTopPath(tribe, 'default', 'day')}
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
-              'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none',
+              'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none group-hover:brightness-125',
               'g32Top',
               getTribeClass(tribe),
             )}
@@ -507,7 +497,6 @@ const OccupiedBuildingFieldContent = ({
               zIndex: 0,
               width: '100%',
               height: '100%',
-              filter: isHovered ? 'brightness(1.2)' : 'none',
             }}
           />
           <svg
@@ -525,26 +514,20 @@ const OccupiedBuildingFieldContent = ({
           </svg>
         </>
       )}
-      <div className="absolute absolute-centering">
+      <div
+        className={clsx(
+          'absolute z-20',
+          isWallBuilding(buildingId)
+            ? 'top-[10%] left-[45%]'
+            : 'absolute-centering',
+        )}
+      >
         <BuildingUpgradeIndicator
           isHovered={isHovered}
           buildingField={buildingField}
           buildingEvent={currentBuildingFieldBuildingEvent}
         />
       </div>
-      {shouldShowBuildingNames && (
-        <span className="inline-flex flex-col lg:flex-row text-center text-3xs md:text-2xs px-0.5 md:px-1 z-10 bg-background border border-border rounded-xs whitespace-nowrap absolute left-1/2 -translate-x-1/2 -translate-y-1/2 top-[calc(50%+20px)] lg:top-[calc(50%+25px)]">
-          {hasEvent && (
-            <Countdown
-              endsAt={
-                currentBuildingFieldBuildingEvent.startsAt +
-                currentBuildingFieldBuildingEvent.duration
-              }
-            />
-          )}
-          {!hasEvent && t(`BUILDINGS.${buildingId}.NAME`)}
-        </span>
-      )}
     </Link>
   );
 };

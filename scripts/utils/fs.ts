@@ -8,7 +8,10 @@ export const clearDirectory = async (path: string) => {
   }
 };
 
-export const copyFolderSync = async (source: string, dest: string): Promise<void> => {
+export const copyFolderSync = async (
+  source: string,
+  dest: string,
+): Promise<void> => {
   try {
     // Ensure the destination directory exists, if not, create it
     await mkdir(dest, { recursive: true });

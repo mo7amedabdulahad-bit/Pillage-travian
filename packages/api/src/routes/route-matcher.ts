@@ -41,7 +41,7 @@ export const matchRoute = (url: string, method: string) => {
     const methodKey = method.toLowerCase() as Method;
 
     // TODO: Refactor this
-    const routeConfig = (paths[pathKey] as Record<string, any>)[methodKey] as
+    const routeConfig = (paths[pathKey] as Record<string, unknown>)[methodKey] as
       | {
           requestParams?: {
             path?: z.ZodTypeAny;

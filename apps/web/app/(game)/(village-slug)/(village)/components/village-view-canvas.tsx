@@ -32,6 +32,11 @@ export const VillageViewCanvas = ({
         newScale = 1.15;
       }
 
+      // Prevent it from becoming too small on mobile (below 1.0)
+      if (newScale < 1.0) {
+        newScale = 1.0;
+      }
+
       setScale(newScale);
     };
 
@@ -49,16 +54,18 @@ export const VillageViewCanvas = ({
       ref={containerRef}
       className={clsx(
         'relative w-full max-w-none mx-auto overflow-hidden',
-        // Make sure the container maintains the aspect ratio of 1280x720
-        'aspect-[16/9]',
         className,
       )}
+      style={{
+        height: NATIVE_HEIGHT * scale,
+      }}
     >
       <div
-        className="absolute top-0 left-0 origin-top-left"
+        className={clsx(
+          'absolute top-0 left-1/2 -translate-x-1/2 transition-transform duration-300 ease-out origin-top-center',
+          'w-[1280px] h-[720px]',
+        )}
         style={{
-          width: NATIVE_WIDTH,
-          height: NATIVE_HEIGHT,
           transform: `scale(${scale})`,
         }}
       >

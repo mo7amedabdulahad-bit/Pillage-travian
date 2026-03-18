@@ -98,7 +98,7 @@ export const EmptyBuildingField = ({
         viewBox="0 0 120 120"
         className="buildingShape iso w-full h-full pointer-events-none"
       >
-        <title>Empty Building Slot</title>
+        <title>{t('Empty building slot')}</title>
         <path
           d="M49.4 70.4c-7.8 1.8-13.5 4.7-16.8 8.6-3.5 4.3-4.1 7.2-2.1 11.3 3.3 7.1 13.9 11.7 28.5 12.4 19.8 1.1 35-6.5 35-17.5 0-4.9-5.8-10.2-14.2-13.1-8.1-2.8-22-3.6-30.4-1.7z"
           className="pointer-events-auto transition-colors duration-150 fill-[var(--slot-default)] group-hover:fill-[var(--slot-hover)]"

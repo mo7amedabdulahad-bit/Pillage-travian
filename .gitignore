@@ -28,3 +28,9 @@ coverage/
 
 *.min.js
 *.min.css
+
+Gpack/
+apps/web/public/graphic-packs/
+apps/web/.next/
+packages/*/dist/
+packages/*/build/

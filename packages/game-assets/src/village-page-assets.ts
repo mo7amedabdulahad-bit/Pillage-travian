@@ -1,7 +1,6 @@
 import type { TimeOfDay } from '@pillage-first/types/models/preferences';
 import type { Tribe } from '@pillage-first/types/models/tribe';
 import {
-  BUILDINGS_BASE_PATH,
   getWallBuildingIdForTribe,
   TRIBE_FOLDER_NAMES,
   WALL_GID_MAP,
