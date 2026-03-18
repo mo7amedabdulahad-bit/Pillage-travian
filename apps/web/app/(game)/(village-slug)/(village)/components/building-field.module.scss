@@ -1,4 +1,5 @@
 @use "sass:list";
+@use "sass:map";
 
 // Travian resource field positions converted from exact pixel coordinates
 // Container dimensions: 473px width x 304px height
@@ -23,35 +24,38 @@ $resource-field-positions: (
   18: (74.342% 73.150%),
 );
 
-// Village view building positions remain as percentages for responsive behavior
-$village-building-positions: (
-  19: (30.833% 29.766%),
-  20: (24.722% 37.109%),
-  21: (22.639% 45.781%),
-  22: (24.583% 55.078%),
-  23: (32.222% 61.797%),
-  24: (38.194% 25.234%),
-  25: (40.556% 65.469%),
-  26: (39.167% 34.219%),
-  27: (59.028% 26.953%),
-  28: (49.583% 24.688%),
-  29: (31.389% 50.859%),
-  30: (50.139% 35.078%),
-  31: (39.306% 46.563%),
-  32: (57.639% 41.641%),
-  33: (50.972% 65.547%),
-  34: (66.250% 34.297%),
-  35: (57.639% 52.344%),
-  36: (62.222% 60.234%),
-  37: (68.889% 43.047%),
-  38: (67.083% 52.266%),
-  39: (42.639% 57.188%),
-  40: (19.028% 20.391%),
-  41: (76.944% 37.188%),
-  42: (77.083% 49.219%),
-  43: (75.139% 59.531%),
-  44: (82.083% 55.469%),
+// Village view building positions — exact pixel coordinates matching Travian dorf2
+// Container: #villageContent = 1280 x 720px
+// Source: CSS_PLAN_GEMENI.md
+$village-building-layout: (
+  19: (381px, 222px, 19),
+  20: (475px, 178px, 17),
+  21: (586px, 163px, 15),
+  22: (705px, 177px, 17),
+  23: (791px, 232px, 20),
+  24: (323px, 275px, 23),
+  25: (838px, 292px, 24),
+  26: (438px, 282px, 25),
+  27: (345px, 425px, 32),
+  28: (316px, 357px, 27),
+  29: (651px, 226px, 21),
+  30: (449px, 361px, 27),
+  31: (596px, 283px, 23),
+  32: (533px, 415px, 32),
+  33: (839px, 367px, 32),
+  34: (439px, 477px, 36),
+  35: (670px, 415px, 29),
+  36: (771px, 448px, 33),
+  37: (551px, 496px, 39),
+  38: (669px, 483px, 38),
+  39: (732px, 307px, 28), // Rally Point (125x160)
+  40: (261px, 137px, 42), // Wall (794x540)
 );
+
+// Size classes relative to 1280x720 container
+// Standard: 120x120 → 9.375% x 16.667%
+// Rally Point (39): 125x160 → 9.766% x 22.222%
+// Wall (40): 794x540 → 62.031% x 75%
 
 .building-field {
   position: absolute;
@@ -64,11 +68,28 @@ $village-building-positions: (
     }
   }
 
-  // Village buildings (19-44) use percentage positions
-  @each $id, $coords in $village-building-positions {
+  // Village buildings (19-40) use exact px positions + z-index + sizing
+  @each $id, $layout in $village-building-layout {
     &--#{$id} {
-      top: list.nth($coords, 1);
-      left: list.nth($coords, 2);
+      left: list.nth($layout, 1);
+      top: list.nth($layout, 2);
+      z-index: list.nth($layout, 3);
+
+      // Standard building slot size in pixels matching real Travian graphics
+      width: 120px;
+      height: 120px;
+
+      // Rally Point — larger vertical footprint
+      @if $id == 39 {
+        width: 125px;
+        height: 160px;
+      }
+
+      // Wall — covers most of the village
+      @if $id == 40 {
+        width: 794px;
+        height: 540px;
+      }
     }
   }
 }

@@ -1,10 +1,9 @@
 import { Activity, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ITooltip as ReactTooltipProps } from 'react-tooltip';
-import type { Route } from '@react-router/types/app/(game)/(village-slug)/(village)/+types/page';
 import { BuildingField } from 'app/(game)/(village-slug)/(village)/components/building-field';
 import { ResourceFieldCanvas } from 'app/(game)/(village-slug)/(village)/components/resource-field-canvas';
-import { WallBackground } from 'app/(game)/(village-slug)/(village)/components/wall-background';
+import { VillageViewCanvas } from 'app/(game)/(village-slug)/(village)/components/village-view-canvas';
 import { BuildingFieldTooltip } from 'app/(game)/(village-slug)/components/building-field-tooltip';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
@@ -82,8 +81,7 @@ const VillagePage = (props: Route.ComponentProps) => {
         render={renderTooltip}
       />
       <main className="flex flex-col items-center justify-center mx-auto lg:mt-20 lg:mb-0 max-h-[calc(100dvh-12rem)] standalone:max-h-[calc(100dvh-15rem)] h-screen lg:h-auto lg:max-h-none overflow-x-hidden">
-        <div className="relative aspect-[16/10] scrollbar-hidden min-w-[460px] max-w-5xl w-full">
-          {isVillagePageOpen && isWallBuilt && <WallBackground />}
+        <div className="relative aspect-[16/9] scrollbar-hidden min-w-[460px] max-w-5xl w-full">
           {isResourcesPageOpen && (
             <ResourceFieldCanvas
               composition={currentVillage.resourceFieldComposition}
@@ -99,8 +97,9 @@ const VillagePage = (props: Route.ComponentProps) => {
               </>
             </ResourceFieldCanvas>
           )}
-          {isVillagePageOpen &&
-            villageViewBuildingFieldIds.map((buildingFieldId) => (
+        {isVillagePageOpen && (
+          <VillageViewCanvas>
+            {villageViewBuildingFieldIds.map((buildingFieldId) => (
               <Activity
                 mode={isVillagePageOpen ? 'visible' : 'hidden'}
                 key={buildingFieldId}
@@ -108,6 +107,8 @@ const VillagePage = (props: Route.ComponentProps) => {
                 <BuildingField buildingFieldId={buildingFieldId} />
               </Activity>
             ))}
+          </VillageViewCanvas>
+        )}
         </div>
       </main>
     </>

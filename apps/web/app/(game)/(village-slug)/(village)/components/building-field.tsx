@@ -42,7 +42,8 @@ export const BuildingField = ({ buildingFieldId }: BuildingFieldProps) => {
       tabIndex={0}
       className={clsx(
         positioningStyles,
-        'absolute flex items-center justify-center -translate-x-1/2 -translate-y-1/2',
+        'absolute flex items-center justify-center pointer-events-none',
+        buildingFieldId <= 18 && '-translate-x-1/2 -translate-y-1/2',
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

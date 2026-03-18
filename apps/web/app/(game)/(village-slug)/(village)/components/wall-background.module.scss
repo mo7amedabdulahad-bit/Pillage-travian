@@ -1,10 +1,10 @@
 .wall-top {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
+  top: 19.028%;
+  left: 20.391%;
+  width: 62.031%;
   height: auto;
-  z-index: 1;
+  z-index: 0; // Behind buildings
   pointer-events: none;
 
   & img {
@@ -16,11 +16,11 @@
 
 .wall-bottom {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
+  top: 19.028%;
+  left: 20.391%;
+  width: 62.031%;
   height: auto;
-  z-index: 1;
+  z-index: 42; // In front of buildings
   pointer-events: none;
 
   & img {
