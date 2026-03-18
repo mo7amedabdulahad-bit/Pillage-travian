@@ -75,7 +75,7 @@ const VillagePage = (props: Route.ComponentProps) => {
         render={renderTooltip}
       />
       <main className="flex flex-col items-center justify-center mx-auto lg:mt-20 lg:mb-0 max-h-[calc(100dvh-12rem)] standalone:max-h-[calc(100dvh-15rem)] h-screen lg:h-auto lg:max-h-none overflow-x-hidden">
-        <div className="relative aspect-[16/9] scrollbar-hidden min-w-[460px] max-w-5xl w-full">
+        <div className="relative aspect-[16/9] scrollbar-hidden min-w-[460px] max-w-7xl w-full">
           {isResourcesPageOpen && (
             <ResourceFieldCanvas
               composition={currentVillage.resourceFieldComposition}
