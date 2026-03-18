@@ -1,6 +1,5 @@
-import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { clsx } from 'clsx';
-import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
 
 type VillageViewCanvasProps = {
   children: ReactElement | ReactElement[];
@@ -17,21 +16,22 @@ export const VillageViewCanvas = ({
 }: VillageViewCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
 
   useEffect(() => {
     const updateScale = () => {
-      if (!containerRef.current) return;
-      
+      if (!containerRef.current) {
+        return;
+      }
+
       const containerWidth = containerRef.current.offsetWidth;
       // Calculate scale based on container width relative to native width
       let newScale = containerWidth / NATIVE_WIDTH;
-      
+
       // Prevent making it larger than its native size as Travian bounds it there
       if (newScale > 1.15) {
         newScale = 1.15;
       }
-      
+
       setScale(newScale);
     };
 

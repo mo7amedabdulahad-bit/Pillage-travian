@@ -28,12 +28,6 @@ const VillagePage = (props: Route.ComponentProps) => {
   const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
   const { currentVillage } = useCurrentVillage();
 
-  const wallBuildingField = currentVillage.buildingFields.find(
-    (bf) => bf.id === 40,
-  );
-  const wallLevel = wallBuildingField?.level ?? 0;
-  const isWallBuilt = wallLevel > 0;
-
   const isResourcesPageOpen = matches.some(
     (match) => match?.id === 'resources-page',
   );
@@ -97,18 +91,18 @@ const VillagePage = (props: Route.ComponentProps) => {
               </>
             </ResourceFieldCanvas>
           )}
-        {isVillagePageOpen && (
-          <VillageViewCanvas>
-            {villageViewBuildingFieldIds.map((buildingFieldId) => (
-              <Activity
-                mode={isVillagePageOpen ? 'visible' : 'hidden'}
-                key={buildingFieldId}
-              >
-                <BuildingField buildingFieldId={buildingFieldId} />
-              </Activity>
-            ))}
-          </VillageViewCanvas>
-        )}
+          {isVillagePageOpen && (
+            <VillageViewCanvas>
+              {villageViewBuildingFieldIds.map((buildingFieldId) => (
+                <Activity
+                  mode={isVillagePageOpen ? 'visible' : 'hidden'}
+                  key={buildingFieldId}
+                >
+                  <BuildingField buildingFieldId={buildingFieldId} />
+                </Activity>
+              ))}
+            </VillageViewCanvas>
+          )}
         </div>
       </main>
     </>
