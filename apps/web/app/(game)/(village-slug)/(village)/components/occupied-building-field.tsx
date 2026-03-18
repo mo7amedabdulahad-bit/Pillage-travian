@@ -27,7 +27,6 @@ import {
 } from 'app/(game)/(village-slug)/providers/building-upgrade-status-provider';
 import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
 import { useLongPress } from 'app/hooks/use-long-press';
-import { CookieContext } from 'app/providers/cookie-provider';
 
 const TRIBE_FOLDER_NAMES: Record<Tribe, string> = {
   teutons: 'teuton',

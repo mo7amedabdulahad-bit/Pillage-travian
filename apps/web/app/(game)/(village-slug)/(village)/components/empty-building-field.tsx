@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { BuildingField as BuildingFieldType } from '@pillage-first/types/models/building-field';
 import type { Tribe } from '@pillage-first/types/models/tribe';
@@ -65,6 +66,7 @@ const getTribeColors = (
 export const EmptyBuildingField = ({
   buildingFieldId,
 }: EmptyBuildingFieldProps) => {
+  const { t } = useTranslation();
   const tribe = useTribe();
   const colors = getTribeColors(tribe);
 

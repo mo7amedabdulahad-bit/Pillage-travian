@@ -2,6 +2,7 @@ import { clsx } from 'clsx';
 import { Activity, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ITooltip as ReactTooltipProps } from 'react-tooltip';
+import type { Route } from '@react-router/types/app/(game)/(village-slug)/(village)/+types/page';
 import { BuildingField } from 'app/(game)/(village-slug)/(village)/components/building-field';
 import { ResourceFieldCanvas } from 'app/(game)/(village-slug)/(village)/components/resource-field-canvas';
 import { VillageViewCanvas } from 'app/(game)/(village-slug)/(village)/components/village-view-canvas';
@@ -30,10 +31,10 @@ const VillagePage = (props: Route.ComponentProps) => {
   const { currentVillage } = useCurrentVillage();
 
   const isResourcesPageOpen = matches.some(
-    (match) => match?.id === 'resources-page',
+    (match: (typeof matches)[number]) => match?.id === 'resources-page',
   );
   const isVillagePageOpen = matches.some(
-    (match) => match?.id === 'village-page',
+    (match: (typeof matches)[number]) => match?.id === 'village-page',
   );
 
   const renderTooltip = useCallback(
