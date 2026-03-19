@@ -38,6 +38,7 @@ describe('report-controllers', () => {
       database,
       createControllerArgs<'/villages/:villageId/reports'>({
         path: { villageId },
+        query: { page: 1, pageSize: 10, isArchived: false },
       }),
     );
 
@@ -60,6 +61,7 @@ describe('report-controllers', () => {
       database,
       createControllerArgs<'/villages/:villageId/reports'>({
         path: { villageId },
+        query: { page: 1, pageSize: 10, isArchived: false },
       }),
     );
     expect(updatedReports.items[0].isRead).toBe(true);
@@ -82,6 +84,7 @@ describe('report-controllers', () => {
       database,
       createControllerArgs<'/villages/:villageId/reports'>({
         path: { villageId },
+        query: { page: 1, pageSize: 10, isArchived: false },
       }),
     );
     expect(readReports.items[0].isRead).toBe(true);
@@ -98,7 +101,7 @@ describe('report-controllers', () => {
       database,
       createControllerArgs<'/villages/:villageId/reports'>({
         path: { villageId },
-        query: { isArchived: true },
+        query: { isArchived: true, page: 1, pageSize: 10 },
       }),
     );
     expect(archivedReports.items).toHaveLength(1);
@@ -115,7 +118,7 @@ describe('report-controllers', () => {
       database,
       createControllerArgs<'/villages/:villageId/reports'>({
         path: { villageId },
-        query: { isArchived: true },
+        query: { isArchived: true, page: 1, pageSize: 10 },
       }),
     );
     expect(deletedReports.items).toHaveLength(0);

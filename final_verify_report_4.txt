@@ -1,0 +1,118 @@
+﻿node.exe : ظت turbo 
+2.8.13
+At line:1 char:1
++ & "C:\Program Files\
+nodejs/node.exe" "C:\U
+sers\Mohamed\AppData\R
+oamin ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : 
+NotSpecified: (ظ    
+ت turbo 2.8.13:Strin 
+   g) [], 
+RemoteExceptio    n
+    + 
+FullyQualifiedError   
+ Id : 
+NativeCommandErr    or
+ 
+ظت Packages in scope: @pillage-first/api, @pillage-first/db, @pillage-first/game-assets, @pillage-first/mocks, @pillage-first/swagger-ui, @pillage-first/types, @pillage-first/utils, @pillage-first/web
+ظت Running type-check, lint:check in 8 packages
+ظت Remote caching disabled
+@pillage-first/web:lint:check: cache miss, executing 2d027e1a873f1192
+@pillage-first/db:lint:check: cache hit, replaying logs 41ec0ccf6a0ae900
+@pillage-first/types:lint:check: cache miss, executing 62b3fffa55ac954a
+@pillage-first/web:type-check: cache miss, executing 5e4079ab01a57be7
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check: > lint:check
+@pillage-first/db:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check: Checked 47 files in 291ms. No fixes applied.
+@pillage-first/mocks:type-check: cache hit, replaying logs acc399cf569774a6
+@pillage-first/mocks:lint:check: cache hit, replaying logs 5f25099dd64d9780
+@pillage-first/utils:type-check: cache hit, replaying logs 81a72854b51c2aa0
+@pillage-first/game-assets:type-check: cache hit, replaying logs 2ae03e4d58c719be
+@pillage-first/mocks:type-check: 
+@pillage-first/mocks:type-check: > type-check
+@pillage-first/mocks:type-check: > tsgo
+@pillage-first/mocks:type-check: 
+@pillage-first/mocks:lint:check: 
+@pillage-first/mocks:lint:check: > lint:check
+@pillage-first/mocks:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/mocks:lint:check: 
+@pillage-first/mocks:lint:check: Checked 12 files in 117ms. No fixes applied.
+@pillage-first/swagger-ui:type-check: cache hit, replaying logs e151918af27cfcc9
+@pillage-first/utils:type-check: 
+@pillage-first/utils:type-check: > type-check
+@pillage-first/utils:type-check: > tsgo
+@pillage-first/utils:type-check: 
+@pillage-first/game-assets:type-check: 
+@pillage-first/swagger-ui:type-check: 
+@pillage-first/swagger-ui:type-check: > type-check
+@pillage-first/swagger-ui:type-check: > tsgo
+@pillage-first/swagger-ui:type-check: 
+@pillage-first/game-assets:type-check: > type-check
+@pillage-first/game-assets:type-check: > tsgo
+@pillage-first/game-assets:type-check: 
+@pillage-first/game-assets:lint:check: cache hit, replaying logs 8d758c3ef2b09713
+@pillage-first/swagger-ui:lint:check: cache hit, replaying logs ab0129cd41da6464
+@pillage-first/db:type-check: cache hit, replaying logs 07e6cd3becff8f19
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: > lint:check
+@pillage-first/game-assets:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: Checked 34 files in 122ms. No fixes applied.
+@pillage-first/swagger-ui:lint:check: 
+@pillage-first/swagger-ui:lint:check: > lint:check
+@pillage-first/swagger-ui:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/swagger-ui:lint:check: 
+@pillage-first/swagger-ui:lint:check: Checked 8 files in 91ms. No fixes applied.
+@pillage-first/api:type-check: cache hit, replaying logs 8a4c0c165b0b5616
+@pillage-first/db:type-check: 
+@pillage-first/db:type-check: > type-check
+@pillage-first/db:type-check: > tsgo
+@pillage-first/db:type-check: 
+@pillage-first/utils:lint:check: cache hit, replaying logs 963820a93758170c
+@pillage-first/api:lint:check: cache hit, replaying logs 3bed15fc21db0170
+@pillage-first/api:type-check: 
+@pillage-first/api:type-check: > type-check
+@pillage-first/api:type-check: > tsgo
+@pillage-first/api:type-check: 
+@pillage-first/types:type-check: cache miss, executing 8478283b260fa568
+@pillage-first/api:lint:check: 
+@pillage-first/utils:lint:check: 
+@pillage-first/utils:lint:check: > lint:check
+@pillage-first/utils:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/api:lint:check: > lint:check
+@pillage-first/api:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/utils:lint:check: 
+@pillage-first/api:lint:check: 
+@pillage-first/utils:lint:check: Checked 30 files in 130ms. No fixes applied.
+@pillage-first/api:lint:check: Checked 121 files in 256ms. No fixes applied.
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check: > lint:check
+@pillage-first/types:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/types:lint:check: 
+@pillage-first/web:lint:check: 
+@pillage-first/web:lint:check: > lint:check
+@pillage-first/web:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/web:lint:check: 
+@pillage-first/web:type-check: 
+@pillage-first/web:type-check: > type-check
+@pillage-first/web:type-check: > react-router typegen && tsgo
+@pillage-first/web:type-check: 
+@pillage-first/types:type-check: 
+@pillage-first/types:type-check: > type-check
+@pillage-first/types:type-check: > tsgo
+@pillage-first/types:type-check: 
+@pillage-first/types:lint:check: Checked 33 files in 213ms. No fixes applied.
+@pillage-first/web:lint:check: Checked 311 files in 574ms. No fixes applied.
+
+ Tasks:    16 successful, 16 total
+Cached:    12 cached, 16 total
+  Time:    18.197s 
+

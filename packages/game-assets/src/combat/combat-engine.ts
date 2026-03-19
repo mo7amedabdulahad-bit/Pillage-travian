@@ -86,7 +86,9 @@ export const calculateTotalOffensePoints = (troops: CombatTroop[]): number => {
   let total = 0;
   for (const troop of troops) {
     const unit = unitsMap.get(troop.unitId);
-    if (!unit) continue;
+    if (!unit) {
+      continue;
+    }
     const improved = calculateSmithyUpgrade(
       unit.attack,
       unit.unitWheatConsumption,
@@ -110,7 +112,9 @@ export const calculateInfantryCavalryRatio = (
 
   for (const troop of troops) {
     const unit = unitsMap.get(troop.unitId);
-    if (!unit) continue;
+    if (!unit) {
+      continue;
+    }
     const improved = calculateSmithyUpgrade(
       unit.attack,
       unit.unitWheatConsumption,
@@ -151,7 +155,9 @@ export const calculateTotalDefensePoints = (
 
   for (const troop of defenderTroops) {
     const unit = unitsMap.get(troop.unitId);
-    if (!unit) continue;
+    if (!unit) {
+      continue;
+    }
 
     const improvedInfDef = calculateSmithyUpgrade(
       unit.infantryDefence,
@@ -264,7 +270,9 @@ export const calculateTotalCarryCapacity = (
   let total = 0;
   for (const troop of troops) {
     const unit = unitsMap.get(troop.unitId);
-    if (!unit) continue;
+    if (!unit) {
+      continue;
+    }
     total += unit.unitCarryCapacity * troop.amount;
   }
   return total;
@@ -296,7 +304,7 @@ export const calculateLoot = (
   const canTake = Math.min(carryCapacity, totalAvailable);
 
   // First pass: try equal share
-  const sharePerResource = canTake / 4;
+  const _sharePerResource = canTake / 4;
   const loot: [number, number, number, number] = [0, 0, 0, 0];
   let remaining = canTake;
 

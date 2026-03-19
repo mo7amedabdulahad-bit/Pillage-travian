@@ -1,0 +1,151 @@
+﻿node.exe : ظت turbo 
+2.8.13
+At line:1 char:1
++ & "C:\Program Files\
+nodejs/node.exe" "C:\U
+sers\Mohamed\AppData\R
+oamin ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (ظت turbo    
+ 2.8.13:String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+ظت Packages in scope: @pillage-first/api, @pillage-first/db, @pillage-first/game-assets, @pillage-first/mocks, @pillage-first/swagger-ui, @pillage-first/types, @pillage-first/utils, @pillage-first/web
+ظت Running type-check, lint:check in 8 packages
+ظت Remote caching disabled
+@pillage-first/web:lint:check: cache miss, executing b75d4cdecea74da7
+@pillage-first/types:lint:check: cache miss, executing ec2dc9de97089c9b
+@pillage-first/db:lint:check: cache miss, executing 41ec0ccf6a0ae900
+@pillage-first/utils:type-check: cache hit, replaying logs 81a72854b51c2aa0
+@pillage-first/swagger-ui:lint:check: cache hit, replaying logs ab0129cd41da6464
+@pillage-first/mocks:type-check: cache hit, replaying logs acc399cf569774a6
+@pillage-first/utils:type-check: 
+@pillage-first/utils:type-check: > type-check
+@pillage-first/utils:type-check: > tsgo
+@pillage-first/utils:type-check: 
+@pillage-first/game-assets:lint:check: cache miss, executing 8d758c3ef2b09713
+@pillage-first/mocks:lint:check: cache hit, replaying logs 5f25099dd64d9780
+@pillage-first/web:type-check: cache miss, executing 0bd5d6673a655283
+@pillage-first/mocks:type-check: 
+@pillage-first/mocks:type-check: > type-check
+@pillage-first/mocks:type-check: > tsgo
+@pillage-first/mocks:type-check: 
+@pillage-first/swagger-ui:lint:check: 
+@pillage-first/swagger-ui:lint:check: > lint:check
+@pillage-first/swagger-ui:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/swagger-ui:lint:check: 
+@pillage-first/swagger-ui:lint:check: Checked 8 files in 91ms. No fixes applied.
+@pillage-first/types:type-check: cache miss, executing 96a6d0737642170c
+@pillage-first/mocks:lint:check: 
+@pillage-first/mocks:lint:check: > lint:check
+@pillage-first/mocks:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/mocks:lint:check: 
+@pillage-first/mocks:lint:check: Checked 12 files in 117ms. No fixes applied.
+@pillage-first/db:type-check: cache miss, executing 07e6cd3becff8f19
+@pillage-first/api:lint:check: cache miss, executing 49924f7b922bc2a1
+@pillage-first/swagger-ui:type-check: cache hit, replaying logs e151918af27cfcc9
+@pillage-first/utils:lint:check: cache hit, replaying logs 963820a93758170c
+@pillage-first/swagger-ui:type-check: 
+@pillage-first/swagger-ui:type-check: > type-check
+@pillage-first/swagger-ui:type-check: > tsgo
+@pillage-first/swagger-ui:type-check: 
+@pillage-first/utils:lint:check: 
+@pillage-first/utils:lint:check: > lint:check
+@pillage-first/utils:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/utils:lint:check: 
+@pillage-first/utils:lint:check: Checked 30 files in 130ms. No fixes applied.
+@pillage-first/api:type-check: cache miss, executing 59fbc555bfb684c8
+@pillage-first/game-assets:type-check: cache miss, executing 2ae03e4d58c719be
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: > lint:check
+@pillage-first/game-assets:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/game-assets:lint:check: 
+@pillage-first/web:type-check: 
+@pillage-first/web:type-check: > type-check
+@pillage-first/web:type-check: > react-router typegen && tsgo
+@pillage-first/web:type-check: 
+@pillage-first/types:type-check: 
+@pillage-first/types:type-check: > type-check
+@pillage-first/types:type-check: > tsgo
+@pillage-first/types:type-check: 
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check: > lint:check
+@pillage-first/db:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/db:lint:check: 
+@pillage-first/web:lint:check: 
+@pillage-first/web:lint:check: > lint:check
+@pillage-first/web:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/web:lint:check: 
+@pillage-first/db:type-check: 
+@pillage-first/db:type-check: > type-check
+@pillage-first/db:type-check: > tsgo
+@pillage-first/db:type-check: 
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: > lint:check
+@pillage-first/api:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/api:lint:check: 
+@pillage-first/api:type-check: 
+@pillage-first/api:type-check: > type-check
+@pillage-first/api:type-check: > tsgo
+@pillage-first/api:type-check: 
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check: > lint:check
+@pillage-first/types:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/types:lint:check: 
+@pillage-first/game-assets:type-check: 
+@pillage-first/game-assets:type-check: > type-check
+@pillage-first/game-assets:type-check: > tsgo
+@pillage-first/game-assets:type-check: 
+@pillage-first/game-assets:lint:check: Checked 34 files in 122ms. No fixes applied.
+@pillage-first/db:lint:check: Checked 47 files in 291ms. No fixes applied.
+@pillage-first/web:lint:check: Checked 311 files in 751ms. No fixes applied.
+@pillage-first/api:lint:check: Checked 121 files in 732ms. No fixes applied.
+@pillage-first/types:lint:check: Checked 33 files in 193ms. No fixes applied.
+@pillage-first/api:type-check: src/controllers/__tests__/report-controllers.test.ts(41,9): error TS2741: Property 'isArchived' is missing in type '{ page: number; pageSize: number; }' but required in type '{ page: number; pageSize: number; type?: "attack" | "raid" | "reinforcement" | "trade" | undefined; isArchived: boolean; }'.
+@pillage-first/api:type-check: src/controllers/__tests__/report-controllers.test.ts(64,9): error TS2741: Property 'isArchived' is missing in type '{ page: number; pageSize: number; }' but required in type '{ page: number; pageSize: number; type?: "attack" | "raid" | "reinforcement" | "trade" | undefined; isArchived: boolean; }'.
+@pillage-first/api:type-check: src/controllers/__tests__/report-controllers.test.ts(87,9): error TS2741: Property 'isArchived' is missing in type '{ page: number; pageSize: number; }' but required in type '{ page: number; pageSize: number; type?: "attack" | "raid" | "reinforcement" | "trade" | undefined; isArchived: boolean; }'.
+@pillage-first/api:type-check: npm error Lifecycle script `type-check` failed with error:
+@pillage-first/api:type-check: npm error code 2
+@pillage-first/api:type-check: npm error path C:\Users\Mohamed\OneDrive\Desktop\Pillage-First-Ask-Questions-Later-master\packages\api
+@pillage-first/api:type-check: npm error workspace @pillage-first/api
+@pillage-first/api:type-check: npm error location C:\Users\Mohamed\OneDrive\Desktop\Pillage-First-Ask-Questions-Later-master\packages\api
+@pillage-first/api:type-check: npm error command failed
+@pillage-first/api:type-check: npm error command C:\WINDOWS\system32\cmd.exe /d /s /c tsgo
+@pillage-first/api:typ
+e-check: ERROR: 
+command finished with 
+error: command (C:\Use
+rs\Mohamed\OneDrive\De
+sktop\Pillage-First-As
+k-Questions-Later-mast
+er\packages\api) 
+C:\Program 
+Files\nodejs\npm.cmd 
+run type-check exited 
+(2)
+@pillage-first/api#typ
+e-check: command (C:\U
+sers\Mohamed\OneDrive\
+Desktop\Pillage-First-
+Ask-Questions-Later-ma
+ster\packages\api) 
+C:\Program 
+Files\nodejs\npm.cmd 
+run type-check exited 
+(2)
+
+ Tasks:    13 successful, 16 total
+Cached:    6 cached, 16 total
+  Time:    11.569s 
+Failed:    @pillage-first/api#type-check
+
+ ERROR  run failed: 
+command  exited (2)

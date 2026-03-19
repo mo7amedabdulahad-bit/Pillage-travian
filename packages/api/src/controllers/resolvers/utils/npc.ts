@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { UnitId } from '@pillage-first/types/models/unit';
 import type { VillageSize } from '@pillage-first/types/models/village';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../utils/create-event';
@@ -144,12 +145,13 @@ export const regenerateNpcTroops = (
   }
 
   const troopsToAdd = tribeUnits.map((unitId, index) => ({
-    unitId,
+    unitId: unitId as UnitId,
     amount: Math.floor(totalRegen * tierWeights[index]),
     tileId: state.tile_id,
     source: state.tile_id,
   }));
 
+  // biome-ignore lint/suspicious/noExplicitAny: Unit IDs from DB are strings but mathematically match the UnitId union
   addTroops(database, troopsToAdd as any);
 };
 
@@ -210,7 +212,7 @@ export const handleNpcRetaliation = (
   const percentToSend = 0.3 + Math.random() * 0.4;
   const attackingTroops = homeTroops
     .map((t) => ({
-      unitId: t.unitId,
+      unitId: t.unitId as UnitId,
       amount: Math.max(1, Math.floor(t.amount * percentToSend)),
       tileId: npcInfo.tile_id,
       source: npcInfo.tile_id,
@@ -226,6 +228,7 @@ export const handleNpcRetaliation = (
     type: 'troopMovementAttack',
     villageId: villageId,
     targetId: attackerVillageId,
+    // biome-ignore lint/suspicious/noExplicitAny: Unit IDs from DB are strings but mathematically match the UnitId union
     troops: attackingTroops as any,
     startsAt: timestamp,
   });

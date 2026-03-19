@@ -34,6 +34,7 @@ export const upgradeDb = (database: DbFacade): void => {
       sql: 'CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type);',
     });
   } catch (e) {
+    // biome-ignore lint/suspicious/noConsole: Migration logs are useful
     console.warn('Migration: Reports table failed or already exists', e);
   }
 
@@ -50,6 +51,7 @@ export const upgradeDb = (database: DbFacade): void => {
     `,
     });
   } catch (e) {
+    // biome-ignore lint/suspicious/noConsole: Migration logs are useful
     console.warn(
       'Migration: npc_village_state table failed or already exists',
       e,
@@ -61,7 +63,7 @@ export const upgradeDb = (database: DbFacade): void => {
     database.exec({
       sql: 'ALTER TABLE farm_list_tiles ADD COLUMN troops_meta TEXT;',
     });
-  } catch (e) {
+  } catch (_e) {
     // Column might already exist, SQLite doesn't have ADD COLUMN IF NOT EXISTS
   }
 };

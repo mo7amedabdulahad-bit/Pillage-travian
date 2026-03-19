@@ -1,0 +1,451 @@
+﻿node.exe : ظت turbo 
+2.8.13
+At line:1 char:1
++ & "C:\Program Files\
+nodejs/node.exe" "C:\U
+sers\Mohamed\AppData\R
+oamin ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (ظت turbo    
+ 2.8.13:String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+ظت Packages in scope: @pillage-first/api, @pillage-first/db, @pillage-first/game-assets, @pillage-first/mocks, @pillage-first/swagger-ui, @pillage-first/types, @pillage-first/utils, @pillage-first/web
+ظت Running lint:check in 8 packages
+ظت Remote caching disabled
+@pillage-first/web:lint:check: cache miss, executing b75d4cdecea74da7
+@pillage-first/types:lint:check: cache miss, executing ede577b179967afa
+@pillage-first/utils:lint:check: cache hit, replaying logs 963820a93758170c
+@pillage-first/swagger-ui:lint:check: cache miss, executing ab0129cd41da6464
+@pillage-first/mocks:lint:check: cache hit, replaying logs 5f25099dd64d9780
+@pillage-first/api:lint:check: cache miss, executing 7f6953d3dbd78c04
+@pillage-first/db:lint:check: cache miss, executing 0fc3abfd8a9d1eae
+@pillage-first/utils:lint:check: 
+@pillage-first/game-assets:lint:check: cache miss, executing 9931aab8c247d3a0
+@pillage-first/utils:lint:check: > lint:check
+@pillage-first/utils:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/utils:lint:check: 
+@pillage-first/utils:lint:check: Checked 30 files in 130ms. No fixes applied.
+@pillage-first/mocks:lint:check: 
+@pillage-first/mocks:lint:check: > lint:check
+@pillage-first/mocks:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/mocks:lint:check: 
+@pillage-first/mocks:lint:check: Checked 12 files in 117ms. No fixes applied.
+@pillage-first/swagger-ui:lint:check: 
+@pillage-first/web:lint:check: 
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check: > lint:check
+@pillage-first/swagger-ui:lint:check: > lint:check
+@pillage-first/swagger-ui:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/web:lint:check: > lint:check
+@pillage-first/types:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/types:lint:check: 
+@pillage-first/swagger-ui:lint:check: 
+@pillage-first/web:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/web:lint:check: 
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: > lint:check
+@pillage-first/api:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/api:lint:check: 
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: > lint:check
+@pillage-first/game-assets:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/game-assets:lint:check: 
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check: > lint:check
+@pillage-first/db:lint:check: > biome lint --no-errors-on-unmatched
+@pillage-first/db:lint:check: 
+@pillage-first/swagger-ui:lint:check: Checked 8 files in 91ms. No fixes applied.
+@pillage-first/types:lint:check: src\models\report.ts:24:10 lint/suspicious/noExplicitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check:   ! Unexpected any. Specify a different type.
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check:     22 ظ¤é   attackerFactionId?: number | null;
+@pillage-first/types:lint:check:     23 ظ¤é   defenderFactionId?: number | null;
+@pillage-first/types:lint:check:   > 24 ظ¤é   data?: any;
+@pillage-first/types:lint:check:        ظ¤é          ^^^
+@pillage-first/types:lint:check:     25 ظ¤é };
+@pillage-first/types:lint:check:     26 ظ¤é 
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check:   i any disables many type checking rules. Its use should be avoided.
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check: src\models\report.ts:1:13 lint/correctness/noUnusedImports  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check:   ├ù This import is unused.
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check:   > 1 ظ¤é import type { Village } from './village';
+@pillage-first/types:lint:check:       ظ¤é             ^^^^^^^^^^^
+@pillage-first/types:lint:check:     2 ظ¤é 
+@pillage-first/types:lint:check:     3 ظ¤é export type ReportTag = 'read' | 'archived';
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check:   i Unused imports might be the result of an incomplete refactoring.
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check:   i Unsafe fix: Remove the unused imports.
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check:     1 ظ¤é import┬╖type┬╖{┬╖Village┬╖}┬╖from┬╖'./village';
+@pillage-first/types:lint:check:       ظ¤é -----------------------------------------
+@pillage-first/types:lint:check: Checked 33 files in 178ms. No fixes applied.
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check: Found 1 error.
+@pillage-first/types:lint:check: Found 1 warning.
+@pillage-first/types:lint:check: lint ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/types:lint:check: 
+@pillage-first/types:lint:check:   ├ù Some errors were emitted while running checks.
+@pillage-first/types:lint:check:   
+@pillage-first/types:lint:check: 
+@pillage-first/game-assets:lint:check: src\combat\combat-engine.ts:89:5 lint/style/useBlockStatements  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check:   ├ù Block statements are preferred in this position.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     87 ظ¤é   for (const troop of troops) {
+@pillage-first/game-assets:lint:check:     88 ظ¤é     const unit = unitsMap.get(troop.unitId);
+@pillage-first/game-assets:lint:check:   > 89 ظ¤é     if (!unit) continue;
+@pillage-first/game-assets:lint:check:        ظ¤é     ^^^^^^^^^^^^^^^^^^^^
+@pillage-first/game-assets:lint:check:     90 ظ¤é     const improved = calculateSmithyUpgrade(
+@pillage-first/game-assets:lint:check:     91 ظ¤é       unit.attack,
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:   i Unsafe fix: Wrap the statement with a `JsBlockStatement`
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     89 ظ¤é ┬╖┬╖┬╖┬╖if┬╖(!unit)┬╖{┬╖continue;┬╖}
+@pillage-first/game-assets:lint:check:        ظ¤é                ++         ++
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: src\combat\combat-engine.ts:113:5 lint/style/useBlockStatements  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check:   ├ù Block statements are preferred in this position.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     111 ظ¤é   for (const troop of troops) {
+@pillage-first/game-assets:lint:check:     112 ظ¤é     const unit = unitsMap.get(troop.unitId);
+@pillage-first/game-assets:lint:check:   > 113 ظ¤é     if (!unit) continue;
+@pillage-first/game-assets:lint:check:         ظ¤é     ^^^^^^^^^^^^^^^^^^^^
+@pillage-first/game-assets:lint:check:     114 ظ¤é     const improved = calculateSmithyUpgrade(
+@pillage-first/game-assets:lint:check:     115 ظ¤é       unit.attack,
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:   i Unsafe fix: Wrap the statement with a `JsBlockStatement`
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     113 ظ¤é ┬╖┬╖┬╖┬╖if┬╖(!unit)┬╖{┬╖continue;┬╖}
+@pillage-first/game-assets:lint:check:         ظ¤é                ++         ++
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: src\combat\combat-engine.ts:154:5 lint/style/useBlockStatements  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check:   ├ù Block statements are preferred in this position.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     152 ظ¤é   for (const troop of defenderTroops) {
+@pillage-first/game-assets:lint:check:     153 ظ¤é     const unit = unitsMap.get(troop.unitId);
+@pillage-first/game-assets:lint:check:   > 154 ظ¤é     if (!unit) continue;
+@pillage-first/game-assets:lint:check:         ظ¤é     ^^^^^^^^^^^^^^^^^^^^
+@pillage-first/game-assets:lint:check:     155 ظ¤é 
+@pillage-first/game-assets:lint:check:     156 ظ¤é     const improvedInfDef = calculateSmithyUpgrade(
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:   i Unsafe fix: Wrap the statement with a `JsBlockStatement`
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     154 ظ¤é ┬╖┬╖┬╖┬╖if┬╖(!unit)┬╖{┬╖continue;┬╖}
+@pillage-first/game-assets:lint:check:         ظ¤é                ++         ++
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: src\combat\combat-engine.ts:267:5 lint/style/useBlockStatements  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check:   ├ù Block statements are preferred in this position.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     265 ظ¤é   for (const troop of troops) {
+@pillage-first/game-assets:lint:check:     266 ظ¤é     const unit = unitsMap.get(troop.unitId);
+@pillage-first/game-assets:lint:check:   > 267 ظ¤é     if (!unit) continue;
+@pillage-first/game-assets:lint:check:         ظ¤é     ^^^^^^^^^^^^^^^^^^^^
+@pillage-first/game-assets:lint:check:     268 ظ¤é     total += unit.unitCarryCapacity * troop.amount;
+@pillage-first/game-assets:lint:check:     269 ظ¤é   }
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:   i Unsafe fix: Wrap the statement with a `JsBlockStatement`
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     267 ظ¤é ┬╖┬╖┬╖┬╖if┬╖(!unit)┬╖{┬╖continue;┬╖}
+@pillage-first/game-assets:lint:check:         ظ¤é                ++         ++
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: src\combat\combat-engine.ts:299:9 lint/correctness/noUnusedVariables  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check:   ├ù This variable sharePerResource is unused.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     298 ظ¤é   // First pass: try equal share
+@pillage-first/game-assets:lint:check: Checked 34 files in 235ms. No fixes applied.
+@pillage-first/game-assets:lint:check: Found 5 errors.
+@pillage-first/game-assets:lint:check:   > 299 ظ¤é   const sharePerResource = canTake / 4;
+@pillage-first/game-assets:lint:check:         ظ¤é         ^^^^^^^^^^^^^^^^
+@pillage-first/game-assets:lint:check:     300 ظ¤é   const loot: [number, number, number, number] = [0, 0, 0, 0];
+@pillage-first/game-assets:lint:check:     301 ظ¤é   let remaining = canTake;
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:   i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:   i Unsafe fix: If this is intentional, prepend sharePerResource with an underscore.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check:     297 297 ظ¤é   
+@pillage-first/game-assets:lint:check:     298 298 ظ¤é     // First pass: try equal share
+@pillage-first/game-assets:lint:check:     299     ظ¤é - ┬╖┬╖const┬╖sharePerResource┬╖=┬╖canTake┬╖/┬╖4;
+@pillage-first/game-assets:lint:check:         299 ظ¤é + ┬╖┬╖const┬╖_sharePerResource┬╖=┬╖canTake┬╖/┬╖4;
+@pillage-first/game-assets:lint:check:     300 300 ظ¤é     const loot: [number, number, number, number] = [0, 0, 0, 0];
+@pillage-first/game-assets:lint:check:     301 301 ظ¤é     let remaining = canTake;
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check: lint ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/game-assets:lint:check: 
+@pillage-first/game-assets:lint:check:   ├ù Some errors were emitted while running checks.
+@pillage-first/game-assets:lint:check:   
+@pillage-first/game-assets:lint:check: 
+@pillage-first/api:lint:check: src\controllers\report-controllers.ts:20:32 lint/suspicious/noExplicitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Unexpected any. Specify a different type.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     18 ظ¤é       WHERE village_id = $villageId AND is_archived = $isArchived
+@pillage-first/api:lint:check:     19 ظ¤é     `;
+@pillage-first/api:lint:check:   > 20 ظ¤é     const bind: Record<string, any> = {
+@pillage-first/api:lint:check:        ظ¤é                                ^^^
+@pillage-first/api:lint:check:     21 ظ¤é       $villageId: villageId,
+@pillage-first/api:lint:check:     22 ظ¤é       $isArchived: isArchived ? 1 : 0,
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i any disables many type checking rules. Its use should be avoided.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\report-controllers.ts:91:24 lint/performance/noAccumulatingSpread ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Avoid the use of spread (`...`) syntax on accumulators.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     89 ظ¤é   const placeholders = reportIds.map((_, i) => `$id${i}`).join(',');
+@pillage-first/api:lint:check:     90 ظ¤é   const bind = reportIds.reduce(
+@pillage-first/api:lint:check:   > 91 ظ¤é     (acc, id, i) => ({ ...acc, [`$id${i}`]: id }),
+@pillage-first/api:lint:check:        ظ¤é                        ^^^^^^
+@pillage-first/api:lint:check:     92 ظ¤é     {},
+@pillage-first/api:lint:check:     93 ظ¤é   );
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i Spread syntax should be avoided on accumulators (like those in `.reduce`) because it causes a time complexity of `O(n^2)`.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i Consider methods such as .splice or .push instead.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\report-controllers.ts:111:24 lint/performance/noAccumulatingSpread ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Avoid the use of spread (`...`) syntax on accumulators.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     109 ظ¤é   const placeholders = reportIds.map((_, i) => `$id${i}`).join(',');
+@pillage-first/api:lint:check:     110 ظ¤é   const bind = reportIds.reduce(
+@pillage-first/api:lint:check:   > 111 ظ¤é     (acc, id, i) => ({ ...acc, [`$id${i}`]: id }),
+@pillage-first/api:lint:check:         ظ¤é                        ^^^^^^
+@pillage-first/api:lint:check:     112 ظ¤é     {},
+@pillage-first/api:lint:check:     113 ظ¤é   );
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i Spread syntax should be avoided on accumulators (like those in `.reduce`) because it causes a time complexity of `O(n^2)`.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i Consider methods such as .splice or .push instead.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\report-controllers.ts:131:24 lint/performance/noAccumulatingSpread ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Avoid the use of spread (`...`) syntax on accumulators.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     129 ظ¤é   const placeholders = reportIds.map((_, i) => `$id${i}`).join(',');
+@pillage-first/api:lint:check:     130 ظ¤é   const bind = reportIds.reduce(
+@pillage-first/api:lint:check:   > 131 ظ¤é     (acc, id, i) => ({ ...acc, [`$id${i}`]: id }),
+@pillage-first/api:lint:check:         ظ¤é                        ^^^^^^
+@pillage-first/api:lint:check:     132 ظ¤é     {},
+@pillage-first/api:lint:check:     133 ظ¤é   );
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i Spread syntax should be avoided on accumulators (like those in `.reduce`) because it causes a time complexity of `O(n^2)`.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i Consider methods such as .splice or .push instead.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\resolvers\utils\combat-resolver.ts:199:10 lint/suspicious/noExplicitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Unexpected any. Specify a different type.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     197 ظ¤é       originalMovementType: isRaid ? 'raid' : 'attack',
+@pillage-first/api:lint:check:     198 ظ¤é       loot: result.loot,
+@pillage-first/api:lint:check:   > 199 ظ¤é     } as any);
+@pillage-first/api:lint:check:         ظ¤é          ^^^
+@pillage-first/api:lint:check:     200 ظ¤é   }
+@pillage-first/api:lint:check:     201 ظ¤é 
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i any disables many type checking rules. Its use should be avoided.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\resolvers\utils\combat.ts:38:27 lint/suspicious/noExplicitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Unexpected any. Specify a different type.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     37 ظ¤é   return rows.map((row) => ({
+@pillage-first/api:lint:check:   > 38 ظ¤é     unitId: row.unitId as any,
+@pillage-first/api:lint:check:        ظ¤é                           ^^^
+@pillage-first/api:lint:check:     39 ظ¤é     amount: row.amount,
+@pillage-first/web:lint:check: Checked 311 files in 798ms. No fixes applied.
+@pillage-first/api:lint:check:     40 ظ¤é     smithyLevel: row.smithyLevel,
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i any disables many type checking rules. Its use should be avoided.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\resolvers\utils\combat.ts:67:25 lint/suspicious/noExplicitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Unexpected any. Specify a different type.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     66 ظ¤é   return troops.map((t) => ({
+@pillage-first/api:lint:check:   > 67 ظ¤é     unitId: t.unitId as any,
+@pillage-first/api:lint:check:        ظ¤é                         ^^^
+@pillage-first/api:lint:check:     68 ظ¤é     amount: t.amount,
+@pillage-first/api:lint:check:     69 ظ¤é     smithyLevel: smithyMap.get(t.unitId) ?? 0,
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i any disables many type checking rules. Its use should be avoided.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\resolvers\utils\npc.ts:153:38 lint/suspicious/noExplicitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Unexpected any. Specify a different type.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     151 ظ¤é   }));
+@pillage-first/api:lint:check:     152 ظ¤é 
+@pillage-first/api:lint:check:   > 153 ظ¤é   addTroops(database, troopsToAdd as any);
+@pillage-first/api:lint:check:         ظ¤é                                      ^^^
+@pillage-first/api:lint:check:     154 ظ¤é };
+@pillage-first/api:lint:check:     155 ظ¤é 
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i any disables many type checking rules. Its use should be avoided.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: src\controllers\resolvers\utils\npc.ts:229:32 lint/suspicious/noExplicitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check:   ! Unexpected any. Specify a different type.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:     227 ظ¤é     villageId: villageId,
+@pillage-first/api:lint:check:     228 ظ¤é     targetId: attackerVillageId,
+@pillage-first/api:lint:check:   > 229 ظ¤é     troops: attackingTroops as any,
+@pillage-first/api:lint:check:         ظ¤é                                ^^^
+@pillage-first/api:lint:check:     230 ظ¤é     startsAt: timestamp,
+@pillage-first/api:lint:check:     231 ظ¤é   });
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check:   i any disables many type checking rules. Its use should be avoided.
+@pillage-first/api:lint:check:   
+@pillage-first/api:lint:check: 
+@pillage-first/api:lint:check: Checked 121 files in 700ms. No fixes applied.
+@pillage-first/api:lint:check: Found 9 warnings.
+@pillage-first/types:lint:check: npm error Lifecycle script `lint:check` failed with error:
+@pillage-first/types:lint:check: npm error code 1
+@pillage-first/types:lint:check: npm error path C:\Users\Mohamed\OneDrive\Desktop\Pillage-First-Ask-Questions-Later-master\packages\types
+@pillage-first/types:lint:check: npm error workspace @pillage-first/types
+@pillage-first/types:lint:check: npm error location C:\Users\Mohamed\OneDrive\Desktop\Pillage-First-Ask-Questions-Later-master\packages\types
+@pillage-first/types:lint:check: npm error command failed
+@pillage-first/types:lint:check: npm error command C:\WINDOWS\system32\cmd.exe /d /s /c biome lint --no-errors-on-unmatched
+@pillage-first/db:lint:check: src\migrations\upgrade-db.ts:37:5 lint/suspicious/noConsole  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check:   ├ù Don't use console.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:     35 ظ¤é     });
+@pillage-first/db:lint:check:     36 ظ¤é   } catch (e) {
+@pillage-first/db:lint:check:   > 37 ظ¤é     console.warn('Migration: Reports table failed or already exists', e);
+@pillage-first/db:lint:check:        ظ¤é     ^^^^^^^^^^^^
+@pillage-first/db:lint:check:     38 ظ¤é   }
+@pillage-first/db:lint:check:     39 ظ¤é 
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:   i The use of console is often reserved for debugging.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:   i Unsafe fix: Remove console.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:     35 35 ظ¤é       });
+@pillage-first/db:lint:check:     36 36 ظ¤é     } catch (e) {
+@pillage-first/db:lint:check:     37    ظ¤é - ┬╖┬╖┬╖┬╖console.warn('Migration:┬╖Reports┬╖table┬╖failed┬╖or┬╖already┬╖exists',┬╖e);
+@pillage-first/db:lint:check:     38 37 ظ¤é     }
+@pillage-first/db:lint:check:     39 38 ظ¤é   
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check: src\migrations\upgrade-db.ts:53:5 lint/suspicious/noConsole  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check:   ├ù Don't use console.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:     51 ظ¤é     });
+@pillage-first/db:lint:check:     52 ظ¤é   } catch (e) {
+@pillage-first/db:lint:check:   > 53 ظ¤é     console.warn(
+@pillage-first/db:lint:check:        ظ¤é     ^^^^^^^^^^^^
+@pillage-first/db:lint:check:     54 ظ¤é       'Migration: npc_village_state table failed or already exists',
+@pillage-first/db:lint:check:     55 ظ¤é       e,
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:   i The use of console is often reserved for debugging.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:   i Unsafe fix: Remove console.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:     51 51 ظ¤é       });
+@pillage-first/db:lint:check:     52 52 ظ¤é     } catch (e) {
+@pillage-first/db:lint:check:     53    ظ¤é - ┬╖┬╖┬╖┬╖console.warn(
+@pillage-first/db:lint:check:     54    ظ¤é - ┬╖┬╖┬╖┬╖┬╖┬╖'Migration:┬╖npc_village_state┬╖table┬╖failed┬╖or┬╖already┬╖exists',
+@pillage-first/db:lint:check:     55    ظ¤é - ┬╖┬╖┬╖┬╖┬╖┬╖e,
+@pillage-first/db:lint:check:     56    ظ¤é - ┬╖┬╖┬╖┬╖);
+@pillage-first/db:lint:check:     57 53 ظ¤é     }
+@pillage-first/db:lint:check:     58 54 ظ¤é   
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check: src\migrations\upgrade-db.ts:64:12 lint/correctness/noUnusedVariables  FIXABLE  ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check:   ├ù This variable e is unused.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:     62 ظ¤é       sql: 'ALTER TABLE farm_list_tiles ADD COLUMN troops_meta TEXT;',
+@pillage-first/db:lint:check:     63 ظ¤é     });
+@pillage-first/db:lint:check:   > 64 ظ¤é   } catch (e) {
+@pillage-first/db:lint:check:        ظ¤é            ^
+@pillage-first/db:lint:check:     65 ظ¤é     // Column might already exist, SQLite doesn't have ADD COLUMN IF NOT EXISTS
+@pillage-first/db:lint:check:     66 ظ¤é   }
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:   i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:   i Unsafe fix: If this is intentional, prepend e with an underscore.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check:     62 62 ظ¤é         sql: 'ALTER TABLE farm_list_tiles ADD COLUMN troops_meta TEXT;',
+@pillage-first/db:lint:check:     63 63 ظ¤é       });
+@pillage-first/db:lint:check:     64    ظ¤é - ┬╖┬╖}┬╖catch┬╖(e)┬╖{
+@pillage-first/db:lint:check:        64 ظ¤é + ┬╖┬╖}┬╖catch┬╖(_e)┬╖{
+@pillage-first/db:lint:check:     65 65 ظ¤é       // Column might already exist, SQLite doesn't have ADD COLUMN IF NOT EXISTS
+@pillage-first/db:lint:check:     66 66 ظ¤é     }
+@pillage-first/db:lint:check: Checked 47 files in 601ms. No fixes applied.
+@pillage-first/db:lint:check: Found 3 errors.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check: lint ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+@pillage-first/db:lint:check: 
+@pillage-first/db:lint:check:   ├ù Some errors were emitted while running checks.
+@pillage-first/db:lint:check:   
+@pillage-first/db:lint:check: 
+@pillage-first/game-assets:lint:check: npm error Lifecycle script `lint:check` failed with error:
+@pillage-first/game-assets:lint:check: npm error code 1
+@pillage-first/game-assets:lint:check: npm error path C:\Users\Mohamed\OneDrive\Desktop\Pillage-First-Ask-Questions-Later-master\packages\game-assets
+@pillage-first/game-assets:lint:check: npm error workspace @pillage-first/game-assets
+@pillage-first/game-assets:lint:check: npm error location C:\Users\Mohamed\OneDrive\Desktop\Pillage-First-Ask-Questions-Later-master\packages\game-assets
+@pillage-first/game-assets:lint:check: npm error command failed
+@pillage-first/game-assets:lint:check: npm error command C:\WINDOWS\system32\cmd.exe /d /s /c biome lint --no-errors-on-unmatched
+@pillage-first/types:l
+int:check: ERROR: 
+command finished with 
+error: command (C:\Use
+rs\Mohamed\OneDrive\De
+sktop\Pillage-First-As
+k-Questions-Later-mast
+er\packages\types) 
+C:\Program 
+Files\nodejs\npm.cmd 
+run lint:check exited 
+(1)
+@pillage-first/types#l
+int:check: command (C:
+\Users\Mohamed\OneDriv
+e\Desktop\Pillage-Firs
+t-Ask-Questions-Later-
+master\packages\types)
+ C:\Program 
+Files\nodejs\npm.cmd 
+run lint:check exited 
+(1)
+
+ Tasks:    3 successful, 8 total
+Cached:    2 cached, 8 total
+  Time:    3.117s 
+Failed:    @pillage-first/types#lint:check
+
+ ERROR  run failed: 
+command  exited (1)

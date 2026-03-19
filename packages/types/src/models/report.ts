@@ -1,5 +1,3 @@
-import type { Village } from './village';
-
 export type ReportTag = 'read' | 'archived';
 
 export type ReportType =
@@ -21,5 +19,6 @@ export type Report = {
   isArchived: boolean;
   attackerFactionId?: number | null;
   defenderFactionId?: number | null;
+  // biome-ignore lint/suspicious/noExplicitAny: Report data is highly dynamic and varies by report type
   data?: any;
 };

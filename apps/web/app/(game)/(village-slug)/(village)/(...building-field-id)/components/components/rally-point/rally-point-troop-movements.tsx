@@ -58,12 +58,7 @@ const MovementRow = ({
           <Text className="font-semibold">{targetVillageLabel}</Text>
         </div>
         <div className="text-right">
-          <Text
-            size="sm"
-            className="text-muted-foreground"
-          >
-            {t('Arrival')}:
-          </Text>
+          <Text className="text-muted-foreground text-sm">{t('Arrival')}:</Text>
           <Countdown
             endsAt={event.resolvesAt}
             className="font-mono font-bold"
@@ -89,12 +84,7 @@ const MovementRow = ({
                 className="size-5"
               />
             )}
-            <Text
-              size="sm"
-              className="font-medium"
-            >
-              {troop.amount}
-            </Text>
+            <Text className="font-medium text-sm">{troop.amount}</Text>
           </div>
         ))}
       </div>

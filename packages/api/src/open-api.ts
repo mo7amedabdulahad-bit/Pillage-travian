@@ -218,8 +218,9 @@ export const paths = {
       summary: 'Search villages',
       requestParams: {
         query: z.strictObject({
-          x: z.coerce.number(),
-          y: z.coerce.number(),
+          x: z.coerce.number().optional(),
+          y: z.coerce.number().optional(),
+          name: z.string().optional(),
         }),
       },
       responses: {
@@ -227,7 +228,7 @@ export const paths = {
           description: 'Village search results',
           content: {
             'application/json': {
-              schema: z.array(getVillageByCoordsSchema),
+              schema: getVillageByCoordsSchema.nullable(),
             },
           },
         },
@@ -790,6 +791,23 @@ export const paths = {
       responses: {
         '204': {
           description: 'Farm list renamed',
+        },
+      },
+    },
+  },
+  '/villages/:villageId/farm-lists/:farmListId/tiles/:tileId/raid': {
+    post: {
+      summary: 'Raid farm list tile',
+      requestParams: {
+        path: z.strictObject({
+          villageId: z.coerce.number(),
+          farmListId: z.coerce.number(),
+          tileId: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '204': {
+          description: 'Raid successful',
         },
       },
     },

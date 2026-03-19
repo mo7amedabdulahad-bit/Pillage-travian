@@ -196,7 +196,7 @@ export const resolveTroopMovementCombat = (
       type: 'troopMovementReturn',
       originalMovementType: isRaid ? 'raid' : 'attack',
       loot: result.loot,
-    } as any);
+    } as unknown as GameEvent<'troopMovementReturn'>);
   }
 
   // 10. Save report

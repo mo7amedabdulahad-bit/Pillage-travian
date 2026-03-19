@@ -4,6 +4,7 @@ import type {
   DefenseModifiers,
   WallType,
 } from '@pillage-first/game-assets/combat/combat-engine';
+import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 
 /**
@@ -35,7 +36,7 @@ export const fetchDefenderTroops = (
   });
 
   return rows.map((row) => ({
-    unitId: row.unitId as any,
+    unitId: row.unitId as UnitId,
     amount: row.amount,
     smithyLevel: row.smithyLevel,
   }));
@@ -64,7 +65,7 @@ export const getAttackerTroopsWithSmithy = (
   const smithyMap = new Map(smithyLevels.map((s) => [s.unitId, s.level]));
 
   return troops.map((t) => ({
-    unitId: t.unitId as any,
+    unitId: t.unitId as UnitId,
     amount: t.amount,
     smithyLevel: smithyMap.get(t.unitId) ?? 0,
   }));

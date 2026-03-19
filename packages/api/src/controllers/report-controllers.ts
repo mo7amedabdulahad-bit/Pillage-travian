@@ -17,7 +17,7 @@ export const getReports = createController('/villages/:villageId/reports')(
       FROM reports
       WHERE village_id = $villageId AND is_archived = $isArchived
     `;
-    const bind: Record<string, any> = {
+    const bind: Record<string, string | number> = {
       $villageId: villageId,
       $isArchived: isArchived ? 1 : 0,
     };
@@ -87,10 +87,10 @@ export const markReportsAsRead = createController(
   }
 
   const placeholders = reportIds.map((_, i) => `$id${i}`).join(',');
-  const bind = reportIds.reduce(
-    (acc, id, i) => ({ ...acc, [`$id${i}`]: id }),
-    {},
-  );
+  const bind: Record<string, number> = {};
+  for (let i = 0; i < reportIds.length; i++) {
+    bind[`$id${i}`] = reportIds[i];
+  }
 
   database.exec({
     sql: `UPDATE reports SET is_read = 1 WHERE id IN (${placeholders})`,
@@ -107,10 +107,10 @@ export const deleteReports = createController(
   }
 
   const placeholders = reportIds.map((_, i) => `$id${i}`).join(',');
-  const bind = reportIds.reduce(
-    (acc, id, i) => ({ ...acc, [`$id${i}`]: id }),
-    {},
-  );
+  const bind: Record<string, number> = {};
+  for (let i = 0; i < reportIds.length; i++) {
+    bind[`$id${i}`] = reportIds[i];
+  }
 
   database.exec({
     sql: `DELETE FROM reports WHERE id IN (${placeholders})`,
@@ -127,10 +127,10 @@ export const archiveReports = createController(
   }
 
   const placeholders = reportIds.map((_, i) => `$id${i}`).join(',');
-  const bind = reportIds.reduce(
-    (acc, id, i) => ({ ...acc, [`$id${i}`]: id }),
-    {},
-  );
+  const bind: Record<string, number> = {};
+  for (let i = 0; i < reportIds.length; i++) {
+    bind[`$id${i}`] = reportIds[i];
+  }
 
   database.exec({
     sql: `UPDATE reports SET is_archived = 1 WHERE id IN (${placeholders})`,
