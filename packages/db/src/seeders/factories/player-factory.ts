@@ -18,6 +18,32 @@ type PlayerFactoryProps = {
 
 type PlayerModel = Omit<Player, 'slug' | 'faction'> & {
   factionId: number;
+  personality: NpcPersonality;
+};
+
+export type NpcPersonality =
+  | 'passive'
+  | 'defensive'
+  | 'balanced'
+  | 'aggressive'
+  | 'warlike';
+
+const weightedPersonalities: [number, NpcPersonality][] = [
+  [15, 'passive'],
+  [45, 'defensive'],
+  [75, 'balanced'],
+  [95, 'aggressive'],
+  [100, 'warlike'],
+];
+
+const pickPersonality = (prng: PRNGFunction): NpcPersonality => {
+  const roll = Math.floor(prng() * 100) + 1;
+  for (const [threshold, personality] of weightedPersonalities) {
+    if (roll <= threshold) {
+      return personality;
+    }
+  }
+  return 'balanced';
 };
 
 const npcPlayerFactory = ({
@@ -38,11 +64,14 @@ const npcPlayerFactory = ({
     'huns',
   ]);
 
+  const personality = pickPersonality(prng);
+
   return {
     id,
     name: `${adjective}${noun}#${paddedDiscriminator}`,
     tribe,
     factionId,
+    personality,
   };
 };
 
@@ -59,6 +88,7 @@ export const playerFactory = (
     name,
     tribe,
     factionId,
+    personality: 'balanced',
   };
 };
 

@@ -2,6 +2,7 @@ CREATE TABLE farm_list_tiles
 (
   farm_list_id INTEGER NOT NULL,
   tile_id INTEGER NOT NULL,
+  troops_meta TEXT,
 
   PRIMARY KEY (farm_list_id, tile_id),
   FOREIGN KEY (farm_list_id) REFERENCES farm_lists (id) ON DELETE CASCADE,

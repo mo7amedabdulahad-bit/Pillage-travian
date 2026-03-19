@@ -70,6 +70,11 @@ const RallyPointSimulator = lazyWithRetry(async () => ({
     .RallyPointSimulator,
 }));
 
+const RallyPointFarmList = lazyWithRetry(async () => ({
+  default: (await import('./components/rally-point/rally-point-farm-list'))
+    .RallyPointFarmList,
+}));
+
 const ResidenceTroopTraining = lazyWithRetry(async () => ({
   default: (
     await import(
@@ -204,6 +209,7 @@ const buildingDetailsTabMap = new Map<
     new Map([
       ['troop-movements', RallyPointTroopMovements],
       ['send-troops', RallyPointSendTroops],
+      ['farm-list', RallyPointFarmList],
       ['simulator', RallyPointSimulator],
     ]),
   ],

@@ -64,9 +64,10 @@ describe('farm-list-controllers', () => {
     );
 
     expect(farmList.name).toBe('My Farm List');
-    expect(farmList.tileIds).toContain(101);
-    expect(farmList.tileIds).toContain(102);
-    expect(farmList.tileIds).toHaveLength(2);
+    const tileIds = farmList.tiles.map((t) => t.tileId);
+    expect(tileIds).toContain(101);
+    expect(tileIds).toContain(102);
+    expect(farmList.tiles).toHaveLength(2);
 
     // 5. Unique tile IDs (INSERT OR IGNORE)
     addTileToFarmList(
@@ -82,7 +83,7 @@ describe('farm-list-controllers', () => {
         path: { farmListId },
       }),
     );
-    expect(farmList.tileIds).toHaveLength(2);
+    expect(farmList.tiles).toHaveLength(2);
 
     // 6. Remove a tile
     removeTileFromFarmList(
@@ -97,8 +98,9 @@ describe('farm-list-controllers', () => {
         path: { farmListId },
       }),
     );
-    expect(farmList.tileIds).not.toContain(101);
-    expect(farmList.tileIds).toHaveLength(1);
+    const updatedTileIds = farmList.tiles.map((t) => t.tileId);
+    expect(updatedTileIds).not.toContain(101);
+    expect(farmList.tiles).toHaveLength(1);
 
     // 7. Max 100 tiles limit
     for (let i = 0; i < 99; i++) {

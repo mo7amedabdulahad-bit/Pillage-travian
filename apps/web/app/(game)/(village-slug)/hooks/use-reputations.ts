@@ -31,7 +31,16 @@ export const useReputations = () => {
 
   const getReputation = useCallback(
     (faction: Faction): Reputation => {
-      return reputationsMap.get(faction)!;
+      const reputation = reputationsMap.get(faction);
+      if (!reputation) {
+        // Fallback for missing factions to prevent crashes
+        return {
+          faction,
+          reputation: 42_000,
+          reputationLevel: 'neutral',
+        };
+      }
+      return reputation;
     },
     [reputationsMap],
   );

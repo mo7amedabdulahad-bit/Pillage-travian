@@ -106,9 +106,14 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         } satisfies ApiNotificationEvent);
         break;
       } catch (error) {
+        const safeError =
+          error instanceof Error
+            ? { name: error.name, message: error.message, stack: error.stack }
+            : { name: 'UnknownError', message: String(error) };
+
         globalThis.postMessage({
           eventKey: 'event:database-initialization-error',
-          error: error as Error,
+          error: safeError as Error,
         } satisfies DatabaseInitializationErrorEvent);
         break;
       }

@@ -559,7 +559,7 @@ describe('events utils', () => {
 
       // Seed some troops
       database.exec({
-        sql: `INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
+        sql: `INSERT OR REPLACE INTO troops (unit_id, amount, tile_id, source_tile_id)
               VALUES ((SELECT id FROM unit_ids WHERE unit = 'LEGIONNAIRE'), 100, $tile_id, $tile_id)`,
         bind: { $tile_id: villageTileId },
       });
@@ -597,12 +597,12 @@ describe('events utils', () => {
 
       // Seed some troops
       database.exec({
-        sql: `INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
+        sql: `INSERT OR REPLACE INTO troops (unit_id, amount, tile_id, source_tile_id)
               VALUES ((SELECT id FROM unit_ids WHERE unit = 'LEGIONNAIRE'), 100, $tile_id, $tile_id)`,
         bind: { $tile_id: villageTileId },
       });
       database.exec({
-        sql: `INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
+        sql: `INSERT OR REPLACE INTO troops (unit_id, amount, tile_id, source_tile_id)
               VALUES ((SELECT id FROM unit_ids WHERE unit = 'PRAETORIAN'), 100, $tile_id, $tile_id)`,
         bind: { $tile_id: villageTileId },
       });
@@ -800,6 +800,56 @@ describe('events utils', () => {
       expect(getEventDuration(database, event)).toBe(0);
     });
 
+    test('troopMovementAttack - should return correct duration based on distance and speed', async () => {
+      const database = await prepareTestDatabase();
+      const villageId = 1;
+      const targetVillageId = 2;
+
+      // Village 1 is at (0,0) by default in prepareTestDatabase
+      // Village 2 is at (1,0)
+      database.exec({
+        sql: 'UPDATE tiles SET x = 0, y = 0 WHERE id = (SELECT tile_id FROM villages WHERE id = 1)',
+      });
+      database.exec({
+        sql: 'UPDATE tiles SET x = 3, y = 4 WHERE id = (SELECT tile_id FROM villages WHERE id = 2)',
+      });
+
+      // Distance = sqrt(3^2 + 4^2) = 5
+      // Slowest unit: LEGIONNAIRE (speed 6)
+      // Server speed = 1 (default)
+      // Expected duration = ceil(5 / 6 * 3600) = 3000
+
+      const event = createGameEventMock('troopMovementAttack', {
+        villageId,
+        targetId: targetVillageId,
+        troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, source: 1 }],
+      });
+
+      expect(getEventDuration(database, event)).toBe(3000);
+    });
+
+    test('troopMovementReturn - should return correct duration', async () => {
+      const database = await prepareTestDatabase();
+      const villageId = 1;
+      const targetVillageId = 2;
+
+      database.exec({
+        sql: 'UPDATE tiles SET x = 0, y = 0 WHERE id = (SELECT tile_id FROM villages WHERE id = 1)',
+      });
+      database.exec({
+        sql: 'UPDATE tiles SET x = 3, y = 4 WHERE id = (SELECT tile_id FROM villages WHERE id = 2)',
+      });
+
+      const event = createGameEventMock('troopMovementReturn', {
+        villageId: targetVillageId, // Currently at target, returning home
+        targetId: villageId, // Returning to source
+        troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, source: 1 }],
+        originalMovementType: 'attack',
+      });
+
+      expect(getEventDuration(database, event)).toBe(3000);
+    });
+
     test('buildingLevelUp - should apply effects and return a positive duration', async () => {
       const database = await prepareTestDatabase();
       setDevFlag(database, 'is_instant_building_construction_enabled', 0);
@@ -989,6 +1039,7 @@ describe('events utils', () => {
         database,
         createGameEventMock('buildingScheduledConstruction', {
           villageId,
+          buildingFieldId: 19,
           level: 2,
           previousLevel: 1,
         }),

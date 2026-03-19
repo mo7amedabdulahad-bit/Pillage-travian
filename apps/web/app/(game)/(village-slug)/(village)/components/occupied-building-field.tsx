@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { getBuildingDefinition } from '@pillage-first/game-assets/utils/buildings';
 import {
-  getVillageBackgroundPath,
   getWallBottomPath,
   getWallTopPath,
 } from '@pillage-first/game-assets/village-page-assets';
@@ -181,7 +180,7 @@ const getGidFromBuildingId = (bid: string): string => {
   return GID_MAP[bid] || '0';
 };
 
-const getBuildingOverlayPath = (gid: string): string => {
+const _getBuildingOverlayPath = (gid: string): string => {
   return HOVER_PATHS[gid] || HOVER_PATHS['0'];
 };
 

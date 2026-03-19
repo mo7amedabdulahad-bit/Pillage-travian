@@ -36,16 +36,14 @@
   }
 }
 
-// Unoccupied occupiable tiles
-@each $skinVariantSelector, $imagesPath in $skinVariantPaths {
-  :global(html.skin-variant-#{$skinVariantSelector}) {
-    $base: '#{$imagesPath}/map/unoccupied-tiles';
+// Unoccupied occupiable tiles — images at /graphic-packs/default/map/unoccupied-tiles/
+:global(:root) {
+  $base: '#{$staticAssetsPath}/map/unoccupied-tiles';
 
-    .unoccupied-tile {
-      @each $resourceComposition in $resourceCompositions {
-        &-#{$resourceComposition} {
-          background-image: url('#{$base}/#{$resourceComposition}.avif?v=#{$graphics-version}');
-        }
+  .unoccupied-tile {
+    @each $resourceComposition in $resourceCompositions {
+      &-#{$resourceComposition} {
+        background-image: url('#{$base}/#{$resourceComposition}.avif?v=#{$graphics-version}');
       }
     }
   }
@@ -114,43 +112,42 @@ $variants-by-resource-and-group: (
   }
 }
 
-@each $skinVariantSelector, $imagesPath in $skinVariantPaths {
-  :global(html.skin-variant-#{$skinVariantSelector}) {
-    $base: '#{$imagesPath}/map/oasis';
+// Oasis and border tiles — images at /graphic-packs/default/map/oasis/
+:global(:root) {
+  $base: '#{$staticAssetsPath}/map/oasis';
 
-    .oasis-tile {
-      @each $resource, $groupVariants in $variants-by-resource-and-group {
-        &-#{$resource} {
-          $resourceBase: "#{$base}/#{$resource}";
+  .oasis-tile {
+    @each $resource, $groupVariants in $variants-by-resource-and-group {
+      &-#{$resource} {
+        $resourceBase: "#{$base}/#{$resource}";
 
-          @each $group, $rows in $shapes-by-group {
-            &-#{$group} {
-              $positions: positions-for-group($rows);
-              $variants: map.get($groupVariants, $group);
-              @each $pos in $positions {
-                @each $variant in $variants {
-                  @include oasisBackgroundImage($base, $resourceBase, $group, $pos, $variant);
-                }
+        @each $group, $rows in $shapes-by-group {
+          &-#{$group} {
+            $positions: positions-for-group($rows);
+            $variants: map.get($groupVariants, $group);
+            @each $pos in $positions {
+              @each $variant in $variants {
+                @include oasisBackgroundImage($base, $resourceBase, $group, $pos, $variant);
               }
             }
           }
         }
       }
     }
+  }
 
-    .border-tile {
-      &-1 {
-        background-image: url("#{$base}/wood/0-0-0-1.avif");
-      }
-      &-2 {
-        background-image: url("#{$base}/wood/0-0-0-2.avif");
-      }
-      &-3 {
-        background-image: url("#{$base}/wood/0-0-0-3.avif");
-      }
-      &-4 {
-        background-image: url("#{$base}/wood/0-0-0-4.avif");
-      }
+  .border-tile {
+    &-1 {
+      background-image: url("#{$base}/wood/0-0-0-1.avif");
+    }
+    &-2 {
+      background-image: url("#{$base}/wood/0-0-0-2.avif");
+    }
+    &-3 {
+      background-image: url("#{$base}/wood/0-0-0-3.avif");
+    }
+    &-4 {
+      background-image: url("#{$base}/wood/0-0-0-4.avif");
     }
   }
 }

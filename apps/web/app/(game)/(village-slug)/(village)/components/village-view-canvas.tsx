@@ -17,7 +17,9 @@ export const VillageViewCanvas = ({
 
   useEffect(() => {
     const updateScale = () => {
-      if (!containerRef.current) return;
+      if (!containerRef.current) {
+        return;
+      }
 
       const containerWidth = containerRef.current.clientWidth;
       // Calculate scale based on container width relative to native width

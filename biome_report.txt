@@ -1,0 +1,748 @@
+﻿node.exe : apps\web\app\(g
+ame)\(village-slug)\(repor
+ts)\components\archived-re
+ports.tsx:62:57 lint/suspi
+cious/noExplicitAny ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" "C:
+\Users\Mohamed\AppData\Roa
+min ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (a  
+  pps\web\app\(g...ظ¤ظ   
+ ¤ظ¤ظ¤ظ¤:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    61 ظ¤é   const 
+onSelectAllToggle = 
+(allSelected: boolean) => 
+{
+  > 62 ظ¤é     setSelected
+Ids(allSelected ? 
+displayReports.map((r: 
+any) => r.id) : []);
+       ظ¤é                
+                          
+               ^^^
+    63 ظ¤é   };
+    64 ظ¤é 
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(reports)\compone
+nts\current-village-report
+s.tsx:62:57 lint/suspiciou
+s/noExplicitAny ظ¤ظ¤ظ¤ظ
+¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    61 ظ¤é   const 
+onSelectAllToggle = 
+(allSelected: boolean) => 
+{
+  > 62 ظ¤é     setSelected
+Ids(allSelected ? 
+displayReports.map((r: 
+any) => r.id) : []);
+       ظ¤é                
+                          
+               ^^^
+    63 ظ¤é   };
+    64 ظ¤é 
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(reports)\compone
+nts\reports.tsx:65:57 lint
+/suspicious/noExplicitAny 
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    64 ظ¤é   const 
+onSelectAllToggle = 
+(allSelected: boolean) => 
+{
+  > 65 ظ¤é     setSelected
+Ids(allSelected ? 
+displayReports.map((r: 
+any) => r.id) : []);
+       ظ¤é                
+                          
+               ^^^
+    66 ظ¤é   };
+    67 ظ¤é 
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(village)\(...bui
+lding-field-id)\components
+\components\rally-point\ra
+lly-point-farm-list.tsx:23
+:42 lint/suspicious/noExpl
+icitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    21 ظ¤é   const { 
+getFarmList, 
+raidFarmList, isRaiding, 
+raidFarmTile, 
+isRaidingTile } =
+    22 ظ¤é     
+useRallyPoint();
+  > 23 ظ¤é   const 
+[details, setDetails] = 
+useState<any>(null);
+       ظ¤é                
+                          
+^^^
+    24 ظ¤é   const 
+[loading, setLoading] = 
+useState(false);
+    25 ظ¤é   const 
+[isOpen, setIsOpen] = 
+useState(false);
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(village)\(...bui
+lding-field-id)\components
+\components\rally-point\ra
+lly-point-farm-list.tsx:82
+:43 lint/suspicious/noExpl
+icitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    80 ظ¤é           ) : (
+    81 ظ¤é             
+<div className="flex 
+flex-col gap-2 mt-4">
+  > 82 ظ¤é               {
+details?.tiles?.map((tile:
+ any) => (
+       ظ¤é                
+                          
+ ^^^
+    83 ظ¤é                
+ <div
+    84 ظ¤é                
+   key={tile.tileId}
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(village)\(...bui
+lding-field-id)\components
+\components\rally-point\ra
+lly-point-farm-list.tsx:92
+:49 lint/suspicious/noExpl
+icitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    90 ظ¤é                
+     </Text>
+    91 ظ¤é                
+     <div className="flex 
+gap-2">
+  > 92 ظ¤é                
+       
+{tile.troops?.map((troop: 
+any) => (
+       ظ¤é                
+                          
+       ^^^
+    93 ظ¤é                
+         <div
+    94 ظ¤é                
+           
+key={troop.unitId}
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+packages\api\src\controlle
+rs\report-controllers.ts:2
+0:32 lint/suspicious/noExp
+licitAny ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    18 ظ¤é       WHERE 
+village_id = $villageId 
+AND is_archived = 
+$isArchived
+    19 ظ¤é     `;
+  > 20 ظ¤é     const 
+bind: Record<string, any> 
+= {
+       ظ¤é                
+                ^^^
+    21 ظ¤é       
+$villageId: villageId,
+    22 ظ¤é       
+$isArchived: isArchived ? 
+1 : 0,
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+packages\api\src\controlle
+rs\report-controllers.ts:9
+1:24 lint/performance/noAc
+cumulatingSpread ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ! Avoid the use of 
+spread (`...`) syntax on 
+accumulators.
+  
+    89 ظ¤é   const 
+placeholders = 
+reportIds.map((_, i) => 
+`$id${i}`).join(',');
+    90 ظ¤é   const bind = 
+reportIds.reduce(
+  > 91 ظ¤é     (acc, id, 
+i) => ({ ...acc, 
+[`$id${i}`]: id }),
+       ظ¤é                
+        ^^^^^^
+    92 ظ¤é     {},
+    93 ظ¤é   );
+  
+  i Spread syntax should 
+be avoided on 
+accumulators (like those 
+in `.reduce`) because it 
+causes a time complexity 
+of `O(n^2)`.
+  
+  i Consider methods such 
+as .splice or .push 
+instead.
+  
+
+packages\api\src\controlle
+rs\report-controllers.ts:1
+11:24 lint/performance/noA
+ccumulatingSpread ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ! Avoid the use of 
+spread (`...`) syntax on 
+accumulators.
+  
+    109 ظ¤é   const 
+placeholders = 
+reportIds.map((_, i) => 
+`$id${i}`).join(',');
+    110 ظ¤é   const bind 
+= reportIds.reduce(
+  > 111 ظ¤é     (acc, id, 
+i) => ({ ...acc, 
+[`$id${i}`]: id }),
+        ظ¤é               
+         ^^^^^^
+    112 ظ¤é     {},
+    113 ظ¤é   );
+  
+  i Spread syntax should 
+be avoided on 
+accumulators (like those 
+in `.reduce`) because it 
+causes a time complexity 
+of `O(n^2)`.
+  
+  i Consider methods such 
+as .splice or .push 
+instead.
+  
+
+packages\api\src\controlle
+rs\report-controllers.ts:1
+31:24 lint/performance/noA
+ccumulatingSpread ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ! Avoid the use of 
+spread (`...`) syntax on 
+accumulators.
+  
+    129 ظ¤é   const 
+placeholders = 
+reportIds.map((_, i) => 
+`$id${i}`).join(',');
+    130 ظ¤é   const bind 
+= reportIds.reduce(
+  > 131 ظ¤é     (acc, id, 
+i) => ({ ...acc, 
+[`$id${i}`]: id }),
+        ظ¤é               
+         ^^^^^^
+    132 ظ¤é     {},
+    133 ظ¤é   );
+  
+  i Spread syntax should 
+be avoided on 
+accumulators (like those 
+in `.reduce`) because it 
+causes a time complexity 
+of `O(n^2)`.
+  
+  i Consider methods such 
+as .splice or .push 
+instead.
+  
+
+packages\api\src\controlle
+rs\resolvers\utils\combat-
+resolver.ts:199:10 lint/su
+spicious/noExplicitAny ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    197 ظ¤é       
+originalMovementType: 
+isRaid ? 'raid' : 
+'attack',
+    198 ظ¤é       loot: 
+result.loot,
+  > 199 ظ¤é     } as any);
+        ظ¤é          ^^^
+    200 ظ¤é   }
+    201 ظ¤é 
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+packages\api\src\controlle
+rs\resolvers\utils\combat.
+ts:38:27 lint/suspicious/n
+oExplicitAny ظ¤ظ¤ظ¤ظ¤ظ
+¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    37 ظ¤é   return 
+rows.map((row) => ({
+  > 38 ظ¤é     unitId: 
+row.unitId as any,
+       ظ¤é                
+           ^^^
+    39 ظ¤é     amount: 
+row.amount,
+    40 ظ¤é     
+smithyLevel: 
+row.smithyLevel,
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+packages\api\src\controlle
+rs\resolvers\utils\combat.
+ts:67:25 lint/suspicious/n
+oExplicitAny ظ¤ظ¤ظ¤ظ¤ظ
+¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ! Unexpected any. 
+Specify a different type.
+  
+    66 ظ¤é   return 
+troops.map((t) => ({
+  > 67 ظ¤é     unitId: 
+t.unitId as any,
+       ظ¤é                
+         ^^^
+    68 ظ¤é     amount: 
+t.amount,
+    69 ظ¤é     
+smithyLevel: 
+smithyMap.get(t.unitId) 
+?? 0,
+  
+  i any disables many 
+type checking rules. Its 
+use should be avoided.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(map)\components\
+tile-modal.tsx:346:11 lint
+/correctness/noUnusedVaria
+bles ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤
+
+  ├ù This variable 
+getReputation is unused.
+  
+    344 ظ¤é   const { 
+currentVillage } = 
+useCurrentVillage();
+    345 ظ¤é   const { 
+getRallyPointUrl, 
+getMarketplaceUrl } = 
+useGameNavigation();
+  > 346 ظ¤é   const { 
+getReputation } = 
+useReputations();
+        ظ¤é           
+^^^^^^^^^^^^^
+    347 ظ¤é   const { 
+farmLists, 
+addTileToFarmList, 
+isAddingToFarmList } = 
+useRallyPoint();
+    348 ظ¤é 
+  
+  i Unused variables are 
+often the result of 
+typos, incomplete 
+refactors, or other 
+sources of bugs.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(reports)\compone
+nts\components\troop-table
+.tsx:67:22 lint/suspicious
+/noArrayIndexKey ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ├ù Avoid using the 
+index of an array as key 
+property in an element.
+  
+    65 ظ¤é             
+{units.map((count, i) => (
+    66 ظ¤é               
+<TableCell
+  > 67 ظ¤é                
+ key={i}
+       ظ¤é                
+      ^
+    68 ظ¤é                
+ className={count === 0 ? 
+'text-muted-foreground/30'
+ : ''}
+    69 ظ¤é               >
+  
+  i This is the source of 
+the key value.
+  
+    63 ظ¤é               
+{t('Amount')}
+    64 ظ¤é             
+</TableCell>
+  > 65 ظ¤é             
+{units.map((count, i) => (
+       ظ¤é                
+                ^
+    66 ظ¤é               
+<TableCell
+    67 ظ¤é                
+ key={i}
+  
+  i The order of the 
+items may change, and 
+this also affects 
+performances and 
+component state.
+  
+  i Check the React 
+documentation. 
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(reports)\compone
+nts\components\troop-table
+.tsx:80:22 lint/suspicious
+/noArrayIndexKey ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ├ù Avoid using the 
+index of an array as key 
+property in an element.
+  
+    78 ظ¤é             
+{losses.map((count, i) => 
+(
+    79 ظ¤é               
+<TableCell
+  > 80 ظ¤é                
+ key={i}
+       ظ¤é                
+      ^
+    81 ظ¤é                
+ className={
+    82 ظ¤é                
+   count === 0
+  
+  i This is the source of 
+the key value.
+  
+    76 ظ¤é               
+{t('Losses')}
+    77 ظ¤é             
+</TableCell>
+  > 78 ظ¤é             
+{losses.map((count, i) => 
+(
+       ظ¤é                
+                 ^
+    79 ظ¤é               
+<TableCell
+    80 ظ¤é                
+ key={i}
+  
+  i The order of the 
+items may change, and 
+this also affects 
+performances and 
+component state.
+  
+  i Check the React 
+documentation. 
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(reports)\compone
+nts\reports.tsx:30:34 lint
+/correctness/noUnusedVaria
+bles ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤
+
+  ├ù This variable 
+isLoading is unused.
+  
+    28 ظ¤é   const { 
+markAsRead, 
+deleteReports, 
+archiveReports } = 
+useReportActions();
+    29 ظ¤é 
+  > 30 ظ¤é   const { 
+data: reportsResponse, 
+isLoading } = useReports({
+       ظ¤é                
+                  
+^^^^^^^^^
+    31 ظ¤é     villageId: 
+currentVillage.id,
+    32 ظ¤é     page: 1, 
+// Will be updated by 
+dummy pagination if we 
+were really using it
+  
+  i Unused variables are 
+often the result of 
+typos, incomplete 
+refactors, or other 
+sources of bugs.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(reports)\compone
+nts\reports.tsx:45:17 lint
+/correctness/noUnusedVaria
+bles ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤
+
+  ├ù This variable 
+setPage is unused.
+  
+    43 ظ¤é   );
+    44 ظ¤é 
+  > 45 ظ¤é   const { 
+page, setPage } = 
+pagination;
+       ظ¤é                
+ ^^^^^^^
+    46 ظ¤é 
+    47 ظ¤é   // Re-fetch 
+reports when page changes 
+(the initial query above 
+should use 'page')
+  
+  i Unused variables are 
+often the result of 
+typos, incomplete 
+refactors, or other 
+sources of bugs.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(village)\(...bui
+lding-field-id)\components
+\components\rally-point\ra
+lly-point-farm-list.tsx:51
+:7 lint/a11y/useKeyWithCli
+ckEvents ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤
+
+  ├ù Enforce to have the 
+onClick mouse event with 
+the onKeyUp, the 
+onKeyDown, or the 
+onKeyPress keyboard event.
+  
+    49 ظ¤é   return (
+    50 ظ¤é     <div 
+className="border 
+rounded-xs bg-muted/10 
+mb-2 overflow-hidden">
+  > 51 ظ¤é       <div
+       ظ¤é       ^^^^
+  > 52 ظ¤é         
+className="px-4 py-3 
+cursor-pointer 
+hover:bg-muted/20 flex 
+items-center 
+justify-between"
+  > 53 ظ¤é         
+onClick={handleToggle}
+  > 54 ظ¤é       >
+       ظ¤é       ^
+    55 ظ¤é         <div 
+className="flex 
+items-center gap-2">
+    56 ظ¤é           
+{isOpen ? <HiChevronUp 
+size={16} /> : 
+<HiChevronDown size={16} 
+/>}
+  
+  i Actions triggered 
+using mouse events should 
+have corresponding 
+keyboard events to 
+account for keyboard-only 
+navigation.
+  
+
+apps\web\app\(game)\(villa
+ge-slug)\(village)\(...bui
+lding-field-id)\components
+\components\rally-point\ra
+lly-point-farm-list.tsx:51
+:7 lint/a11y/noStaticEleme
+ntInteractions ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+
+  ├ù Static Elements 
+should not be interactive.
+  
+    49 ظ¤é   return (
+    50 ظ¤é     <div 
+className="border 
+rounded-xs bg-muted/10 
+mb-2 overflow-hidden">
+  > 51 ظ¤é       <div
+       ظ¤é       ^^^^
+  > 52 ظ¤é         
+className="px-4 py-3 
+cursor-pointer 
+hover:bg-muted/20 flex 
+items-center 
+justify-between"
+  > 53 ظ¤é         
+onClick={handleToggle}
+  > 54 ظ¤é       >
+       ظ¤é       ^
+    55 ظ¤é         <div 
+className="flex 
+items-center gap-2">
+    56 ظ¤é           
+{isOpen ? <HiChevronUp 
+size={16} /> : 
+<HiChevronDown size={16} 
+/>}
+  
+  i To add interactivity 
+such as a mouse or key 
+event listener to a 
+static element, give the 
+element an appropriate 
+role value.
+  
+
+The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+Diagnostics not shown: 2.
+Checked 432 files in 656ms. Fixed 19 files.
+Found 7 errors.
+Found 15 warnings.
+check ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ
+¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ
+¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ
+¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤
+ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ¤ظ
+¤
+
+  ├ù Some errors were 
+emitted while running 
+checks.
+  
+

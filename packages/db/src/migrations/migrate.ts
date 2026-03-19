@@ -28,10 +28,12 @@ import createUnitDataTable from '../schemas/lookup-tables/unit-data-schema.sql?r
 import createUnitIdsTable from '../schemas/lookup-tables/unit-ids-schema.sql?raw';
 import createMapFiltersTable from '../schemas/map-filters-schema.sql?raw';
 import createMapMarkersTable from '../schemas/map-markers-schema.sql?raw';
+import createNpcVillageStateTable from '../schemas/npc-village-state-schema.sql?raw';
 import createOasisBonusesTable from '../schemas/oasis-schema.sql?raw';
 import createPlayersTable from '../schemas/players-schema.sql?raw';
 import createPreferencesTable from '../schemas/preferences-schema.sql?raw';
 import createQuestsTable from '../schemas/quests-schema.sql?raw';
+import createReportsTable from '../schemas/reports-schema.sql?raw';
 import createResourceSitesTable from '../schemas/resource-sites-schema.sql?raw';
 import createServersTable from '../schemas/servers-schema.sql?raw';
 import createBuildingLevelChangeHistoryTable from '../schemas/statistics/building-level-change-history-schema.sql?raw';
@@ -56,6 +58,7 @@ import { guaranteedCroppersSeeder } from '../seeders/guaranteed-croppers-seeder'
 import { heroAdventuresSeeder } from '../seeders/hero-adventures-seeder';
 import { heroSeeder } from '../seeders/hero-seeder';
 import { mapFiltersSeeder } from '../seeders/map-filters-seeder';
+import { npcVillageStateSeeder } from '../seeders/npc-village-state-seeder';
 import { oasisSeeder } from '../seeders/oasis-seeder';
 import { occupiedOasisSeeder } from '../seeders/occupied-oasis-seeder';
 import { playersSeeder } from '../seeders/players-seeder';
@@ -225,6 +228,13 @@ export const migrateAndSeed = (
     // Events
     db.exec({ sql: createEventsTable });
     eventsSeeder(db, server);
+
+    // Reports
+    db.exec({ sql: createReportsTable });
+
+    // NPC village state
+    db.exec({ sql: createNpcVillageStateTable });
+    npcVillageStateSeeder(db);
   });
 
   const t1 = performance.now();

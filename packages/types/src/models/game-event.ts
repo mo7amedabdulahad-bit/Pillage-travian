@@ -63,6 +63,7 @@ type BaseTroopMovementEvent = {
 
 export type ReturnTroopMovementEvent = BaseTroopMovementEvent & {
   originalMovementType: TroopMovementType;
+  loot?: [number, number, number, number];
 };
 
 export const gameEventTypeSchema = z.enum([

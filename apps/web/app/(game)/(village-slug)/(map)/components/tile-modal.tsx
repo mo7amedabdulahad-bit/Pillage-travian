@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type {
   OasisTile,
@@ -21,18 +21,21 @@ import {
   roundToNDecimalPoints,
 } from '@pillage-first/utils/math';
 import { useOasisBonuses } from 'app/(game)/(village-slug)/(map)/hooks/use-oasis-bonuses';
+import { ReputationBadge } from 'app/(game)/(village-slug)/components/reputation-badge';
 import { Resources } from 'app/(game)/(village-slug)/components/resources';
 import { playerTroopsCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useGameNavigation } from 'app/(game)/(village-slug)/hooks/routes/use-game-navigation';
 import { useCreateEvent } from 'app/(game)/(village-slug)/hooks/use-create-event';
 import { useEvents } from 'app/(game)/(village-slug)/hooks/use-events';
+import { useRallyPoint } from 'app/(game)/(village-slug)/hooks/use-rally-point';
 import { useReputations } from 'app/(game)/(village-slug)/hooks/use-reputations';
 import { useVillageTroops } from 'app/(game)/(village-slug)/hooks/use-village-troops';
 import { Icon } from 'app/components/icon';
 import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';
 import {
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -98,12 +101,10 @@ const TileModalPlayerInfo = ({ tile }: TileModalProps) => {
           <span>
             {t('Faction')} - {t(`FACTIONS.${faction.toUpperCase()}`)}
           </span>
-          <span>
-            {t('Reputation')} -{' '}
-            {t(
-              `REPUTATIONS.${getReputation(faction).reputationLevel.toUpperCase()}`,
-            )}
-          </span>
+          <div className="flex items-center gap-2">
+            <span>{t('Reputation')} -</span>
+            <ReputationBadge level={getReputation(faction).reputationLevel} />
+          </div>
         </>
       )}
       <span>
@@ -183,6 +184,7 @@ const OasisTileModal = ({ tile }: OasisTileModalProps) => {
           </>
         )}
       </DialogDescription>
+      {isOccupiable && <TileModalActions tile={tile} />}
     </DialogHeader>
   );
 };
@@ -309,7 +311,7 @@ const OccupiedOccupiableTileModal = ({
       <TileModalPlayerInfo tile={tile} />
       <div className="flex flex-col gap-2">
         <Text as="h3">{t('Actions')}</Text>
-        {!isOwnedByPlayer && <Text>{t('No actions available')}</Text>}
+        {!isOwnedByPlayer && <TileModalActions tile={tile} />}
         {isOwnedByPlayer && tile.id !== currentVillage.id && (
           <>
             <Button
@@ -332,6 +334,98 @@ const OccupiedOccupiableTileModal = ({
         )}
       </div>
     </>
+  );
+};
+
+const TileModalActions = ({ tile }: TileModalProps) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { currentVillage } = useCurrentVillage();
+  const { getRallyPointUrl, getMarketplaceUrl } = useGameNavigation();
+  const { farmLists, addTileToFarmList, isAddingToFarmList } = useRallyPoint();
+
+  const rallyPoint = currentVillage.buildingFields.find(
+    (f) => f.buildingId === 'RALLY_POINT' && f.level > 0,
+  );
+
+  const marketPlace = currentVillage.buildingFields.find(
+    (f) => f.buildingId === 'MARKETPLACE' && f.level > 0,
+  );
+
+  const { x, y } = tile.coordinates;
+
+  const handleCenterMap = () => {
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set('x', String(x));
+    searchParams.set('y', String(y));
+    navigate(`${location.pathname}?${searchParams.toString()}`);
+  };
+
+  const handleAddToFarmlist = async () => {
+    if (farmLists.length > 0) {
+      await addTileToFarmList({ farmListId: farmLists[0].id, tileId: tile.id });
+      alert(t('Added to farmlist: {{name}}', { name: farmLists[0].name }));
+    } else {
+      alert(t('No farmlists found. Create one in the Rally Point first.'));
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 mt-4 bg-gray-50 p-2 rounded-xs border">
+      <div className="flex gap-2">
+        {/* 1. Send Troops */}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!rallyPoint}
+          onClick={() =>
+            navigate(`${getRallyPointUrl(rallyPoint?.id ?? 39)}&x=${x}&y=${y}`)
+          }
+          className="flex-1 min-w-[120px]"
+        >
+          {t('Send troops')}
+        </Button>
+
+        {/* 2. Send Merchants */}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!marketPlace}
+          onClick={() =>
+            navigate(`${getMarketplaceUrl(marketPlace?.id ?? 0)}&x=${x}&y=${y}`)
+          }
+          className="flex-1 min-w-[120px]"
+        >
+          {t('Send merchants')}
+        </Button>
+      </div>
+
+      <div className="flex gap-2">
+        {/* 3. Add to Farmlist */}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleAddToFarmlist}
+          disabled={isAddingToFarmList}
+          className="flex-1 min-w-[120px]"
+        >
+          {isAddingToFarmList ? t('Adding...') : t('Add to farmlist')}
+        </Button>
+
+        {/* 4. Center Map */}
+        <DialogClose asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCenterMap}
+            className="flex-1 min-w-[120px]"
+          >
+            {t('Center map')}
+          </Button>
+        </DialogClose>
+      </div>
+    </div>
   );
 };
 

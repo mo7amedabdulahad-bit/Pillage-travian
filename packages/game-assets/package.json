@@ -74,6 +74,14 @@
     },
     "./factories/unit-research": {
       "default": "./src/factories/unit-research.ts"
+    },
+    "./combat/combat-engine": {
+      "types": "./src/combat/combat-engine.ts",
+      "import": "./src/combat/combat-engine.ts",
+      "module": "./src/combat/combat-engine.ts",
+      "browser": "./src/combat/combat-engine.ts",
+      "development": "./src/combat/combat-engine.ts",
+      "default": "./src/combat/combat-engine.ts"
     }
   },
   "scripts": {

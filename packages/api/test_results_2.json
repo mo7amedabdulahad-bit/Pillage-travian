@@ -1,0 +1,551 @@
+{
+  "numTotalTestSuites": 7,
+  "numPassedTestSuites": 4,
+  "numFailedTestSuites": 3,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 50,
+  "numPassedTests": 48,
+  "numFailedTests": 2,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1773884961845,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites unitImprovement - should throw if smithy is busy",
+          "status": "passed",
+          "title": "unitImprovement - should throw if smithy is busy",
+          "duration": 72.13350000000014,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites unitImprovement - should return true if smithy is idle",
+          "status": "passed",
+          "title": "unitImprovement - should return true if smithy is idle",
+          "duration": 4.6056999999998425,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites unitImprovement - should throw if target level exceeds 20",
+          "status": "passed",
+          "title": "unitImprovement - should throw if target level exceeds 20",
+          "duration": 3.728399999999965,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites unitImprovement - should throw if smithy level is lower than requested upgrade level",
+          "status": "passed",
+          "title": "unitImprovement - should throw if smithy level is lower than requested upgrade level",
+          "duration": 5.1370999999999185,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites unitResearch - should throw if academy is busy",
+          "status": "passed",
+          "title": "unitResearch - should throw if academy is busy",
+          "duration": 4.201399999999921,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites unitResearch - should throw if unit is already researched",
+          "status": "passed",
+          "title": "unitResearch - should throw if unit is already researched",
+          "duration": 3.8596000000000004,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites unitResearch - should not throw if academy idle and unit not researched",
+          "status": "passed",
+          "title": "unitResearch - should not throw if academy idle and unit not researched",
+          "duration": 4.968200000000024,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites troopTraining - should throw if unit is not researched",
+          "status": "passed",
+          "title": "troopTraining - should throw if unit is not researched",
+          "duration": 8.127899999999954,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites buildingLevelChange - should throw if target level exceeds max level",
+          "status": "passed",
+          "title": "buildingLevelChange - should throw if target level exceeds max level",
+          "duration": 3.1994999999999436,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites buildingConstruction - should throw if building field is already occupied",
+          "status": "passed",
+          "title": "buildingConstruction - should throw if building field is already occupied",
+          "duration": 4.078399999999874,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites buildingConstruction - should not throw if building field is not occupied",
+          "status": "passed",
+          "title": "buildingConstruction - should not throw if building field is not occupied",
+          "duration": 3.0932999999999993,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites troopMovementAdventure - should throw if no adventure points are available",
+          "status": "passed",
+          "title": "troopMovementAdventure - should throw if no adventure points are available",
+          "duration": 3.3381999999999152,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites troopMovementAdventure - should not throw if adventure points are available",
+          "status": "passed",
+          "title": "troopMovementAdventure - should not throw if adventure points are available",
+          "duration": 2.639499999999998,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites troopMovementOasisOccupation - should throw if no free oasis occupation slots",
+          "status": "passed",
+          "title": "troopMovementOasisOccupation - should throw if no free oasis occupation slots",
+          "duration": 4.684099999999944,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites troopMovementOasisOccupation - should not throw if free oasis occupation slot exists",
+          "status": "passed",
+          "title": "troopMovementOasisOccupation - should not throw if free oasis occupation slot exists",
+          "duration": 8.05880000000002,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites troopMovementOasisOccupation - should throw if all slots are already used",
+          "status": "passed",
+          "title": "troopMovementOasisOccupation - should throw if all slots are already used",
+          "duration": 6.367999999999938,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites other events - should not throw by default",
+          "status": "passed",
+          "title": "other events - should not throw by default",
+          "duration": 2.0126000000000204,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites heroRevival - should throw if hero is already alive",
+          "status": "passed",
+          "title": "heroRevival - should throw if hero is already alive",
+          "duration": 2.8395000000000437,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": [
+            "events utils",
+            "validateEventCreationPrerequisites"
+          ],
+          "fullName": "events utils validateEventCreationPrerequisites heroRevival - should not throw if hero is dead",
+          "status": "passed",
+          "title": "heroRevival - should not throw if hero is dead",
+          "duration": 1.9852999999998246,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "runEventCreationSideEffects"],
+          "fullName": "events utils runEventCreationSideEffects troopMovement - should remove troops for movements",
+          "status": "passed",
+          "title": "troopMovement - should remove troops for movements",
+          "duration": 2.9565000000000055,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "runEventCreationSideEffects"],
+          "fullName": "events utils runEventCreationSideEffects troopMovement - should remove troops for multiple movements",
+          "status": "passed",
+          "title": "troopMovement - should remove troops for multiple movements",
+          "duration": 2.7397000000000844,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost buildingLevelUp - should return zero cost if free building construction enabled",
+          "status": "passed",
+          "title": "buildingLevelUp - should return zero cost if free building construction enabled",
+          "duration": 5.8426999999999225,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost buildingLevelUp - should return non-zero cost if free building construction disabled",
+          "status": "passed",
+          "title": "buildingLevelUp - should return non-zero cost if free building construction disabled",
+          "duration": 6.298399999999901,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost unitResearch - should return zero cost if free unit research enabled",
+          "status": "passed",
+          "title": "unitResearch - should return zero cost if free unit research enabled",
+          "duration": 2.8218000000001666,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost unitImprovement - should return zero cost if free unit improvement enabled",
+          "status": "passed",
+          "title": "unitImprovement - should return zero cost if free unit improvement enabled",
+          "duration": 1.937800000000152,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost troopTraining - should return zero cost if free unit training enabled",
+          "status": "passed",
+          "title": "troopTraining - should return zero cost if free unit training enabled",
+          "duration": 4.653999999999996,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost troopTraining - should return tripled cost for Great Barracks vs Barracks",
+          "status": "passed",
+          "title": "troopTraining - should return tripled cost for Great Barracks vs Barracks",
+          "duration": 3.162900000000036,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost heroRevival - should return correct cost",
+          "status": "passed",
+          "title": "heroRevival - should return correct cost",
+          "duration": 6.107099999999946,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventCost"],
+          "fullName": "events utils getEventCost heroRevival - should return zero cost if free hero revival enabled",
+          "status": "passed",
+          "title": "heroRevival - should return zero cost if free hero revival enabled",
+          "duration": 2.502899999999954,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration buildingConstruction - should return 0",
+          "status": "passed",
+          "title": "buildingConstruction - should return 0",
+          "duration": 1.92670000000021,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration buildingLevelUp - should return 0 if instant construction enabled",
+          "status": "passed",
+          "title": "buildingLevelUp - should return 0 if instant construction enabled",
+          "duration": 3.040200000000141,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration unitResearch - should return 0 if instant research enabled",
+          "status": "passed",
+          "title": "unitResearch - should return 0 if instant research enabled",
+          "duration": 3.9565999999999804,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration unitImprovement - should return 0 if instant improvement enabled",
+          "status": "passed",
+          "title": "unitImprovement - should return 0 if instant improvement enabled",
+          "duration": 5.646799999999985,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration troopTraining - should return 0 if instant training enabled",
+          "status": "passed",
+          "title": "troopTraining - should return 0 if instant training enabled",
+          "duration": 4.18509999999992,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration troopMovementAttack - should return correct duration based on distance and speed",
+          "status": "failed",
+          "title": "troopMovementAttack - should return correct duration based on distance and speed",
+          "duration": 11.612899999999854,
+          "failureMessages": [
+            "TypeError: Cannot read properties of undefined (reading 'get')\n    at C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/packages/api/src/controllers/utils/events.ts:858:37\n    at Array.map (<anonymous>)\n    at getEventDuration (C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/packages/api/src/controllers/utils/events.ts:858:17)\n    at C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/packages/api/src/controllers/utils/__tests__/events.test.ts:828:14\n    at file:///C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/node_modules/@vitest/runner/dist/index.js:915:20"
+          ],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration troopMovementReturn - should return correct duration",
+          "status": "failed",
+          "title": "troopMovementReturn - should return correct duration",
+          "duration": 4.8629000000000815,
+          "failureMessages": [
+            "TypeError: Cannot read properties of undefined (reading 'get')\n    at C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/packages/api/src/controllers/utils/events.ts:790:37\n    at Array.map (<anonymous>)\n    at getEventDuration (C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/packages/api/src/controllers/utils/events.ts:790:17)\n    at C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/packages/api/src/controllers/utils/__tests__/events.test.ts:850:14\n    at file:///C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/node_modules/@vitest/runner/dist/index.js:915:20"
+          ],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration buildingLevelUp - should apply effects and return a positive duration",
+          "status": "passed",
+          "title": "buildingLevelUp - should apply effects and return a positive duration",
+          "duration": 7.588700000000017,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration unitResearch - should apply effects and return a positive duration",
+          "status": "passed",
+          "title": "unitResearch - should apply effects and return a positive duration",
+          "duration": 6.77800000000002,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration unitImprovement - should apply effects and return a positive duration",
+          "status": "passed",
+          "title": "unitImprovement - should apply effects and return a positive duration",
+          "duration": 7.777900000000045,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration troopTraining - should apply effects and return a positive duration",
+          "status": "passed",
+          "title": "troopTraining - should apply effects and return a positive duration",
+          "duration": 3.787900000000036,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration heroRevival - should apply server speed and return correct duration",
+          "status": "passed",
+          "title": "heroRevival - should apply server speed and return correct duration",
+          "duration": 6.1220999999998185,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration heroRevival - should return zero duration if instant hero revival enabled",
+          "status": "passed",
+          "title": "heroRevival - should return zero duration if instant hero revival enabled",
+          "duration": 3.3876999999999953,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventDuration"],
+          "fullName": "events utils getEventDuration heroHealthRegeneration - should return correct duration",
+          "status": "passed",
+          "title": "heroHealthRegeneration - should return correct duration",
+          "duration": 2.919599999999946,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventStartTime"],
+          "fullName": "events utils getEventStartTime troopTraining - should return now if no previous events",
+          "status": "passed",
+          "title": "troopTraining - should return now if no previous events",
+          "duration": 8.290300000000116,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventStartTime"],
+          "fullName": "events utils getEventStartTime troopTraining - should return end of last event in queue",
+          "status": "passed",
+          "title": "troopTraining - should return end of last event in queue",
+          "duration": 6.639599999999973,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventStartTime"],
+          "fullName": "events utils getEventStartTime unitImprovement - should return last resolves_at or now",
+          "status": "passed",
+          "title": "unitImprovement - should return last resolves_at or now",
+          "duration": 7.05359999999996,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventStartTime"],
+          "fullName": "events utils getEventStartTime scheduledBuildingEvent - should return resolvesAt from database",
+          "status": "passed",
+          "title": "scheduledBuildingEvent - should return resolvesAt from database",
+          "duration": 3.4827999999999975,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventStartTime"],
+          "fullName": "events utils getEventStartTime adventurePointIncrease - should return startsAt + duration",
+          "status": "passed",
+          "title": "adventurePointIncrease - should return startsAt + duration",
+          "duration": 1.9630999999999403,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventStartTime"],
+          "fullName": "events utils getEventStartTime returnTroopMovement - should return startsAt + duration",
+          "status": "passed",
+          "title": "returnTroopMovement - should return startsAt + duration",
+          "duration": 1.491800000000012,
+          "failureMessages": [],
+          "meta": {}
+        },
+        {
+          "ancestorTitles": ["events utils", "getEventStartTime"],
+          "fullName": "events utils getEventStartTime buildingConstruction - should return now",
+          "status": "passed",
+          "title": "buildingConstruction - should return now",
+          "duration": 1.8593000000000757,
+          "failureMessages": [],
+          "meta": {}
+        }
+      ],
+      "startTime": 1773884964660,
+      "endTime": 1773884964954.8594,
+      "status": "failed",
+      "message": "",
+      "name": "C:/Users/Mohamed/OneDrive/Desktop/Pillage-First-Ask-Questions-Later-master/packages/api/src/controllers/utils/__tests__/events.test.ts"
+    }
+  ]
+}

@@ -9,7 +9,13 @@ $breakpoints: (
 
 $skinVariantPaths: (
   'default': '/graphic-packs',
+  'day': '/graphic-packs',
+  'night': '/graphic-packs',
 );
+
+// Path for static assets that live in the 'default' skin pack (map tiles, oasis, buildings)
+$staticAssetsPath: '/graphic-packs/default';
+
 
 $resourceCompositions: "4446", "5436", "5346", "4536", "3546", "4356", "3456", "4437", "4347", "3447", "3339", "11115", "00018";
 

@@ -10,6 +10,18 @@ const createWorkerWithReadySignal = (serverSlug: string): Promise<Worker> => {
     url.searchParams.set('server-slug', serverSlug);
     const worker = new Worker(url.toString(), { type: 'module' });
 
+    const handleWorkerException = (error: ErrorEvent) => {
+      worker.removeEventListener('error', handleWorkerException);
+      reject(
+        new Error(
+          error.message ||
+            'Worker failed to initialize. This may be due to missing cross-origin isolation headers or a script error in the worker.',
+        ),
+      );
+    };
+
+    worker.addEventListener('error', handleWorkerException);
+
     const handleWorkerInitializationMessage = (event: MessageEvent) => {
       if (!isNotificationMessageEvent(event)) {
         return;

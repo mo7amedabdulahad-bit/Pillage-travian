@@ -11,9 +11,10 @@ import { resourceFieldCompositionSchema } from '@pillage-first/types/models/reso
 import { serverDbSchema } from '@pillage-first/types/models/server';
 import { getDeveloperSettingsSchema } from './controllers/schemas/developer-tools-schemas.ts';
 import {
+  addTileToFarmListSchema,
   farmListSchema,
   farmListTileSchema,
-} from './controllers/schemas/farm-list-schemas.ts';
+} from './controllers/schemas/farm-list-schemas';
 import {
   getHeroInventorySchema,
   getHeroLoadoutSchema,
@@ -35,6 +36,12 @@ import {
 } from './controllers/schemas/player-schemas.ts';
 import { getPreferencesSchema } from './controllers/schemas/preferences-schemas.ts';
 import { getQuestsSchema } from './controllers/schemas/quest-schemas.ts';
+import {
+  bulkReportActionSchema,
+  reportDetailSchema,
+  reportListItemSchema,
+  reportsQuerySchema,
+} from './controllers/schemas/report-schemas';
 import { getReputationsSchema } from './controllers/schemas/reputation-schemas.ts';
 import {
   getPlayerRankingsSchema,
@@ -45,6 +52,7 @@ import { getUnitImprovementsSchema } from './controllers/schemas/unit-improvemen
 import { getResearchedUnitsSchema } from './controllers/schemas/unit-research-schemas.ts';
 import {
   getOccupiableOasisInRangeSchema,
+  getVillageByCoordsSchema,
   getVillageBySlugSchema,
 } from './controllers/schemas/village-schemas.ts';
 import { getArtifactsAroundVillageSchema } from './controllers/schemas/world-items-schemas.ts';
@@ -199,6 +207,27 @@ export const paths = {
           content: {
             'application/json': {
               schema: getVillageBySlugSchema,
+            },
+          },
+        },
+      },
+    },
+  },
+  '/villages/search': {
+    get: {
+      summary: 'Search villages',
+      requestParams: {
+        query: z.strictObject({
+          x: z.coerce.number(),
+          y: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '200': {
+          description: 'Village search results',
+          content: {
+            'application/json': {
+              schema: z.array(getVillageByCoordsSchema),
             },
           },
         },
@@ -714,9 +743,7 @@ export const paths = {
       requestBody: {
         content: {
           'application/json': {
-            schema: z.strictObject({
-              tileId: z.number(),
-            }),
+            schema: addTileToFarmListSchema,
           },
         },
       },
@@ -763,6 +790,22 @@ export const paths = {
       responses: {
         '204': {
           description: 'Farm list renamed',
+        },
+      },
+    },
+  },
+  '/villages/:villageId/farm-lists/:farmListId/raid': {
+    post: {
+      summary: 'Raid farm list',
+      requestParams: {
+        path: z.strictObject({
+          villageId: z.coerce.number(),
+          farmListId: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '204': {
+          description: 'Raid sent',
         },
       },
     },
@@ -1362,6 +1405,103 @@ export const paths = {
       responses: {
         '204': {
           description: 'Preference updated',
+        },
+      },
+    },
+  },
+  '/villages/:villageId/reports': {
+    get: {
+      summary: 'Get reports for a village',
+      requestParams: {
+        path: z.strictObject({
+          villageId: z.coerce.number(),
+        }),
+        query: reportsQuerySchema,
+      },
+      responses: {
+        '200': {
+          description: 'A list of reports',
+          content: {
+            'application/json': {
+              schema: z.strictObject({
+                items: z.array(reportListItemSchema),
+                total: z.number(),
+                page: z.number(),
+                pageSize: z.number(),
+              }),
+            },
+          },
+        },
+      },
+    },
+  },
+  '/reports/:reportId': {
+    get: {
+      summary: 'Get a single report',
+      requestParams: {
+        path: z.strictObject({
+          reportId: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '200': {
+          description: 'Report details',
+          content: {
+            'application/json': {
+              schema: reportDetailSchema,
+            },
+          },
+        },
+      },
+    },
+  },
+  '/reports/mark-read': {
+    post: {
+      summary: 'Mark reports as read',
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: bulkReportActionSchema,
+          },
+        },
+      },
+      responses: {
+        '204': {
+          description: 'Reports marked as read',
+        },
+      },
+    },
+  },
+  '/reports': {
+    delete: {
+      summary: 'Delete reports',
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: bulkReportActionSchema,
+          },
+        },
+      },
+      responses: {
+        '204': {
+          description: 'Reports deleted',
+        },
+      },
+    },
+  },
+  '/reports/archive': {
+    post: {
+      summary: 'Archive reports',
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: bulkReportActionSchema,
+          },
+        },
+      },
+      responses: {
+        '204': {
+          description: 'Reports archived',
         },
       },
     },

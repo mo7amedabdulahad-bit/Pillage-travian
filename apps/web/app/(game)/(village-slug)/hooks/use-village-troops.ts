@@ -10,7 +10,6 @@ import type {
   TroopMovementEventType,
 } from '@pillage-first/types/models/game-event';
 import { troopSchema } from '@pillage-first/types/models/troop';
-import type { Village } from '@pillage-first/types/models/village';
 import {
   eventsCacheKey,
   playerTroopsCacheKey,
@@ -38,9 +37,10 @@ export const useVillageTroops = () => {
     },
   });
 
-  const getDeployableTroops = (villageId: Village['id']) => {
+  const getDeployableTroops = () => {
     return villageTroops.filter(
-      ({ tileId, source }) => tileId === villageId && source === villageId,
+      ({ tileId, source }) =>
+        tileId === currentVillage.tileId && source === currentVillage.tileId,
     );
   };
 

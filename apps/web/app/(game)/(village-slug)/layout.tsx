@@ -111,7 +111,8 @@ const Counter = ({ counter }: CounterProps) => {
 };
 
 const ReportsCounter = () => {
-  const { reports } = useReports();
+  const { currentVillage } = useCurrentVillage();
+  const { reports } = useReports({ villageId: currentVillage.id });
   return <Counter counter={reports.length} />;
 };
 

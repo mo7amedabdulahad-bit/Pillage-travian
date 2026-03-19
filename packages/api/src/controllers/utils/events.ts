@@ -1,6 +1,7 @@
 import type { SqlValue } from '@sqlite.org/sqlite-wasm';
 import { z } from 'zod';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
+import { unitsMap } from '@pillage-first/game-assets/units';
 import { calculateAdventurePointIncreaseEventDuration } from '@pillage-first/game-assets/utils/adventures';
 import {
   calculateBuildingCostForLevel,
@@ -45,6 +46,7 @@ import {
   isUnitImprovementEvent,
   isUnitResearchEvent,
 } from '@pillage-first/utils/guards/event';
+import { calculateDistanceBetweenPoints } from '@pillage-first/utils/math';
 import { selectAllRelevantEffectsByIdQuery } from '../../utils/queries/effect-queries';
 import { selectAllVillageEventsByTypeQuery } from '../../utils/queries/event-queries';
 import { calculateVillageResourcesAt } from '../../utils/village';
@@ -750,6 +752,41 @@ export const getEventDuration = (
   }
 
   if (isReturnTroopMovementEvent(event)) {
+    const { originalMovementType, targetId, villageId, troops } = event;
+
+    if (originalMovementType === 'adventure') {
+      return calculateAdventureDuration(database, true);
+    }
+
+    const { tile_id: sourceTileId } = database.selectObject({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId;',
+      bind: { $villageId: villageId },
+      schema: z.object({ tile_id: z.number() }),
+    })!;
+
+    const { tile_id: targetTileId } = database.selectObject({
+      sql: 'SELECT tile_id FROM villages WHERE id = $targetId;',
+      bind: { $targetId: targetId },
+      schema: z.object({ tile_id: z.number() }),
+    })!;
+
+    const sourceCoords = database.selectObject({
+      sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
+      bind: { $tileId: sourceTileId },
+      schema: z.object({ x: z.number(), y: z.number() }),
+    })!;
+
+    const targetCoords = database.selectObject({
+      sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
+      bind: { $tileId: targetTileId },
+      schema: z.object({ x: z.number(), y: z.number() }),
+    })!;
+
+    const distance = calculateDistanceBetweenPoints(sourceCoords, targetCoords);
+    const slowestSpeed = Math.min(
+      ...troops.map((t) => unitsMap.get(t.unitId)!.unitSpeed),
+    );
+
     const isInstantUnitTravelEnabled = database.selectValue({
       sql: 'SELECT is_instant_unit_travel_enabled FROM developer_settings',
       schema: z.number(),
@@ -759,13 +796,72 @@ export const getEventDuration = (
       return 0;
     }
 
-    const { originalMovementType } = event;
+    const { speed: serverSpeed } = database.selectObject({
+      sql: 'SELECT speed FROM servers LIMIT 1;',
+      schema: z.object({ speed: speedSchema }),
+    })!;
 
-    if (originalMovementType === 'adventure') {
-      return calculateAdventureDuration(database, true);
+    return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600);
+  }
+  if (isTroopMovementEvent(event)) {
+    const isInstantUnitTravelEnabled = database.selectValue({
+      sql: 'SELECT is_instant_unit_travel_enabled FROM developer_settings',
+      schema: z.number(),
+    })!;
+
+    if (isInstantUnitTravelEnabled) {
+      return 0;
     }
 
-    // TODO: Add calculation for troop return
+    const { targetId, villageId, troops, type } = event;
+
+    const { tile_id: sourceTileId } = database.selectObject({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId;',
+      bind: { $villageId: villageId },
+      schema: z.object({ tile_id: z.number() }),
+    })!;
+
+    let targetTileId: number;
+    if (
+      type === 'troopMovementAttack' ||
+      type === 'troopMovementRaid' ||
+      type === 'troopMovementReinforcements' ||
+      type === 'troopMovementRelocation'
+    ) {
+      const targetVillage = database.selectObject({
+        sql: 'SELECT tile_id FROM villages WHERE id = $targetId;',
+        bind: { $targetId: targetId },
+        schema: z.object({ tile_id: z.number() }),
+      });
+      targetTileId = targetVillage?.tile_id ?? targetId;
+    } else {
+      // FindNewVillage, OasisOccupation, etc. targetId IS the tileId
+      targetTileId = targetId;
+    }
+
+    const sourceCoords = database.selectObject({
+      sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
+      bind: { $tileId: sourceTileId },
+      schema: z.object({ x: z.number(), y: z.number() }),
+    })!;
+
+    const targetCoords = database.selectObject({
+      sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
+      bind: { $tileId: targetTileId },
+      schema: z.object({ x: z.number(), y: z.number() }),
+    })!;
+
+    const distance = calculateDistanceBetweenPoints(sourceCoords, targetCoords);
+    const slowestSpeed = Math.min(
+      ...troops.map((t) => unitsMap.get(t.unitId)!.unitSpeed),
+    );
+
+    const { speed: serverSpeed } = database.selectObject({
+      sql: 'SELECT speed FROM servers LIMIT 1;',
+      schema: z.object({ speed: speedSchema }),
+    })!;
+
+    return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600);
   }
 
   if (isHeroRevivalEvent(event)) {

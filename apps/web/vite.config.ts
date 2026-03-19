@@ -79,12 +79,16 @@ const viteConfig = defineViteConfig({
   server: {
     open: false,
     port: 5173,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
   },
   build: {
     target: 'esnext',
     rolldownOptions: {
       // There's a ton of nasty warnings about unreferenced files if this option is omitted :(
-      external: [/^\/graphic-packs/],
+      external: [/^\/graphic-packs/, 'node:module'],
     },
   },
   optimizeDeps: {

@@ -24,6 +24,8 @@ import {
   deleteFarmList,
   getFarmList,
   getFarmLists,
+  raidFarmList,
+  raidFarmTile,
   removeTileFromFarmList,
   renameFarmList,
 } from '../controllers/farm-list-controllers';
@@ -70,6 +72,13 @@ import {
   getCollectableQuestCount,
   getQuests,
 } from '../controllers/quest-controllers';
+import {
+  archiveReports,
+  deleteReports,
+  getReport,
+  getReports,
+  markReportsAsRead,
+} from '../controllers/report-controllers';
 import { getReputations } from '../controllers/reputation-controllers';
 import { getServer } from '../controllers/server-controllers';
 import {
@@ -81,6 +90,7 @@ import { getUnitImprovements } from '../controllers/unit-improvement-controllers
 import { getResearchedUnits } from '../controllers/unit-research-controllers';
 import {
   getOccupiableOasisInRange,
+  getVillageByCoords,
   getVillageBySlug,
 } from '../controllers/village-controllers';
 import { getArtifactsAroundVillage } from '../controllers/world-items-controllers';
@@ -138,6 +148,8 @@ const apiRoutes: Route[] = [
   createRoute(getFarmList),
   createRoute(deleteFarmList),
   createRoute(addTileToFarmList),
+  createRoute(raidFarmList),
+  createRoute(raidFarmTile),
   createRoute(removeTileFromFarmList),
   createRoute(renameFarmList),
 
@@ -157,6 +169,7 @@ const apiRoutes: Route[] = [
 
   // Villages
   createRoute(getVillageBySlug),
+  createRoute(getVillageByCoords),
   createRoute(getTroopsByVillage),
   createRoute(getVillageEffects),
   createRoute(getVillageEvents),
@@ -188,6 +201,13 @@ const apiRoutes: Route[] = [
 
   // Reputations
   createRoute(getReputations),
+
+  // Reports
+  createRoute(getReports),
+  createRoute(getReport),
+  createRoute(markReportsAsRead),
+  createRoute(deleteReports),
+  createRoute(archiveReports),
 ];
 
 export const compiledApiRoutes = apiRoutes.map((route) => ({

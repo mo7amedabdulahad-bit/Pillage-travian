@@ -8,8 +8,12 @@ import { resourceFieldCompositionSchema } from '@pillage-first/types/models/reso
 import { playableTribeSchema } from '@pillage-first/types/models/tribe';
 import type { Resolver } from '../../types/resolver';
 import { updateHeroEffectsVillageIdQuery } from '../../utils/queries/effect-queries';
-import { updateVillageResourcesAt } from '../../utils/village.ts';
+import {
+  addVillageResourcesAt,
+  updateVillageResourcesAt,
+} from '../../utils/village.ts';
 import { createEvents } from '../utils/create-event';
+import { resolveTroopMovementCombat } from './utils/combat-resolver.ts';
 import { onHeroDeath } from './utils/hero.ts';
 import { assessAdventureCountQuestCompletion } from './utils/quests.ts';
 import { addTroops } from './utils/troops.ts';
@@ -236,7 +240,7 @@ export const findNewVillageMovementResolver: Resolver<
 export const returnMovementResolver: Resolver<
   GameEvent<'troopMovementReturn'>
 > = (database, args) => {
-  const { targetId, troops } = args;
+  const { targetId, troops, resolvesAt, loot } = args;
 
   const { tileId: targetTileId } = database.selectObject({
     sql: 'SELECT tile_id AS tileId FROM villages WHERE id = $targetId;',
@@ -244,6 +248,7 @@ export const returnMovementResolver: Resolver<
     schema: z.strictObject({ tileId: z.number() }),
   })!;
 
+  updateVillageResourcesAt(database, targetId, resolvesAt);
   addTroops(
     database,
     troops.map((troop) => ({
@@ -251,6 +256,10 @@ export const returnMovementResolver: Resolver<
       tileId: targetTileId,
     })),
   );
+
+  if (loot) {
+    addVillageResourcesAt(database, targetId, resolvesAt, loot);
+  }
 };
 
 export const relocationMovementResolver: Resolver<
@@ -320,28 +329,12 @@ export const reinforcementMovementResolver: Resolver<
 export const attackMovementResolver: Resolver<
   GameEvent<'troopMovementAttack'>
 > = (database, args) => {
-  const { resolvesAt } = args;
-
-  // TODO: Combat
-  createEvents<'troopMovementReturn'>(database, {
-    ...args,
-    startsAt: resolvesAt,
-    type: 'troopMovementReturn',
-    originalMovementType: 'attack',
-  });
+  resolveTroopMovementCombat(database, args, false);
 };
 
 export const raidMovementResolver: Resolver<GameEvent<'troopMovementRaid'>> = (
   database,
   args,
 ) => {
-  const { resolvesAt } = args;
-
-  // TODO: Combat
-  createEvents<'troopMovementReturn'>(database, {
-    ...args,
-    startsAt: resolvesAt,
-    type: 'troopMovementReturn',
-    originalMovementType: 'raid',
-  });
+  resolveTroopMovementCombat(database, args, true);
 };

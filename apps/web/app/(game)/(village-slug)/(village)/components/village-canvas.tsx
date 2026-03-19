@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react';
 import styles from './village-canvas.module.scss';
-import { WallBackground } from './wall-background';
 
 type VillageCanvasProps = {
   children: ReactElement;

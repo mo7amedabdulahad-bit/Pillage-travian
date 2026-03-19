@@ -9,6 +9,8 @@
     "isolatedModules": true,
     "incremental": false,
     "allowImportingTsExtensions": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "noUnusedParameters": true,

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { createController } from '../utils/controller';
 import {
   getOccupiableOasisInRangeSchema,
@@ -196,3 +197,37 @@ export const rearrangeBuildingFields = createController(
     });
   });
 });
+
+export const getVillageByCoords = createController('/villages/search')(
+  ({ database, query: { x, y, name } }) => {
+    return database.selectObject({
+      sql: `
+      SELECT 
+        v.id, 
+        v.name, 
+        COALESCE(p.name, 'NPC') as player_name, 
+        COALESCE(fi.faction, 'nature') as faction
+      FROM villages v
+      JOIN tiles t ON v.tile_id = t.id
+      LEFT JOIN players p ON v.player_id = p.id
+      LEFT JOIN faction_ids fi ON p.faction_id = fi.id
+      WHERE 
+        ($name IS NOT NULL AND v.name LIKE $name_wildcard)
+        OR (t.x = $x AND t.y = $y)
+      LIMIT 1;
+    `,
+      bind: {
+        $x: x ? Number(x) : null,
+        $y: y ? Number(y) : null,
+        $name: name || null,
+        $name_wildcard: name ? `%${name}%` : null,
+      },
+      schema: z.object({
+        id: z.number(),
+        name: z.string(),
+        player_name: z.string(),
+        faction: z.string(),
+      }),
+    });
+  },
+);

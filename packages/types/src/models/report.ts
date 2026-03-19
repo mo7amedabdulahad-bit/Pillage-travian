@@ -11,11 +11,15 @@ export type ReportType =
   | 'adventure'
   | 'trade';
 
-type BaseReport = {
-  id: string;
-  tags: ReportTag[];
+export type Report = {
+  id: number;
+  type: ReportType;
+  villageId: number;
+  targetVillageId: number | null;
   timestamp: number;
-  villageId: Village['id'];
+  isRead: boolean;
+  isArchived: boolean;
+  attackerFactionId?: number | null;
+  defenderFactionId?: number | null;
+  data?: any;
 };
-
-export type Report = BaseReport;

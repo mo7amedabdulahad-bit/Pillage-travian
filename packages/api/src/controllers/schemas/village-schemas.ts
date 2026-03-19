@@ -194,3 +194,10 @@ export const getOccupiableOasisInRangeSchema = z
     }),
   )
   .meta({ id: 'GetOccupiableOasisInRange' });
+
+export const getVillageByCoordsSchema = z.strictObject({
+  id: z.number(),
+  name: z.string(),
+  player_name: z.string(),
+  faction: z.string(),
+});

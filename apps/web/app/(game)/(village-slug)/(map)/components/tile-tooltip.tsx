@@ -22,6 +22,7 @@ import {
 import { useOasisBonuses } from 'app/(game)/(village-slug)/(map)/hooks/use-oasis-bonuses';
 import { useTileTroops } from 'app/(game)/(village-slug)/(map)/hooks/use-tile-troops';
 import { useTileWorldItem } from 'app/(game)/(village-slug)/(map)/hooks/use-tile-world-item';
+import { ReputationBadge } from 'app/(game)/(village-slug)/components/reputation-badge';
 import { Resources } from 'app/(game)/(village-slug)/components/resources';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useReputations } from 'app/(game)/(village-slug)/hooks/use-reputations';
@@ -69,12 +70,12 @@ const TileTooltipPlayerInfo = ({ tile }: TileTooltipProps) => {
           <span>
             {t('Faction')} - {t(`FACTIONS.${faction.toUpperCase()}`)}
           </span>
-          <span>
-            {t('Reputation')} -{' '}
-            {t(
-              `REPUTATIONS.${getReputation(faction).reputationLevel.toUpperCase()}`,
-            )}
-          </span>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-muted-foreground">
+              {t('Reputation')}:
+            </span>
+            <ReputationBadge level={getReputation(faction).reputationLevel} />
+          </div>
         </>
       )}
       <span>
