@@ -1,29 +1,25 @@
 import { clsx } from 'clsx';
-import { type ReactElement, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
-type VillageViewCanvasProps = {
-  children: ReactElement | ReactElement[];
-  className?: string;
-};
-
-// The native resolution of the Travian dorf2 village container
+// Native SVG size
 const NATIVE_WIDTH = 1280;
 const NATIVE_HEIGHT = 720;
 
 export const VillageViewCanvas = ({
   children,
   className,
-}: VillageViewCanvasProps) => {
+}: {
+  children: ReactNode;
+  className?: string;
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
     const updateScale = () => {
-      if (!containerRef.current) {
-        return;
-      }
+      if (!containerRef.current) return;
 
-      const containerWidth = containerRef.current.offsetWidth;
+      const containerWidth = containerRef.current.clientWidth;
       // Calculate scale based on container width relative to native width
       let newScale = containerWidth / NATIVE_WIDTH;
 
@@ -32,9 +28,9 @@ export const VillageViewCanvas = ({
         newScale = 1.15;
       }
 
-      // Prevent it from becoming too small on mobile (below 1.0)
-      if (newScale < 1.0) {
-        newScale = 1.0;
+      // Live Travian forces minimum scale 0.5 on mobile so fields aren't too small
+      if (newScale < 0.5) {
+        newScale = 0.5;
       }
 
       setScale(newScale);
@@ -62,11 +58,12 @@ export const VillageViewCanvas = ({
     >
       <div
         className={clsx(
-          'absolute top-0 left-1/2 -translate-x-1/2 transition-transform duration-300 ease-out origin-top-center',
+          'absolute top-0 left-1/2 -translate-x-1/2 transition-transform duration-300 ease-out',
           'w-[1280px] h-[720px]',
         )}
         style={{
           transform: `scale(${scale})`,
+          transformOrigin: 'top center',
         }}
       >
         {children}

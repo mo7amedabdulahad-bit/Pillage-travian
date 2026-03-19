@@ -49,7 +49,7 @@ $village-building-layout: (
   37: (551px, 496px, 39),
   38: (669px, 483px, 38),
   39: (732px, 307px, 28), // Rally Point (125x160)
-  40: (261px, 137px, 42), // Wall (794x540)
+  40: (261px, 137px, 5), // Wall (794x540)
 );
 
 // Size classes relative to 1280x720 container
@@ -89,6 +89,7 @@ $village-building-layout: (
       @if $id == 40 {
         width: 794px;
         height: 540px;
+        z-index: 5; // Ensure wall is behind building graphics
       }
     }
   }

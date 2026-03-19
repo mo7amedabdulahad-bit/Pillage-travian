@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { use } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getWallBottomPath,
@@ -6,20 +7,22 @@ import {
 } from '@pillage-first/game-assets/village-page-assets';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
+import { CookieContext } from 'app/providers/cookie-provider';
 import styles from './wall-background.module.scss';
 
 export function WallBackground() {
   const { t } = useTranslation();
   const tribe = useTribe();
   const { currentVillage } = useCurrentVillage();
+  const { timeOfDay } = use(CookieContext);
 
   const wallBuildingField = currentVillage.buildingFields.find(
     (bf) => bf.id === 40,
   );
   const wallBuildingId = wallBuildingField?.buildingId ?? 'CITY_WALL';
 
-  const wallTopPath = getWallTopPath(tribe, 'default', 'day');
-  const wallBottomPath = getWallBottomPath(tribe, 'default', 'day');
+  const wallTopPath = getWallTopPath(tribe, 'default', timeOfDay);
+  const wallBottomPath = getWallBottomPath(tribe, 'default', timeOfDay);
 
   return (
     <>

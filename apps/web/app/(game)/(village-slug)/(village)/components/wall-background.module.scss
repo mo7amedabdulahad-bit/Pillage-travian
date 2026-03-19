@@ -4,7 +4,7 @@
   left: 20.391%;
   width: 62.031%;
   height: auto;
-  z-index: 0; // Behind buildings
+  z-index: 1; // Behind buildings
   pointer-events: none;
 
   & img {
@@ -20,7 +20,7 @@
   left: 20.391%;
   width: 62.031%;
   height: auto;
-  z-index: 42; // In front of buildings
+  z-index: 5; // In front of buildings (but below slots-container)
   pointer-events: none;
 
   & img {

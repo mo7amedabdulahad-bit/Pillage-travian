@@ -10,8 +10,6 @@ export function VillageCanvas({ children }: VillageCanvasProps) {
   return (
     <div className={styles.container}>
       {/* Wall background layers */}
-      <WallBackground />
-
       {/* Building slots container */}
       <div className={styles['slots-container']}>{children}</div>
     </div>

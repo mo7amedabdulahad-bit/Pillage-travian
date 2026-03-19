@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { getBuildingDefinition } from '@pillage-first/game-assets/utils/buildings';
 import {
+  getVillageBackgroundPath,
   getWallBottomPath,
   getWallTopPath,
 } from '@pillage-first/game-assets/village-page-assets';
@@ -178,6 +179,10 @@ const HOVER_PATHS: Record<string, string> = {
 
 const getGidFromBuildingId = (bid: string): string => {
   return GID_MAP[bid] || '0';
+};
+
+const getBuildingOverlayPath = (gid: string): string => {
+  return HOVER_PATHS[gid] || HOVER_PATHS['0'];
 };
 
 const isWallBuilding = (bid: string): boolean => {
@@ -449,6 +454,7 @@ const OccupiedBuildingFieldContent = ({
               left: '50%',
               top: '50%',
               transform: 'translate(-50%, -50%)',
+              zIndex: 43, // Above wall bottom (42)
             }}
           />
           <svg
@@ -481,7 +487,6 @@ const OccupiedBuildingFieldContent = ({
               getTribeClass(tribe),
             )}
             style={{
-              zIndex: 42,
               width: '100%',
               height: '100%',
             }}
@@ -495,7 +500,6 @@ const OccupiedBuildingFieldContent = ({
               getTribeClass(tribe),
             )}
             style={{
-              zIndex: 0,
               width: '100%',
               height: '100%',
             }}
@@ -517,9 +521,9 @@ const OccupiedBuildingFieldContent = ({
       )}
       <div
         className={clsx(
-          'absolute z-20',
+          'absolute z-50', // Above everything
           isWallBuilding(buildingId)
-            ? 'top-[10%] left-[45%]'
+            ? 'top-[2%] left-[48%]' // Higher and more centered for wall
             : 'absolute-centering',
         )}
       >
