@@ -5,7 +5,10 @@ import {
 } from '@tanstack/react-query';
 import { use, useCallback } from 'react';
 import { z } from 'zod';
-import type { TroopMovementEventType } from '@pillage-first/types/models/game-event';
+import type {
+  ScoutMode,
+  TroopMovementEventType,
+} from '@pillage-first/types/models/game-event';
 import {
   eventsCacheKey,
   playerTroopsCacheKey,
@@ -19,6 +22,7 @@ export type SendTroopsArgs = {
   type: TroopMovementEventType;
   troops: { unitId: string; amount: number }[];
   targetId: number;
+  scoutMode?: ScoutMode;
 };
 
 const villageSearchResultSchema = z.strictObject({
@@ -132,7 +136,12 @@ export const useRallyPoint = () => {
   );
 
   const { mutateAsync: sendTroops, isPending: isSending } = useMutation({
-    mutationFn: async ({ targetId, type, troops }: SendTroopsArgs) => {
+    mutationFn: async ({
+      targetId,
+      type,
+      troops,
+      scoutMode,
+    }: SendTroopsArgs) => {
       await fetcher('/events', {
         method: 'POST',
         body: {
@@ -140,6 +149,7 @@ export const useRallyPoint = () => {
           type,
           targetId,
           troops,
+          scoutMode,
         },
       });
     },

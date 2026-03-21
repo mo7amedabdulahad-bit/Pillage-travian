@@ -121,7 +121,11 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
             as="h1"
             className="border-b border-border pb-2 text-2xl font-bold"
           >
-            {report.type === 'scout-attack' ? t('Scout') : t('Scout defence')}
+            {report.type === 'scout-attack'
+              ? combatData.scoutMode === 'resource'
+                ? t('Scout Resources')
+                : t('Scout Defences')
+              : t('Scout defence')}
           </Text>
           <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/10 p-4">
             <Text className="font-semibold">
@@ -148,40 +152,53 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                 0,
               )}
             </Text>
-            {report.type === 'scout-attack' && combatData.resources && (
-              <LootDisplay
-                loot={combatData.resources}
-                capacity={combatData.resources.reduce(
-                  (sum: number, value: number) => sum + value,
-                  0,
+            {report.type === 'scout-attack' &&
+              combatData.scoutMode === 'resource' &&
+              combatData.resources && (
+                <>
+                  <LootDisplay
+                    loot={combatData.resources}
+                    capacity={combatData.resources.reduce(
+                      (sum: number, value: number) => sum + value,
+                      0,
+                    )}
+                  />
+                  {combatData.crannyCapacity !== undefined &&
+                    combatData.crannyCapacity > 0 && (
+                      <Text className="text-sm text-muted-foreground">
+                        {t('Cranny protection')}: {combatData.crannyCapacity}
+                      </Text>
+                    )}
+                </>
+              )}
+            {report.type === 'scout-attack' &&
+              combatData.scoutMode === 'defence' && (
+                <>
+                  <Text>
+                    {t('Wall level')}: {combatData.wallLevel ?? 0}
+                  </Text>
+                  <Text>
+                    {t('Residence/Command Center level')}:{' '}
+                    {combatData.palaceLevel ?? 0}
+                  </Text>
+                </>
+              )}
+          </div>
+          {report.type === 'scout-attack' &&
+            combatData.scoutMode === 'defence' &&
+            combatData.troops && (
+              <TroopTable
+                title={t('Spotted troops')}
+                villageName={combatData.defenderVillageName}
+                tribe={combatData.defenderTribe as Tribe}
+                unitIds={TRIBE_UNITS[combatData.defenderTribe as Tribe]}
+                units={toUnitCounts(
+                  combatData.defenderTribe as Tribe,
+                  combatData.troops,
                 )}
+                losses={toUnitCounts(combatData.defenderTribe as Tribe, [])}
               />
             )}
-            {report.type === 'scout-attack' && (
-              <>
-                <Text>
-                  {t('Wall level')}: {combatData.wallLevel ?? 0}
-                </Text>
-                <Text>
-                  {t('Residence/Command Center level')}:{' '}
-                  {combatData.palaceLevel ?? 0}
-                </Text>
-              </>
-            )}
-          </div>
-          {report.type === 'scout-attack' && combatData.troops && (
-            <TroopTable
-              title={t('Spotted troops')}
-              villageName={combatData.defenderVillageName}
-              tribe={combatData.defenderTribe as Tribe}
-              unitIds={TRIBE_UNITS[combatData.defenderTribe as Tribe]}
-              units={toUnitCounts(
-                combatData.defenderTribe as Tribe,
-                combatData.troops,
-              )}
-              losses={toUnitCounts(combatData.defenderTribe as Tribe, [])}
-            />
-          )}
         </div>
       </>
     );

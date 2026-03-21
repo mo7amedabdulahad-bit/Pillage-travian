@@ -16,7 +16,6 @@ import {
   createHeroRevivalEventMock,
   createTroopMovementAdventureEventMock,
   createTroopMovementAttackEventMock,
-  createTroopMovementScoutEventMock,
   createTroopTrainingEventMock,
   createUnitImprovementEventMock,
   createUnitResearchEventMock,
@@ -804,7 +803,7 @@ describe('events utils', () => {
       ).toThrow('Reinforcements can only be sent to allied villages');
     });
 
-    test('troopMovementScout - should throw if non-scout units are sent', async () => {
+    test('scoutMode - should throw if non-scout units are sent with scoutMode', async () => {
       const database = await prepareTestDatabase();
       const villageId = getAnyVillageId(database);
       const villageTileId = database.selectValue({
@@ -829,7 +828,7 @@ describe('events utils', () => {
       expect(() =>
         validateEventCreationPrerequisites(
           database,
-          createTroopMovementScoutEventMock({
+          createTroopMovementAttackEventMock({
             villageId,
             targetId: enemyVillageId,
             troops: [
@@ -840,6 +839,7 @@ describe('events utils', () => {
                 source: villageTileId,
               },
             ],
+            scoutMode: 'resource',
           }),
         ),
       ).toThrow('Only scout units can be sent on scout missions');

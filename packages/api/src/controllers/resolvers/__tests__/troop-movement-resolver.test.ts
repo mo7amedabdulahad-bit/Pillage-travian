@@ -7,7 +7,6 @@ import {
   createTroopMovementFindNewVillageEventMock,
   createTroopMovementRaidEventMock,
   createTroopMovementRelocationEventMock,
-  createTroopMovementScoutEventMock,
 } from '@pillage-first/mocks/event';
 import { eventSchema } from '../../../utils/zod/event-schemas';
 import {
@@ -15,7 +14,6 @@ import {
   attackMovementResolver,
   findNewVillageMovementResolver,
   raidMovementResolver,
-  scoutMovementResolver,
 } from '../troop-movement-resolver';
 import { regenerateNpcTroops } from '../utils/npc';
 
@@ -375,57 +373,6 @@ describe('attackMovementResolver', () => {
     ).toBe(1);
 
     randomSpy.mockRestore();
-  });
-});
-
-describe('scoutMovementResolver', () => {
-  test('should create scout reports and return event when scouts survive', async () => {
-    const database = await prepareTestDatabase();
-    const npcVillage = database.selectObject({
-      sql: `
-        SELECT v.id, v.tile_id AS tileId
-        FROM npc_village_state nvs
-        JOIN villages v ON v.id = nvs.village_id
-        LIMIT 1;
-      `,
-      schema: z.strictObject({ id: z.number(), tileId: z.number() }),
-    })!;
-
-    database.exec({
-      sql: 'DELETE FROM troops WHERE tile_id = $tileId;',
-      bind: { $tileId: npcVillage.tileId },
-    });
-
-    scoutMovementResolver(
-      database,
-      createTroopMovementScoutEventMock({
-        villageId: 1,
-        targetId: npcVillage.id,
-        troops: [{ unitId: 'ROMAN_SCOUT', amount: 10, tileId: 1, source: 1 }],
-      }),
-    );
-
-    const returnEvent = database.selectObject({
-      sql: "SELECT id, meta FROM events WHERE type = 'troopMovementReturn' LIMIT 1;",
-      schema: z.strictObject({
-        id: z.number(),
-        meta: z.string().transform((value) => JSON.parse(value)),
-      }),
-    });
-    const attackerReportCount = database.selectValue({
-      sql: "SELECT COUNT(*) FROM reports WHERE village_id = 1 AND type = 'scout-attack';",
-      schema: z.number(),
-    });
-    const defenderReportCount = database.selectValue({
-      sql: 'SELECT COUNT(*) FROM reports WHERE village_id = $villageId AND type = $type;',
-      bind: { $villageId: npcVillage.id, $type: 'scout-defence' },
-      schema: z.number(),
-    });
-
-    expect(returnEvent?.id).toBeDefined();
-    expect(returnEvent?.meta.originalMovementType).toBe('scout');
-    expect(attackerReportCount).toBe(1);
-    expect(defenderReportCount).toBe(1);
   });
 });
 

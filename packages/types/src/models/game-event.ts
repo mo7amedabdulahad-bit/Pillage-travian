@@ -53,13 +53,15 @@ export type TroopMovementType =
   | 'find-new-village'
   | 'attack'
   | 'raid'
-  | 'scout'
   | 'oasis-occupation'
   | 'adventure';
+
+export type ScoutMode = 'resource' | 'defence';
 
 type BaseTroopMovementEvent = {
   troops: Troop[];
   targetId: Village['id'];
+  scoutMode?: ScoutMode;
 };
 
 export type ReturnTroopMovementEvent = BaseTroopMovementEvent & {
@@ -79,7 +81,6 @@ export const gameEventTypeSchema = z.enum([
   'troopMovementFindNewVillage',
   'troopMovementAttack',
   'troopMovementRaid',
-  'troopMovementScout',
   'troopMovementOasisOccupation',
   'troopMovementAdventure',
   'unitResearch',
@@ -99,7 +100,6 @@ export type TroopMovementEventType = Extract<
   | 'troopMovementFindNewVillage'
   | 'troopMovementAttack'
   | 'troopMovementRaid'
-  | 'troopMovementScout'
   | 'troopMovementOasisOccupation'
   | 'troopMovementAdventure'
 >;
@@ -118,7 +118,6 @@ export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
   troopMovementFindNewVillage: BaseTroopMovementEvent;
   troopMovementAttack: BaseTroopMovementEvent;
   troopMovementRaid: BaseTroopMovementEvent;
-  troopMovementScout: BaseTroopMovementEvent;
   troopMovementOasisOccupation: BaseTroopMovementEvent;
   troopMovementAdventure: BaseTroopMovementEvent;
   adventurePointIncrease: BaseGameEvent;
@@ -133,7 +132,6 @@ export type TroopMovementEvent =
   | GameEvent<'troopMovementFindNewVillage'>
   | GameEvent<'troopMovementAttack'>
   | GameEvent<'troopMovementRaid'>
-  | GameEvent<'troopMovementScout'>
   | GameEvent<'troopMovementOasisOccupation'>
   | GameEvent<'troopMovementAdventure'>;
 

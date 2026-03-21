@@ -77,16 +77,6 @@ export const createTroopMovementRaidEventMock = (
   });
 };
 
-export const createTroopMovementScoutEventMock = (
-  overrides: Partial<GameEvent<'troopMovementScout'>> = {},
-): GameEvent<'troopMovementScout'> => {
-  return createGameEventMock('troopMovementScout', {
-    targetId: 2,
-    troops: [{ unitId: 'ROMAN_SCOUT', amount: 10, tileId: 1, source: 1 }],
-    ...overrides,
-  });
-};
-
 export const createAdventurePointIncreaseEventMock = (
   overrides: Partial<GameEvent<'adventurePointIncrease'>> = {},
 ): GameEvent<'adventurePointIncrease'> => {

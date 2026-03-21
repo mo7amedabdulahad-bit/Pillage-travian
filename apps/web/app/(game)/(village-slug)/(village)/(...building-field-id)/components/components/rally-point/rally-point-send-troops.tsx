@@ -3,7 +3,10 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { unitsMap } from '@pillage-first/game-assets/units';
-import type { TroopMovementEventType } from '@pillage-first/types/models/game-event';
+import type {
+  ScoutMode,
+  TroopMovementEventType,
+} from '@pillage-first/types/models/game-event';
 import type { UnitId } from '@pillage-first/types/models/unit';
 import { Bookmark } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/components/bookmark';
 import {
@@ -50,6 +53,16 @@ export const RallyPointSendTroops = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isMapPrefilledTargetLocked, setIsMapPrefilledTargetLocked] =
     useState(false);
+  const [scoutMode, setScoutMode] = useState<ScoutMode>('resource');
+
+  const isScoutsOnly = Object.entries(troopAmounts).every(
+    ([unitId, amount]) => {
+      if (Number(amount) === 0) {
+        return true;
+      }
+      return unitsMap.get(unitId as UnitId)?.tier === 'scout';
+    },
+  );
 
   // Target Reputation Logic
   const faction = targetVillage?.faction;
@@ -72,15 +85,8 @@ export const RallyPointSendTroops = () => {
     ['ecstatic', 'honored', 'respected', 'friendly', 'player'].includes(
       reputation.reputationLevel,
     );
-  // Unoccupied/NPC villages (faction 'nature') are not allies
-  // Use a more strict check for mission availability
   const canReinforce = !!isAlly;
   const canAttack = !isAlly;
-  const hasAvailableScouts = deployableTroops.some(
-    ({ unitId, amount }) =>
-      amount > 0 && unitsMap.get(unitId)?.tier === 'scout',
-  );
-  const canScout = canAttack && hasAvailableScouts;
 
   useEffect(() => {
     const x = searchParams.get('x');
@@ -116,8 +122,6 @@ export const RallyPointSendTroops = () => {
       setMovementType('troopMovementAttack');
     } else if (type === 'raid') {
       setMovementType('troopMovementRaid');
-    } else if (type === 'scout') {
-      setMovementType('troopMovementScout');
     } else if (type === 'reinforce') {
       setMovementType('troopMovementReinforcements');
     }
@@ -204,21 +208,15 @@ export const RallyPointSendTroops = () => {
       })
       .filter((troop) => troop !== null);
 
-    const filteredTroops =
-      movementType === 'troopMovementScout'
-        ? troops.filter(
-            (troop) => unitsMap.get(troop.unitId as UnitId)?.tier === 'scout',
-          )
-        : troops;
-
-    if (filteredTroops.length === 0) {
+    if (troops.length === 0) {
       return;
     }
 
     await sendTroops({
       targetId: targetVillage.id,
       type: movementType,
-      troops: filteredTroops,
+      troops,
+      scoutMode: isScoutsOnly ? scoutMode : undefined,
     });
 
     setStep('input');
@@ -287,6 +285,42 @@ export const RallyPointSendTroops = () => {
                   ))}
               </div>
             </div>
+            {isScoutsOnly && (
+              <div className="flex flex-col gap-2">
+                <Text className="font-semibold">
+                  {t('Scout mission type')}:
+                </Text>
+                <RadioGroup
+                  value={scoutMode}
+                  onValueChange={(v) => setScoutMode(v as ScoutMode)}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem
+                      value="resource"
+                      id="scout-resource"
+                    />
+                    <Label
+                      htmlFor="scout-resource"
+                      className="text-base cursor-pointer"
+                    >
+                      {t('Scout Resources')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem
+                      value="defence"
+                      id="scout-defence"
+                    />
+                    <Label
+                      htmlFor="scout-defence"
+                      className="text-base cursor-pointer"
+                    >
+                      {t('Scout Defences')}
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
             <div className="flex gap-2 justify-end mt-4">
               <Button
                 variant="outline"
@@ -504,22 +538,6 @@ export const RallyPointSendTroops = () => {
                   )}
                 >
                   {t('Attack: Raid')}
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem
-                  value="troopMovementScout"
-                  id="scout"
-                  disabled={!canScout}
-                />
-                <Label
-                  htmlFor="scout"
-                  className={clsx(
-                    'text-base cursor-pointer',
-                    !canScout && 'opacity-40 grayscale strike',
-                  )}
-                >
-                  {t('Scout')}
                 </Label>
               </div>
             </RadioGroup>

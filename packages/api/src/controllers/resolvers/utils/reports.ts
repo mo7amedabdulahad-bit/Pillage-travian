@@ -1,4 +1,5 @@
 import type { CombatResult } from '@pillage-first/game-assets/combat/combat-engine';
+import type { ScoutMode } from '@pillage-first/types/models/game-event';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 
 export type CombatReportData = CombatResult & {
@@ -36,7 +37,9 @@ export type ScoutReportData = {
   attackerSurvivors: { unitId: string; amount: number }[];
   defenderSurvivors: { unitId: string; amount: number }[];
   wasDetected: boolean;
+  scoutMode: ScoutMode;
   resources?: [number, number, number, number];
+  crannyCapacity?: number;
   wallLevel?: number;
   palaceLevel?: number;
   troops?: { unitId: string; amount: number }[];
@@ -127,6 +130,15 @@ export const saveScoutReports = (
 ): void => {
   const serializedData = JSON.stringify(data);
 
+  const defenderData = {
+    ...data,
+    resources: undefined,
+    crannyCapacity: undefined,
+    wallLevel: undefined,
+    palaceLevel: undefined,
+    troops: undefined,
+  };
+
   database.exec({
     sql: `
       INSERT INTO reports (
@@ -150,13 +162,7 @@ export const saveScoutReports = (
       $attackerFactionId: attackerFactionId,
       $defenderFactionId: defenderFactionId,
       $attackerData: serializedData,
-      $defenderData: JSON.stringify({
-        ...data,
-        resources: undefined,
-        wallLevel: undefined,
-        palaceLevel: undefined,
-        troops: undefined,
-      }),
+      $defenderData: JSON.stringify(defenderData),
     },
   });
 };

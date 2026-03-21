@@ -90,7 +90,6 @@ const validateTroopMovementPayload = (
     'troopMovementRelocation',
     'troopMovementAttack',
     'troopMovementRaid',
-    'troopMovementScout',
   ]);
 
   const targetVillage = villageTargetMovementTypes.has(event.type)
@@ -136,7 +135,7 @@ const validateTroopMovementPayload = (
   }
 
   if (
-    event.type === 'troopMovementScout' &&
+    event.scoutMode !== undefined &&
     troops.some((troop) => unitsMap.get(troop.unitId)?.tier !== 'scout')
   ) {
     throw new Error('Only scout units can be sent on scout missions');
@@ -144,11 +143,14 @@ const validateTroopMovementPayload = (
 
   if (
     (event.type === 'troopMovementAttack' ||
-      event.type === 'troopMovementRaid' ||
-      event.type === 'troopMovementScout') &&
+      event.type === 'troopMovementRaid') &&
     isAlliedTarget
   ) {
-    throw new Error('Attack, raid, and scout can only target enemy villages');
+    throw new Error('Attack and raid can only target enemy villages');
+  }
+
+  if (event.scoutMode !== undefined && isAlliedTarget) {
+    throw new Error('Scout missions can only target enemy villages');
   }
 
   if (
@@ -962,7 +964,6 @@ export const getEventDuration = (
     if (
       type === 'troopMovementAttack' ||
       type === 'troopMovementRaid' ||
-      type === 'troopMovementScout' ||
       type === 'troopMovementReinforcements' ||
       type === 'troopMovementRelocation'
     ) {
