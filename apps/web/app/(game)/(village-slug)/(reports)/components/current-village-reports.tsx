@@ -50,7 +50,13 @@ export const CurrentVillageReports = () => {
     isArchived: false,
   });
 
-  const displayReports = paginatedReportsResponse?.items ?? [];
+  const displayReports = useMemo(() => {
+    const reportFilterSet = new Set(reportFilters);
+
+    return (paginatedReportsResponse?.items ?? []).filter((report) =>
+      reportFilterSet.has(report.type),
+    );
+  }, [paginatedReportsResponse?.items, reportFilters]);
 
   const onSelectToggle = (id: number) => {
     setSelectedIds((prev) =>

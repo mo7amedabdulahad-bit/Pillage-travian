@@ -26,6 +26,7 @@ export const useEventsByType = <T extends GameEventType | 'troopMovement'>(
       >(`/villages/${currentVillage.id}/events/${eventType}`);
       return data;
     },
+    refetchInterval: eventType === 'troopMovement' ? 1000 : false,
   });
 
   const hasEvents =

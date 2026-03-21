@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { EventApiNotificationEvent } from '@pillage-first/types/api-events';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { resolveEvent } from '../utils/resolver';
@@ -36,9 +37,20 @@ export const createSchedulerDataSource = (
       })!;
     },
     resolveEvent: (id: GameEvent['id']) => {
+      let result: ReturnType<typeof resolveEvent> | undefined;
+
       database.transaction((tx) => {
-        resolveEvent(tx, id);
+        result = resolveEvent(tx, id);
       });
+
+      if (!result) {
+        return;
+      }
+
+      globalThis.postMessage({
+        eventKey: result.ok ? 'event:success' : 'event:error',
+        ...result.event,
+      } satisfies EventApiNotificationEvent);
     },
   };
 };

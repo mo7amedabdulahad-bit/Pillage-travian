@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { use } from 'react';
 import type { Report } from '@pillage-first/types/models/report';
 import { ApiContext } from 'app/(game)/providers/api-provider';
@@ -9,6 +14,35 @@ export type UseReportsOptions = {
   pageSize?: number;
   type?: string;
   isArchived?: boolean;
+};
+
+type ReportsResponse = {
+  items: Report[];
+  total: number;
+};
+
+const buildReportsUrl = ({
+  villageId,
+  page,
+  pageSize,
+  type,
+  isArchived,
+}: {
+  villageId: number;
+  page: number;
+  pageSize: number;
+  type?: string;
+  isArchived: boolean;
+}) => {
+  const queryParams = new URLSearchParams();
+  queryParams.set('page', page.toString());
+  queryParams.set('pageSize', pageSize.toString());
+  if (type) {
+    queryParams.set('type', type);
+  }
+  queryParams.set('isArchived', isArchived.toString());
+
+  return `/villages/${villageId}/reports?${queryParams.toString()}`;
 };
 
 export const useReports = ({
@@ -23,24 +57,61 @@ export const useReports = ({
   const query = useQuery({
     queryKey: ['reports', villageId, page, pageSize, type, isArchived],
     queryFn: async () => {
-      const queryParams = new URLSearchParams();
-      queryParams.set('page', page.toString());
-      queryParams.set('pageSize', pageSize.toString());
-      if (type) {
-        queryParams.set('type', type);
-      }
-      queryParams.set('isArchived', isArchived.toString());
-
-      const url = `/villages/${villageId}/reports?${queryParams.toString()}`;
-      const { data } = await fetcher<{ items: Report[]; total: number }>(url);
+      const { data } = await fetcher<ReportsResponse>(
+        buildReportsUrl({
+          villageId: villageId!,
+          page,
+          pageSize,
+          type,
+          isArchived,
+        }),
+      );
       return data;
     },
     enabled: !!villageId,
+    refetchInterval: 2000,
   });
 
   return {
     ...query,
     reports: query.data?.items ?? [],
+  };
+};
+
+export const useReportsForVillages = ({
+  villageIds,
+  pageSize = 100,
+  isArchived = false,
+}: {
+  villageIds: number[];
+  pageSize?: number;
+  isArchived?: boolean;
+}) => {
+  const { fetcher } = use(ApiContext);
+
+  const queries = useQueries({
+    queries: villageIds.map((villageId) => ({
+      queryKey: ['reports', villageId, 1, pageSize, undefined, isArchived],
+      queryFn: async () => {
+        const { data } = await fetcher<ReportsResponse>(
+          buildReportsUrl({
+            villageId,
+            page: 1,
+            pageSize,
+            type: undefined,
+            isArchived,
+          }),
+        );
+        return data;
+      },
+      enabled: !!villageId,
+      refetchInterval: 2000,
+    })),
+  });
+
+  return {
+    reports: queries.flatMap((query) => query.data?.items ?? []),
+    isPending: queries.some((query) => query.isPending),
   };
 };
 

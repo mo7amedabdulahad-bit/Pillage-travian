@@ -84,8 +84,8 @@ export const regenerateNpcTroops = (
     return; // First time, no regen
   }
 
-  const elapsedSeconds = timestamp - lastInteractedAt;
-  const elapsedHours = elapsedSeconds / 3600;
+  const elapsedMilliseconds = timestamp - lastInteractedAt;
+  const elapsedHours = elapsedMilliseconds / (1000 * 3600);
 
   if (elapsedHours <= 0) {
     return;
@@ -174,7 +174,11 @@ export const handleNpcRetaliation = (
     `,
     bind: { $villageId: villageId },
     schema: z.object({ times_attacked: z.number(), village_id: z.number() }),
-  })!;
+  });
+
+  if (!state) {
+    return;
+  }
 
   const npcInfo = database.selectObject({
     sql: `
@@ -185,7 +189,11 @@ export const handleNpcRetaliation = (
     `,
     bind: { $villageId: villageId },
     schema: z.object({ personality: z.string(), tile_id: z.number() }),
-  })!;
+  });
+
+  if (!npcInfo) {
+    return;
+  }
 
   // 2. Roll for retaliation
   const baseChance = personalityBaseChance[npcInfo.personality] ?? 0.2;
@@ -198,7 +206,14 @@ export const handleNpcRetaliation = (
 
   // 3. Select troops for retaliation
   const homeTroops = database.selectObjects({
-    sql: 'SELECT unit_id AS unitId, amount FROM troops WHERE tile_id = $tileId AND source = $tileId AND amount > 0',
+    sql: `
+      SELECT u.unit AS unitId, t.amount
+      FROM troops t
+      JOIN unit_ids u ON u.id = t.unit_id
+      WHERE t.tile_id = $tileId
+        AND t.source_tile_id = $tileId
+        AND t.amount > 0
+    `,
     bind: { $tileId: npcInfo.tile_id },
     schema: z.strictObject({ unitId: z.string(), amount: z.number() }),
   });

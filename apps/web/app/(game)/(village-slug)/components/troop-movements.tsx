@@ -11,6 +11,7 @@ import {
   isReinforcementsTroopMovementEvent,
   isRelocationTroopMovementEvent,
   isReturnTroopMovementEvent,
+  isScoutTroopMovementEvent,
 } from '@pillage-first/utils/guards/event';
 import { Countdown } from 'app/(game)/(village-slug)/components/countdown';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
@@ -98,6 +99,14 @@ const partitionTroopMovementEvents = (
       continue;
     }
     if (isAttackTroopMovementEvent(event) || isRaidTroopMovementEvent(event)) {
+      const target =
+        currentVillageId === event.targetId
+          ? incomingOffensiveMovementEvents
+          : outgoingOffensiveMovementEvents;
+      target.push(event);
+      continue;
+    }
+    if (isScoutTroopMovementEvent(event)) {
       const target =
         currentVillageId === event.targetId
           ? incomingOffensiveMovementEvents

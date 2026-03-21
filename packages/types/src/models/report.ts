@@ -4,6 +4,7 @@ export type ReportType =
   | 'attack'
   | 'raid'
   | 'defence'
+  | 'reinforcement'
   | 'scout-attack'
   | 'scout-defence'
   | 'adventure'

@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { calculateBuildingCancellationRefundForLevel } from '@pillage-first/game-assets/utils/buildings';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
-import { isTroopMovementEvent } from '@pillage-first/utils/guards/event';
 import { triggerKick } from '../scheduler/scheduler-signal';
 import { createController } from '../utils/controller';
 import {
   selectAllVillageEventsByTypeQuery,
   selectAllVillageEventsQuery,
+  selectAllVillageTroopMovementEventsQuery,
   selectEventByIdQuery,
 } from '../utils/queries/event-queries';
 import { addVillageResourcesAt, demolishBuilding } from '../utils/village';
@@ -30,15 +30,13 @@ export const getVillageEventsByType = createController(
   '/villages/:villageId/events/:eventType',
 )(({ database, path: { villageId, eventType } }) => {
   if (eventType === 'troopMovement') {
-    const allEvents = database.selectObjects({
-      sql: selectAllVillageEventsQuery,
+    return database.selectObjects({
+      sql: selectAllVillageTroopMovementEventsQuery,
       bind: {
         $village_id: villageId,
       },
       schema: eventSchema,
     });
-
-    return allEvents.filter((event) => isTroopMovementEvent(event));
   }
 
   return database.selectObjects({

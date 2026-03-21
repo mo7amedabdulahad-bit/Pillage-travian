@@ -19,6 +19,7 @@ import {
   reinforcementMovementResolver,
   relocationMovementResolver,
   returnMovementResolver,
+  scoutMovementResolver,
 } from '../controllers/resolvers/troop-movement-resolver';
 import { troopTrainingEventResolver } from '../controllers/resolvers/troop-resolvers';
 import { unitImprovementResolver } from '../controllers/resolvers/unit-improvement-resolvers';
@@ -58,6 +59,9 @@ export const getGameEventResolver = (gameEventType: GameEventType) => {
     }
     case 'troopMovementRaid': {
       return raidMovementResolver;
+    }
+    case 'troopMovementScout': {
+      return scoutMovementResolver;
     }
     case 'troopMovementOasisOccupation': {
       return oasisOccupationMovementResolver;

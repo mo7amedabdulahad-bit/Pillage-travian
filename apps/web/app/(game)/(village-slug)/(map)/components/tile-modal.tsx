@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
@@ -343,7 +344,10 @@ const TileModalActions = ({ tile }: TileModalProps) => {
   const location = useLocation();
   const { currentVillage } = useCurrentVillage();
   const { getRallyPointUrl, getMarketplaceUrl } = useGameNavigation();
-  const { farmLists, addTileToFarmList, isAddingToFarmList } = useRallyPoint();
+  const { farmLists, addTileToFarmList, isAddingToFarmList, searchVillage } =
+    useRallyPoint();
+  const [isResolvingRallyPointTarget, setIsResolvingRallyPointTarget] =
+    useState(false);
 
   const rallyPoint = currentVillage.buildingFields.find(
     (f) => f.buildingId === 'RALLY_POINT' && f.level > 0,
@@ -371,20 +375,65 @@ const TileModalActions = ({ tile }: TileModalProps) => {
     }
   };
 
+  const handleSendTroops = async () => {
+    if (!rallyPoint) {
+      return;
+    }
+
+    const params = new URLSearchParams({
+      x: String(x),
+      y: String(y),
+    });
+
+    const villageFromTile =
+      (isOccupiedOccupiableTile(tile) || isOccupiedOasisTile(tile)) &&
+      tile.ownerVillage &&
+      tile.owner
+        ? {
+            id: tile.ownerVillage.id,
+            name: tile.ownerVillage.name,
+            player_name: tile.owner.name,
+            faction: tile.owner.faction,
+          }
+        : null;
+
+    if (villageFromTile) {
+      params.set('targetId', String(villageFromTile.id));
+      params.set('villageName', villageFromTile.name);
+      params.set('playerName', villageFromTile.player_name);
+      params.set('faction', villageFromTile.faction);
+    } else {
+      setIsResolvingRallyPointTarget(true);
+
+      try {
+        const village = await searchVillage(x, y);
+
+        if (village) {
+          params.set('targetId', String(village.id));
+          params.set('villageName', village.name);
+          params.set('playerName', village.player_name);
+          params.set('faction', village.faction);
+        }
+      } finally {
+        setIsResolvingRallyPointTarget(false);
+      }
+    }
+
+    navigate(`${getRallyPointUrl(rallyPoint.id)}&${params.toString()}`);
+  };
+
   return (
-    <div className="flex flex-col gap-2 mt-4 bg-gray-50 p-2 rounded-xs border">
+    <div className="mt-4 flex flex-col gap-2 rounded-xs border bg-muted/40 p-3 text-foreground shadow-sm backdrop-blur-xs">
       <div className="flex gap-2">
         {/* 1. Send Troops */}
         <Button
           size="sm"
           variant="outline"
-          disabled={!rallyPoint}
-          onClick={() =>
-            navigate(`${getRallyPointUrl(rallyPoint?.id ?? 39)}&x=${x}&y=${y}`)
-          }
-          className="flex-1 min-w-[120px]"
+          disabled={!rallyPoint || isResolvingRallyPointTarget}
+          onClick={handleSendTroops}
+          className="min-w-[120px] flex-1"
         >
-          {t('Send troops')}
+          {isResolvingRallyPointTarget ? t('Loading...') : t('Send troops')}
         </Button>
 
         {/* 2. Send Merchants */}
@@ -395,7 +444,7 @@ const TileModalActions = ({ tile }: TileModalProps) => {
           onClick={() =>
             navigate(`${getMarketplaceUrl(marketPlace?.id ?? 0)}&x=${x}&y=${y}`)
           }
-          className="flex-1 min-w-[120px]"
+          className="min-w-[120px] flex-1"
         >
           {t('Send merchants')}
         </Button>
@@ -408,7 +457,7 @@ const TileModalActions = ({ tile }: TileModalProps) => {
           variant="outline"
           onClick={handleAddToFarmlist}
           disabled={isAddingToFarmList}
-          className="flex-1 min-w-[120px]"
+          className="min-w-[120px] flex-1"
         >
           {isAddingToFarmList ? t('Adding...') : t('Add to farmlist')}
         </Button>
@@ -419,7 +468,7 @@ const TileModalActions = ({ tile }: TileModalProps) => {
             size="sm"
             variant="outline"
             onClick={handleCenterMap}
-            className="flex-1 min-w-[120px]"
+            className="min-w-[120px] flex-1"
           >
             {t('Center map')}
           </Button>

@@ -21,6 +21,13 @@ export type SendTroopsArgs = {
   targetId: number;
 };
 
+const villageSearchResultSchema = z.strictObject({
+  id: z.number(),
+  name: z.string(),
+  player_name: z.string(),
+  faction: z.string(),
+});
+
 export const useRallyPoint = () => {
   const { fetcher } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
@@ -112,8 +119,14 @@ export const useRallyPoint = () => {
         query.set('name', name);
       }
 
-      const { data } = await fetcher(`/villages/search?${query.toString()}`);
-      return data;
+      const { data } = await fetcher<z.infer<
+        typeof villageSearchResultSchema
+      > | null>(`/villages/search?${query.toString()}`);
+      if (!data) {
+        return null;
+      }
+
+      return villageSearchResultSchema.parse(data);
     },
     [fetcher],
   );

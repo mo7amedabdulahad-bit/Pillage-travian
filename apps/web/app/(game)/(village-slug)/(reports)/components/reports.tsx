@@ -7,11 +7,11 @@ import {
   Section,
   SectionContent,
 } from 'app/(game)/(village-slug)/components/building-layout';
-import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { usePagination } from 'app/(game)/(village-slug)/hooks/use-pagination';
+import { usePlayerVillageListing } from 'app/(game)/(village-slug)/hooks/use-player-village-listing';
 import {
   useReportActions,
-  useReports,
+  useReportsForVillages,
 } from 'app/(game)/(village-slug)/hooks/use-reports';
 import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';
@@ -19,23 +19,27 @@ import { Pagination } from 'app/components/ui/pagination';
 
 export const Reports = () => {
   const { t } = useTranslation();
-  const { currentVillage } = useCurrentVillage();
+  const { playerVillages } = usePlayerVillageListing();
   const { reportFilters, onReportFiltersChange } = useReportFilters();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const pageSize = 20;
 
   const { markAsRead, deleteReports, archiveReports } = useReportActions();
-
-  const { data: reportsResponse } = useReports({
-    villageId: currentVillage.id,
-    page: 1, // Will be updated by dummy pagination if we were really using it
-    pageSize,
+  const { reports: allVillageReports } = useReportsForVillages({
+    villageIds: playerVillages.map(({ id }) => id),
     isArchived: false,
   });
 
-  const total = reportsResponse?.total ?? 0;
-  const _reports = reportsResponse?.items ?? [];
+  const filteredReports = useMemo(() => {
+    const reportFilterSet = new Set(reportFilters);
+
+    return allVillageReports
+      .filter((report) => reportFilterSet.has(report.type))
+      .sort((left, right) => right.timestamp - left.timestamp);
+  }, [allVillageReports, reportFilters]);
+
+  const total = filteredReports.length;
 
   const pagination = usePagination(
     useMemo(() => new Array(total).fill(null), [total]),
@@ -46,14 +50,11 @@ export const Reports = () => {
 
   // Re-fetch reports when page changes (the initial query above should use 'page')
   // Let's refine the query to use the page from pagination
-  const { data: paginatedReportsResponse } = useReports({
-    villageId: currentVillage.id,
-    page,
-    pageSize,
-    isArchived: false,
-  });
+  const displayReports = useMemo(() => {
+    const start = (page - 1) * pageSize;
 
-  const displayReports = paginatedReportsResponse?.items ?? [];
+    return filteredReports.slice(start, start + pageSize);
+  }, [filteredReports, page]);
 
   const onSelectToggle = (id: number) => {
     setSelectedIds((prev) =>

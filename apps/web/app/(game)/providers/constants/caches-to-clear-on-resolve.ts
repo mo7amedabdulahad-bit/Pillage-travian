@@ -12,6 +12,7 @@ import {
   playerTroopsCacheKey,
   playerVillagesCacheKey,
   questsCacheKey,
+  reportsCacheKey,
   unitImprovementCacheKey,
   unitResearchCacheKey,
   villageListing,
@@ -61,10 +62,28 @@ export const cachesToClearOnResolve: Handlers = {
     return [villageListing, effectsCacheKey, playerVillagesCacheKey];
   },
   troopMovementAttack: () => {
-    return [villageListing, effectsCacheKey, playerVillagesCacheKey];
+    return [
+      villageListing,
+      effectsCacheKey,
+      playerVillagesCacheKey,
+      reportsCacheKey,
+    ];
   },
   troopMovementRaid: () => {
-    return [villageListing, effectsCacheKey, playerVillagesCacheKey];
+    return [
+      villageListing,
+      effectsCacheKey,
+      playerVillagesCacheKey,
+      reportsCacheKey,
+    ];
+  },
+  troopMovementScout: () => {
+    return [
+      villageListing,
+      effectsCacheKey,
+      playerVillagesCacheKey,
+      reportsCacheKey,
+    ];
   },
   troopMovementOasisOccupation: () => {
     return [
@@ -81,6 +100,7 @@ export const cachesToClearOnResolve: Handlers = {
       heroInventoryCacheKey,
       questsCacheKey,
       effectsCacheKey,
+      reportsCacheKey,
     ];
   },
   unitResearch: () => {

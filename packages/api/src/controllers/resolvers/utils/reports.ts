@@ -13,6 +13,35 @@ export type CombatReportData = CombatResult & {
   isRaid: boolean;
 };
 
+export type AdventureReportData = {
+  villageName: string;
+  playerName: string;
+  health: number;
+  damageTaken: number;
+  completed: number;
+  heroDied: boolean;
+};
+
+export type ScoutReportData = {
+  attackerVillageName: string;
+  defenderVillageName: string;
+  attackerPlayerName: string;
+  defenderPlayerName: string;
+  attackerTribe: string;
+  defenderTribe: string;
+  attackerScouts: { unitId: string; amount: number }[];
+  defenderScouts: { unitId: string; amount: number }[];
+  attackerLosses: { unitId: string; amount: number }[];
+  defenderLosses: { unitId: string; amount: number }[];
+  attackerSurvivors: { unitId: string; amount: number }[];
+  defenderSurvivors: { unitId: string; amount: number }[];
+  wasDetected: boolean;
+  resources?: [number, number, number, number];
+  wallLevel?: number;
+  palaceLevel?: number;
+  troops?: { unitId: string; amount: number }[];
+};
+
 /**
  * Saves a combat report to the database.
  */
@@ -25,28 +54,109 @@ export const saveCombatReport = (
   attackerFactionId: number,
   defenderFactionId: number,
 ): void => {
+  const serializedData = JSON.stringify(data);
+
   database.exec({
     sql: `
       INSERT INTO reports (
-        type, 
-        village_id, 
-        target_village_id, 
-        timestamp, 
-        attacker_faction_id, 
-        defender_faction_id, 
-        data, 
+        type,
+        village_id,
+        target_village_id,
+        timestamp,
+        attacker_faction_id,
+        defender_faction_id,
+        data,
         is_read
       )
-      VALUES ($type, $villageId, $targetVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0);
+      VALUES
+        ($attackerType, $attackerVillageId, $defenderVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0),
+        ($defenderType, $defenderVillageId, $attackerVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0);
     `,
     bind: {
-      $type: data.isRaid ? 'raid' : 'attack',
-      $villageId: villageId,
-      $targetVillageId: targetVillageId,
+      $attackerType: data.isRaid ? 'raid' : 'attack',
+      $defenderType: 'defence',
+      $attackerVillageId: villageId,
+      $defenderVillageId: targetVillageId,
       $timestamp: timestamp,
       $attackerFactionId: attackerFactionId,
       $defenderFactionId: defenderFactionId,
+      $data: serializedData,
+    },
+  });
+};
+
+export const saveAdventureReport = (
+  database: DbFacade,
+  data: AdventureReportData,
+  villageId: number,
+  timestamp: number,
+  factionId: number,
+): void => {
+  database.exec({
+    sql: `
+      INSERT INTO reports (
+        type,
+        village_id,
+        target_village_id,
+        timestamp,
+        attacker_faction_id,
+        defender_faction_id,
+        data,
+        is_read
+      )
+      VALUES ($type, $villageId, NULL, $timestamp, $factionId, NULL, $data, 0);
+    `,
+    bind: {
+      $type: 'adventure',
+      $villageId: villageId,
+      $timestamp: timestamp,
+      $factionId: factionId,
       $data: JSON.stringify(data),
+    },
+  });
+};
+
+export const saveScoutReports = (
+  database: DbFacade,
+  data: ScoutReportData,
+  villageId: number,
+  targetVillageId: number,
+  timestamp: number,
+  attackerFactionId: number,
+  defenderFactionId: number,
+): void => {
+  const serializedData = JSON.stringify(data);
+
+  database.exec({
+    sql: `
+      INSERT INTO reports (
+        type,
+        village_id,
+        target_village_id,
+        timestamp,
+        attacker_faction_id,
+        defender_faction_id,
+        data,
+        is_read
+      )
+      VALUES
+        ('scout-attack', $attackerVillageId, $defenderVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $attackerData, 0),
+        ('scout-defence', $defenderVillageId, $attackerVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $defenderData, 0);
+    `,
+    bind: {
+      $attackerVillageId: villageId,
+      $defenderVillageId: targetVillageId,
+      $timestamp: timestamp,
+      $attackerFactionId: attackerFactionId,
+      $defenderFactionId: defenderFactionId,
+      $attackerData: serializedData,
+      $defenderData: JSON.stringify({
+        ...data,
+        resources: undefined,
+        wallLevel: undefined,
+        palaceLevel: undefined,
+        troops: undefined,
+      }),
     },
   });
 };

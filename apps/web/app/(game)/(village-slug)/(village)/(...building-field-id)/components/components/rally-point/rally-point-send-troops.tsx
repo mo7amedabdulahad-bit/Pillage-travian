@@ -2,7 +2,9 @@ import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import { unitsMap } from '@pillage-first/game-assets/units';
 import type { TroopMovementEventType } from '@pillage-first/types/models/game-event';
+import type { UnitId } from '@pillage-first/types/models/unit';
 import { Bookmark } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/components/bookmark';
 import {
   Section,
@@ -36,6 +38,7 @@ export const RallyPointSendTroops = () => {
   const { getReputation } = useReputations();
   const [step, setStep] = useState<Step>('input');
   const [targetName, setTargetName] = useState('');
+  const [targetPlayerName, setTargetPlayerName] = useState('');
   const [targetX, setTargetX] = useState('');
   const [targetY, setTargetY] = useState('');
   const [troopAmounts, setTroopAmounts] = useState<Record<string, string>>({});
@@ -45,6 +48,8 @@ export const RallyPointSendTroops = () => {
   const [targetVillage, setTargetVillage] =
     useState<VillageSearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isMapPrefilledTargetLocked, setIsMapPrefilledTargetLocked] =
+    useState(false);
 
   // Target Reputation Logic
   const faction = targetVillage?.faction;
@@ -71,16 +76,38 @@ export const RallyPointSendTroops = () => {
   // Use a more strict check for mission availability
   const canReinforce = !!isAlly;
   const canAttack = !isAlly;
+  const hasAvailableScouts = deployableTroops.some(
+    ({ unitId, amount }) =>
+      amount > 0 && unitsMap.get(unitId)?.tier === 'scout',
+  );
+  const canScout = canAttack && hasAvailableScouts;
 
   useEffect(() => {
     const x = searchParams.get('x');
     const y = searchParams.get('y');
+    const targetId = searchParams.get('targetId');
+    const villageName = searchParams.get('villageName');
+    const playerName = searchParams.get('playerName');
+    const faction = searchParams.get('faction');
 
-    if (x) {
-      setTargetX(x);
-    }
-    if (y) {
-      setTargetY(y);
+    setTargetX(x ?? '');
+    setTargetY(y ?? '');
+
+    if (targetId && villageName && playerName) {
+      setTargetName(villageName);
+      setTargetPlayerName(playerName);
+      setTargetVillage({
+        id: Number(targetId),
+        name: villageName,
+        player_name: playerName,
+        faction: faction ?? 'nature',
+      });
+      setIsMapPrefilledTargetLocked(true);
+    } else {
+      setTargetVillage(null);
+      setTargetName('');
+      setTargetPlayerName('');
+      setIsMapPrefilledTargetLocked(false);
     }
 
     const type = searchParams.get('type');
@@ -89,10 +116,23 @@ export const RallyPointSendTroops = () => {
       setMovementType('troopMovementAttack');
     } else if (type === 'raid') {
       setMovementType('troopMovementRaid');
+    } else if (type === 'scout') {
+      setMovementType('troopMovementScout');
     } else if (type === 'reinforce') {
       setMovementType('troopMovementReinforcements');
     }
   }, [searchParams]);
+
+  const unlockPrefilledTarget = () => {
+    if (!isMapPrefilledTargetLocked) {
+      return;
+    }
+
+    setIsMapPrefilledTargetLocked(false);
+    setTargetVillage(null);
+    setTargetName('');
+    setTargetPlayerName('');
+  };
 
   // Adjust mission type based on reputation when target is found
   useEffect(() => {
@@ -107,20 +147,18 @@ export const RallyPointSendTroops = () => {
   }, [canReinforce, movementType]);
 
   const handleNext = async () => {
+    if (isMapPrefilledTargetLocked && targetVillage) {
+      setStep('confirm');
+      return;
+    }
+
     setIsSearching(true);
     try {
       let village: VillageSearchResult | null = null;
       if (targetX && targetY) {
-        village = (await searchVillage(
-          Number(targetX),
-          Number(targetY),
-        )) as unknown as VillageSearchResult | null;
+        village = await searchVillage(Number(targetX), Number(targetY));
       } else if (targetName) {
-        village = (await searchVillage(
-          undefined,
-          undefined,
-          targetName,
-        )) as unknown as VillageSearchResult | null;
+        village = await searchVillage(undefined, undefined, targetName);
       } else {
         setIsSearching(false);
         return;
@@ -133,6 +171,8 @@ export const RallyPointSendTroops = () => {
       }
 
       setTargetVillage(village);
+      setTargetName(village.name);
+      setTargetPlayerName(village.player_name);
       setStep('confirm');
     } catch (_e) {
       alert(t('Village not found'));
@@ -148,16 +188,37 @@ export const RallyPointSendTroops = () => {
 
     const troops = Object.entries(troopAmounts)
       .filter(([_, amount]) => Number(amount) > 0)
-      .map(([unitId, amount]) => ({ unitId, amount: Number(amount) }));
+      .map(([unitId, amount]) => {
+        const troop = deployableTroops.find((item) => item.unitId === unitId);
 
-    if (troops.length === 0) {
+        if (!troop) {
+          return null;
+        }
+
+        return {
+          unitId,
+          amount: Number(amount),
+          tileId: troop.tileId,
+          source: troop.source,
+        };
+      })
+      .filter((troop) => troop !== null);
+
+    const filteredTroops =
+      movementType === 'troopMovementScout'
+        ? troops.filter(
+            (troop) => unitsMap.get(troop.unitId as UnitId)?.tier === 'scout',
+          )
+        : troops;
+
+    if (filteredTroops.length === 0) {
       return;
     }
 
     await sendTroops({
       targetId: targetVillage.id,
       type: movementType,
-      troops,
+      troops: filteredTroops,
     });
 
     setStep('input');
@@ -165,7 +226,9 @@ export const RallyPointSendTroops = () => {
     setTargetX('');
     setTargetY('');
     setTargetName('');
+    setTargetPlayerName('');
     setTargetVillage(null);
+    setIsMapPrefilledTargetLocked(false);
   };
 
   const adjustTroops = (unitId: string, delta: number, max: number) => {
@@ -342,6 +405,21 @@ export const RallyPointSendTroops = () => {
                 id="village-name"
                 value={targetName}
                 onChange={(e) => setTargetName(e.target.value)}
+                readOnly={isMapPrefilledTargetLocked}
+                className="flex-1 h-8"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="player-name"
+                className="w-16 shrink-0"
+              >
+                {t('Player')}:
+              </Label>
+              <Input
+                id="player-name"
+                value={targetPlayerName}
+                readOnly
                 className="flex-1 h-8"
               />
             </div>
@@ -353,14 +431,20 @@ export const RallyPointSendTroops = () => {
               <Input
                 id="x"
                 value={targetX}
-                onChange={(e) => setTargetX(e.target.value)}
+                onChange={(e) => {
+                  unlockPrefilledTarget();
+                  setTargetX(e.target.value);
+                }}
                 className="w-16 h-8 text-center"
               />
               <Label htmlFor="y">Y:</Label>
               <Input
                 id="y"
                 value={targetY}
-                onChange={(e) => setTargetY(e.target.value)}
+                onChange={(e) => {
+                  unlockPrefilledTarget();
+                  setTargetY(e.target.value);
+                }}
                 className="w-16 h-8 text-center"
               />
             </div>
@@ -420,6 +504,22 @@ export const RallyPointSendTroops = () => {
                   )}
                 >
                   {t('Attack: Raid')}
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem
+                  value="troopMovementScout"
+                  id="scout"
+                  disabled={!canScout}
+                />
+                <Label
+                  htmlFor="scout"
+                  className={clsx(
+                    'text-base cursor-pointer',
+                    !canScout && 'opacity-40 grayscale strike',
+                  )}
+                >
+                  {t('Scout')}
                 </Label>
               </div>
             </RadioGroup>

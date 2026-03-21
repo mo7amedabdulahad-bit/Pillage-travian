@@ -27,6 +27,7 @@ import type {
 } from '@pillage-first/types/models/game-event';
 import { speedSchema } from '@pillage-first/types/models/server';
 import { playableTribeSchema } from '@pillage-first/types/models/tribe';
+import { troopSchema } from '@pillage-first/types/models/troop';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { calculateComputedEffect } from '@pillage-first/utils/game/calculate-computed-effect';
 import {
@@ -47,6 +48,7 @@ import {
   isUnitResearchEvent,
 } from '@pillage-first/utils/guards/event';
 import { calculateDistanceBetweenPoints } from '@pillage-first/utils/math';
+import { getReputationLevel } from '@pillage-first/utils/reputation';
 import { selectAllRelevantEffectsByIdQuery } from '../../utils/queries/effect-queries';
 import { selectAllVillageEventsByTypeQuery } from '../../utils/queries/event-queries';
 import { calculateVillageResourcesAt } from '../../utils/village';
@@ -54,6 +56,137 @@ import { apiEffectSchema } from '../../utils/zod/effect-schemas';
 import { eventSchema } from '../../utils/zod/event-schemas';
 import { removeTroops } from '../resolvers/utils/troops.ts';
 import { calculateAdventureDuration } from './adventures.ts';
+
+const alliedReputationLevels = new Set([
+  'player',
+  'friendly',
+  'respected',
+  'honored',
+  'ecstatic',
+]);
+
+const validateTroopMovementPayload = (
+  database: DbFacade,
+  event: TroopMovementEvent,
+) => {
+  const troops = z.array(troopSchema).parse(event.troops);
+
+  if (troops.length === 0) {
+    throw new Error('At least one troop must be sent');
+  }
+
+  const village = database.selectObject({
+    sql: 'SELECT tile_id AS tileId, player_id AS playerId FROM villages WHERE id = $villageId;',
+    bind: { $villageId: event.villageId },
+    schema: z.strictObject({ tileId: z.number(), playerId: z.number() }),
+  });
+
+  if (!village) {
+    throw new Error('Source village not found');
+  }
+
+  const villageTargetMovementTypes = new Set([
+    'troopMovementReinforcements',
+    'troopMovementRelocation',
+    'troopMovementAttack',
+    'troopMovementRaid',
+    'troopMovementScout',
+  ]);
+
+  const targetVillage = villageTargetMovementTypes.has(event.type)
+    ? (database.selectObject({
+        sql: `
+          SELECT
+            v.id,
+            v.player_id AS playerId,
+            fi.faction,
+            fr.reputation
+          FROM villages v
+          LEFT JOIN players p ON p.id = v.player_id
+          LEFT JOIN faction_ids fi ON fi.id = p.faction_id
+          LEFT JOIN faction_reputation fr
+            ON fr.source_faction_id = (SELECT faction_id FROM players WHERE id = $playerId)
+            AND fr.target_faction_id = p.faction_id
+          WHERE v.id = $targetId;
+        `,
+        bind: {
+          $targetId: event.targetId,
+          $playerId: village.playerId,
+        },
+        schema: z.strictObject({
+          id: z.number(),
+          playerId: z.number().nullable(),
+          faction: z.string().nullable(),
+          reputation: z.number().nullable(),
+        }),
+      }) ?? null)
+    : null;
+
+  if (villageTargetMovementTypes.has(event.type) && !targetVillage) {
+    throw new Error('Target village not found');
+  }
+
+  const isAlliedTarget =
+    targetVillage !== null &&
+    (targetVillage.playerId === village.playerId ||
+      alliedReputationLevels.has(getReputationLevel(targetVillage.reputation)));
+
+  if (event.type === 'troopMovementReinforcements' && !isAlliedTarget) {
+    throw new Error('Reinforcements can only be sent to allied villages');
+  }
+
+  if (
+    event.type === 'troopMovementScout' &&
+    troops.some((troop) => unitsMap.get(troop.unitId)?.tier !== 'scout')
+  ) {
+    throw new Error('Only scout units can be sent on scout missions');
+  }
+
+  if (
+    (event.type === 'troopMovementAttack' ||
+      event.type === 'troopMovementRaid' ||
+      event.type === 'troopMovementScout') &&
+    isAlliedTarget
+  ) {
+    throw new Error('Attack, raid, and scout can only target enemy villages');
+  }
+
+  if (
+    event.type === 'troopMovementRelocation' &&
+    targetVillage?.playerId !== village.playerId
+  ) {
+    throw new Error('Relocation can only target your own villages');
+  }
+
+  if (!isReturnTroopMovementEvent(event)) {
+    for (const troop of troops) {
+      if (troop.tileId !== village.tileId) {
+        throw new Error('Troops must be sent from the source village tile');
+      }
+
+      const availableAmount =
+        database.selectValue({
+          sql: `
+            SELECT amount
+            FROM troops
+            WHERE unit_id = (SELECT id FROM unit_ids WHERE unit = $unitId)
+              AND tile_id = $tileId
+              AND source_tile_id = $sourceTileId;
+          `,
+          bind: {
+            $unitId: troop.unitId,
+            $tileId: troop.tileId,
+            $sourceTileId: troop.source,
+          },
+          schema: z.number(),
+        }) ?? 0;
+
+      if (availableAmount < troop.amount) {
+        throw new Error(`Not enough ${troop.unitId} troops available`);
+      }
+    }
+  }
+};
 
 export const insertEvents = (database: DbFacade, events: GameEvent[]): void => {
   const requiredEventProperties = new Set([
@@ -117,6 +250,10 @@ export const validateEventCreationPrerequisites = (
   database: DbFacade,
   event: GameEvent,
 ): void => {
+  if (isTroopMovementEvent(event)) {
+    validateTroopMovementPayload(database, event);
+  }
+
   if (isUnitImprovementEvent(event)) {
     const { villageId, level } = event;
 
@@ -801,7 +938,7 @@ export const getEventDuration = (
       schema: z.object({ speed: speedSchema }),
     })!;
 
-    return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600);
+    return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600 * 1000);
   }
   if (isTroopMovementEvent(event)) {
     const isInstantUnitTravelEnabled = database.selectValue({
@@ -825,6 +962,7 @@ export const getEventDuration = (
     if (
       type === 'troopMovementAttack' ||
       type === 'troopMovementRaid' ||
+      type === 'troopMovementScout' ||
       type === 'troopMovementReinforcements' ||
       type === 'troopMovementRelocation'
     ) {
@@ -861,7 +999,7 @@ export const getEventDuration = (
       schema: z.object({ speed: speedSchema }),
     })!;
 
-    return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600);
+    return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600 * 1000);
   }
 
   if (isHeroRevivalEvent(event)) {

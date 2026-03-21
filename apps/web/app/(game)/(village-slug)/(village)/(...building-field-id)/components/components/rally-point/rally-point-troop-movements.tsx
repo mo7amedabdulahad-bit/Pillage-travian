@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import type { TroopMovementEvent } from '@pillage-first/types/models/game-event';
 import {
+  isAdventureTroopMovementEvent,
   isAttackTroopMovementEvent,
   isRaidTroopMovementEvent,
   isReinforcementsTroopMovementEvent,
   isReturnTroopMovementEvent,
+  isScoutTroopMovementEvent,
 } from '@pillage-first/utils/guards/event';
 import { Bookmark } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/components/bookmark';
 import {
@@ -41,12 +43,20 @@ const MovementRow = ({
     if (isReturnTroopMovementEvent(event)) {
       return t('Return');
     }
+    if (isAdventureTroopMovementEvent(event)) {
+      return t('Adventure');
+    }
+    if (isScoutTroopMovementEvent(event)) {
+      return t('Scout');
+    }
     return t('Movement');
   };
 
-  const targetVillageLabel = isOutgoing
-    ? `${t('Target')}: ${event.targetId}`
-    : `${t('Source')}: ${event.villageId}`;
+  const targetVillageLabel = isAdventureTroopMovementEvent(event)
+    ? t('Hero is on an adventure')
+    : isOutgoing
+      ? `${t('Target')}: ${event.targetId}`
+      : `${t('Source')}: ${event.villageId}`;
 
   return (
     <div className="flex flex-col gap-2 p-3 border rounded-xs bg-muted/30">
@@ -99,6 +109,10 @@ export const RallyPointTroopMovements = () => {
 
   const outgoing = movements.filter((m) => m.villageId === currentVillage.id);
   const incoming = movements.filter((m) => m.targetId === currentVillage.id);
+  const adventures = movements.filter((m) => isAdventureTroopMovementEvent(m));
+  const outgoingNonAdventure = outgoing.filter(
+    (m) => !isAdventureTroopMovementEvent(m) && !isReturnTroopMovementEvent(m),
+  );
 
   return (
     <Section>
@@ -112,14 +126,36 @@ export const RallyPointTroopMovements = () => {
               as="h3"
               className="border-b pb-1"
             >
+              {t('Adventures')}
+            </Text>
+            {adventures.length === 0 ? (
+              <Text className="italic text-muted-foreground">
+                {t('No adventure movements')}
+              </Text>
+            ) : (
+              adventures.map((m) => (
+                <MovementRow
+                  key={m.id}
+                  event={m}
+                  isOutgoing={true}
+                />
+              ))
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Text
+              as="h3"
+              className="border-b pb-1"
+            >
               {t('Outgoing')}
             </Text>
-            {outgoing.length === 0 ? (
+            {outgoingNonAdventure.length === 0 ? (
               <Text className="italic text-muted-foreground">
                 {t('No outgoing movements')}
               </Text>
             ) : (
-              outgoing.map((m) => (
+              outgoingNonAdventure.map((m) => (
                 <MovementRow
                   key={m.id}
                   event={m}

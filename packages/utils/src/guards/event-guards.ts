@@ -41,6 +41,7 @@ const troopMovementEventTypes = new Set<GameEventType>([
   'troopMovementFindNewVillage',
   'troopMovementAttack',
   'troopMovementRaid',
+  'troopMovementScout',
   'troopMovementOasisOccupation',
   'troopMovementAdventure',
 ]);
@@ -85,6 +86,12 @@ export const isRaidTroopMovementEvent = (
   event: GameEvent,
 ): event is GameEvent<'troopMovementRaid'> => {
   return event.type === 'troopMovementRaid';
+};
+
+export const isScoutTroopMovementEvent = (
+  event: GameEvent,
+): event is GameEvent<'troopMovementScout'> => {
+  return event.type === 'troopMovementScout';
 };
 
 export const isOasisOccupationTroopMovementEvent = (

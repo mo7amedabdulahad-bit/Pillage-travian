@@ -13,7 +13,7 @@ export const getReports = createController('/villages/:villageId/reports')(
   }) => {
     const offset = (page - 1) * pageSize;
     let sql = `
-      SELECT id, type, village_id as villageId, target_village_id as targetVillageId, timestamp, is_read as isRead, is_archived as isArchived
+      SELECT id, type, village_id as villageId, target_village_id as targetVillageId, timestamp, is_read as isRead, is_archived as isArchived, data
       FROM reports
       WHERE village_id = $villageId AND is_archived = $isArchived
     `;
@@ -37,9 +37,24 @@ export const getReports = createController('/villages/:villageId/reports')(
       schema: reportListItemDbSchema,
     });
 
+    const countBind: Record<string, string | number> = {
+      $villageId: villageId,
+      $isArchived: isArchived ? 1 : 0,
+    };
+
+    if (type) {
+      countBind.$type = type;
+    }
+
     const total = database.selectValue({
-      sql: 'SELECT COUNT(*) FROM reports WHERE village_id = $villageId AND is_archived = $isArchived',
-      bind: { $villageId: villageId, $isArchived: isArchived ? 1 : 0 },
+      sql: `
+        SELECT COUNT(*)
+        FROM reports
+        WHERE village_id = $villageId
+          AND is_archived = $isArchived
+          ${type ? 'AND type = $type' : ''}
+      `,
+      bind: countBind,
       schema: z.number(),
     })!;
 

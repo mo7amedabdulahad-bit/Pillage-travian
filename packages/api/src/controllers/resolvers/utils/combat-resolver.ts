@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { resolveCombat } from '@pillage-first/game-assets/combat/combat-engine';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
+import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import {
   calculateVillageResourcesAt,
@@ -14,8 +15,10 @@ import {
   getAttackerTroopsWithSmithy,
   updateWallLevel,
 } from './combat';
+import { onHeroDeath } from './hero';
 import { handleNpcRetaliation, regenerateNpcTroops } from './npc';
 import { saveCombatReport } from './reports';
+import { addTroops } from './troops';
 
 /**
  * Shared logic for resolving combat in attack and raid movements.
@@ -106,22 +109,42 @@ export const resolveTroopMovementCombat = (
     isRaid,
   );
 
+  const attackerHeroSurvived = result.attackerSurvivors.some(
+    ({ unitId }) => unitId === 'HERO',
+  );
+  const attackerHeroDied =
+    attackerTroopsRaw.some(({ unitId }) => unitId === 'HERO') &&
+    !attackerHeroSurvived;
+
+  if (attackerHeroDied) {
+    database.exec({
+      sql: 'UPDATE heroes SET health = 0 WHERE player_id = (SELECT player_id FROM villages WHERE id = $villageId);',
+      bind: { $villageId: villageId },
+    });
+    onHeroDeath(database, resolvesAt);
+  }
+
   // 6. Apply troop changes to DB
   // First, fetch all current defenders to remove them all (reinforcements + owner)
   const currentDefendersRaw = database.selectObjects({
-    sql: 'SELECT unit_id, tile_id, source_tile_id, amount FROM troops WHERE tile_id = $tileId AND amount > 0',
+    sql: `
+      SELECT u.unit AS unitId, t.tile_id, t.source_tile_id, t.amount
+      FROM troops t
+      JOIN unit_ids u ON u.id = t.unit_id
+      WHERE t.tile_id = $tileId AND t.amount > 0
+    `,
     bind: { $tileId: targetVillage.tileId },
     schema: z.object({
-      unit_id: z.number(),
+      unitId: z.string(),
       tile_id: z.number(),
       source_tile_id: z.number(),
       amount: z.number(),
     }),
   });
 
-  // Zero out all defenders (we will add survivors back proportionally)
+  // Remove all defenders, then add survivors back proportionally.
   database.exec({
-    sql: 'UPDATE troops SET amount = 0 WHERE tile_id = $tileId',
+    sql: 'DELETE FROM troops WHERE tile_id = $tileId',
     bind: { $tileId: targetVillage.tileId },
   });
 
@@ -139,20 +162,24 @@ export const resolveTroopMovementCombat = (
   const defenderLossRatio =
     totalDefenderInitial > 0 ? totalDefenderLost / totalDefenderInitial : 0;
 
+  const survivingDefenderTroops = [];
+
   for (const def of currentDefendersRaw) {
     const lost = Math.round(def.amount * defenderLossRatio);
     const survived = def.amount - lost;
+
     if (survived > 0) {
-      database.exec({
-        sql: 'UPDATE troops SET amount = amount + $survived WHERE unit_id = $uId AND tile_id = $tId AND source_tile_id = $sId',
-        bind: {
-          $survived: survived,
-          $uId: def.unit_id,
-          $tId: def.tile_id,
-          $sId: def.source_tile_id,
-        },
+      survivingDefenderTroops.push({
+        unitId: def.unitId as UnitId,
+        amount: survived,
+        tileId: def.tile_id,
+        source: def.source_tile_id,
       });
     }
+  }
+
+  if (survivingDefenderTroops.length > 0) {
+    addTroops(database, survivingDefenderTroops);
   }
 
   // 7. Handle wall damage
@@ -174,7 +201,8 @@ export const resolveTroopMovementCombat = (
   // 9. Attacker return movement
   if (result.attackerSurvivors.length > 0) {
     createEvents<'troopMovementReturn'>(database, {
-      ...args,
+      villageId: targetId,
+      targetId: villageId,
       startsAt: resolvesAt,
       troops: result.attackerSurvivors.map((s) => {
         // Find original source tile for each unit?
@@ -196,7 +224,7 @@ export const resolveTroopMovementCombat = (
       type: 'troopMovementReturn',
       originalMovementType: isRaid ? 'raid' : 'attack',
       loot: result.loot,
-    } as unknown as GameEvent<'troopMovementReturn'>);
+    } as GameEvent<'troopMovementReturn'>);
   }
 
   // 10. Save report

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
 import { prepareTestDatabase } from '@pillage-first/db';
 import {
@@ -7,6 +7,7 @@ import {
   createTroopMovementFindNewVillageEventMock,
   createTroopMovementRaidEventMock,
   createTroopMovementRelocationEventMock,
+  createTroopMovementScoutEventMock,
 } from '@pillage-first/mocks/event';
 import { eventSchema } from '../../../utils/zod/event-schemas';
 import {
@@ -14,7 +15,9 @@ import {
   attackMovementResolver,
   findNewVillageMovementResolver,
   raidMovementResolver,
+  scoutMovementResolver,
 } from '../troop-movement-resolver';
+import { regenerateNpcTroops } from '../utils/npc';
 
 describe(adventureMovementResolver, () => {
   test('should handle hero surviving adventure', async () => {
@@ -76,6 +79,16 @@ describe(adventureMovementResolver, () => {
     })!;
     expect(returnEvent).toBeDefined();
     expect(returnEvent.startsAt).toBe(mockEvent.resolvesAt);
+
+    const report = database.selectObject({
+      sql: "SELECT type, data FROM reports WHERE type = 'adventure' LIMIT 1;",
+      schema: z.strictObject({
+        type: z.string(),
+        data: z.string().transform((value) => JSON.parse(value)),
+      }),
+    });
+    expect(report?.type).toBe('adventure');
+    expect(report?.data.heroDied).toBe(false);
 
     // Verify quest completion
     const quest = database.selectObject({
@@ -142,6 +155,16 @@ describe(adventureMovementResolver, () => {
       schema: eventSchema,
     });
     expect(returnEvent).toBeUndefined();
+
+    const report = database.selectObject({
+      sql: "SELECT type, data FROM reports WHERE type = 'adventure' LIMIT 1;",
+      schema: z.strictObject({
+        type: z.string(),
+        data: z.string().transform((value) => JSON.parse(value)),
+      }),
+    });
+    expect(report?.type).toBe('adventure');
+    expect(report?.data.heroDied).toBe(true);
 
     // Check if hero effects were removed
     const effects = database.selectObjects({
@@ -291,9 +314,25 @@ describe('findNewVillageMovementResolver', () => {
 });
 
 describe('attackMovementResolver', () => {
-  test.skip('should create a return event starting at the attack resolution time', async () => {
+  test('should resolve NPC attack and create a return event', async () => {
     const database = await prepareTestDatabase();
     const villageId = 1;
+    const npcVillage = database.selectObject({
+      sql: `
+        SELECT v.id, v.tile_id AS tileId
+        FROM npc_village_state nvs
+        JOIN villages v ON v.id = nvs.village_id
+        LIMIT 1;
+      `,
+      schema: z.strictObject({ id: z.number(), tileId: z.number() }),
+    })!;
+
+    database.exec({
+      sql: 'DELETE FROM troops WHERE tile_id = $tileId;',
+      bind: { $tileId: npcVillage.tileId },
+    });
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(1);
 
     const mockEvent = createTroopMovementAttackEventMock({
       id: 2,
@@ -301,21 +340,147 @@ describe('attackMovementResolver', () => {
       duration: 500,
       villageId,
       troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, source: 1 }],
-      targetId: 3,
+      targetId: npcVillage.id,
     });
 
     attackMovementResolver(database, mockEvent);
 
     const returnEvent = database.selectObject({
-      sql: "SELECT starts_at, duration, (starts_at + duration) AS resolves_at FROM events WHERE type = 'troopMovementReturn' LIMIT 1;",
+      sql: "SELECT starts_at, duration, (starts_at + duration) AS resolves_at, village_id, meta FROM events WHERE type = 'troopMovementReturn' LIMIT 1;",
       schema: z.strictObject({
         starts_at: z.number(),
         duration: z.number(),
         resolves_at: z.number(),
+        village_id: z.number(),
+        meta: z.string().transform((value) => JSON.parse(value)),
       }),
     })!;
 
     expect(returnEvent.starts_at).toBe(mockEvent.resolvesAt);
+    expect(returnEvent.village_id).toBe(npcVillage.id);
+    expect(returnEvent.meta.targetId).toBe(villageId);
+    expect(
+      database.selectValue({
+        sql: 'SELECT COUNT(*) FROM reports WHERE village_id = $villageId;',
+        bind: { $villageId: villageId },
+        schema: z.number(),
+      }),
+    ).toBeGreaterThan(0);
+    expect(
+      database.selectValue({
+        sql: "SELECT COUNT(*) FROM reports WHERE village_id = $villageId AND type = 'attack';",
+        bind: { $villageId: villageId },
+        schema: z.number(),
+      }),
+    ).toBe(1);
+
+    randomSpy.mockRestore();
+  });
+});
+
+describe('scoutMovementResolver', () => {
+  test('should create scout reports and return event when scouts survive', async () => {
+    const database = await prepareTestDatabase();
+    const npcVillage = database.selectObject({
+      sql: `
+        SELECT v.id, v.tile_id AS tileId
+        FROM npc_village_state nvs
+        JOIN villages v ON v.id = nvs.village_id
+        LIMIT 1;
+      `,
+      schema: z.strictObject({ id: z.number(), tileId: z.number() }),
+    })!;
+
+    database.exec({
+      sql: 'DELETE FROM troops WHERE tile_id = $tileId;',
+      bind: { $tileId: npcVillage.tileId },
+    });
+
+    scoutMovementResolver(
+      database,
+      createTroopMovementScoutEventMock({
+        villageId: 1,
+        targetId: npcVillage.id,
+        troops: [{ unitId: 'ROMAN_SCOUT', amount: 10, tileId: 1, source: 1 }],
+      }),
+    );
+
+    const returnEvent = database.selectObject({
+      sql: "SELECT id, meta FROM events WHERE type = 'troopMovementReturn' LIMIT 1;",
+      schema: z.strictObject({
+        id: z.number(),
+        meta: z.string().transform((value) => JSON.parse(value)),
+      }),
+    });
+    const attackerReportCount = database.selectValue({
+      sql: "SELECT COUNT(*) FROM reports WHERE village_id = 1 AND type = 'scout-attack';",
+      schema: z.number(),
+    });
+    const defenderReportCount = database.selectValue({
+      sql: 'SELECT COUNT(*) FROM reports WHERE village_id = $villageId AND type = $type;',
+      bind: { $villageId: npcVillage.id, $type: 'scout-defence' },
+      schema: z.number(),
+    });
+
+    expect(returnEvent?.id).toBeDefined();
+    expect(returnEvent?.meta.originalMovementType).toBe('scout');
+    expect(attackerReportCount).toBe(1);
+    expect(defenderReportCount).toBe(1);
+  });
+});
+
+describe('regenerateNpcTroops', () => {
+  test('should treat timestamps as milliseconds, not seconds', async () => {
+    const database = await prepareTestDatabase();
+    const npcVillage = database.selectObject({
+      sql: `
+        SELECT v.id, v.tile_id AS tileId
+        FROM npc_village_state nvs
+        JOIN villages v ON v.id = nvs.village_id
+        LIMIT 1;
+      `,
+      schema: z.strictObject({ id: z.number(), tileId: z.number() }),
+    })!;
+
+    database.exec({
+      sql: 'DELETE FROM troops WHERE tile_id = $tileId;',
+      bind: { $tileId: npcVillage.tileId },
+    });
+    database.exec({
+      sql: 'UPDATE npc_village_state SET last_interacted_at = $lastInteractedAt WHERE village_id = $villageId;',
+      bind: {
+        $lastInteractedAt: 0,
+        $villageId: npcVillage.id,
+      },
+    });
+
+    regenerateNpcTroops(database, npcVillage.id, 3_600_000);
+
+    const totalTroops = database.selectValue({
+      sql: 'SELECT COALESCE(SUM(amount), 0) FROM troops WHERE tile_id = $tileId;',
+      bind: { $tileId: npcVillage.tileId },
+      schema: z.number(),
+    })!;
+
+    expect(totalTroops).toBe(0);
+
+    database.exec({
+      sql: 'UPDATE npc_village_state SET last_interacted_at = $lastInteractedAt WHERE village_id = $villageId;',
+      bind: {
+        $lastInteractedAt: 1,
+        $villageId: npcVillage.id,
+      },
+    });
+
+    regenerateNpcTroops(database, npcVillage.id, 3_600_001);
+
+    const regeneratedTroops = database.selectValue({
+      sql: 'SELECT COALESCE(SUM(amount), 0) FROM troops WHERE tile_id = $tileId;',
+      bind: { $tileId: npcVillage.tileId },
+      schema: z.number(),
+    })!;
+
+    expect(regeneratedTroops).toBeLessThan(1000);
   });
 });
 

@@ -24,3 +24,14 @@ export const selectAllVillageEventsByTypeQuery = `
     )
   ORDER BY resolves_at;
 `;
+
+export const selectAllVillageTroopMovementEventsQuery = `
+  SELECT id, type, starts_at, duration, resolves_at, meta, village_id
+  FROM events
+  WHERE type LIKE 'troopMovement%'
+    AND (
+      village_id = $village_id
+      OR CAST(JSON_EXTRACT(meta, '$.targetId') AS INTEGER) = $village_id
+    )
+  ORDER BY resolves_at;
+`;
