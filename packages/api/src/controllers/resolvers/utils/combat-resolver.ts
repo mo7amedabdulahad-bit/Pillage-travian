@@ -466,7 +466,10 @@ const resolveScoutMovement = (
 };
 
 /**
- * Resolve combat for oasis targets (both attack and raid).
+ * Single entry point for oasis combat — do not duplicate this logic.
+ * Handles both attack and raid on oasis targets.
+ * - Attack: Combat + loyalty reduction (if hero) + occupation (if loyalty = 0)
+ * - Raid: Combat only, no loyalty reduction, no occupation
  */
 const resolveOasisCombat = (
   database: DbFacade,

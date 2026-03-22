@@ -53,7 +53,6 @@ export type TroopMovementType =
   | 'find-new-village'
   | 'attack'
   | 'raid'
-  | 'oasis-occupation'
   | 'adventure';
 
 export type ScoutMode = 'resource' | 'defence';
@@ -81,7 +80,6 @@ export const gameEventTypeSchema = z.enum([
   'troopMovementFindNewVillage',
   'troopMovementAttack',
   'troopMovementRaid',
-  'troopMovementOasisOccupation',
   'troopMovementAdventure',
   'unitResearch',
   'unitImprovement',
@@ -102,7 +100,6 @@ export type TroopMovementEventType = Extract<
   | 'troopMovementFindNewVillage'
   | 'troopMovementAttack'
   | 'troopMovementRaid'
-  | 'troopMovementOasisOccupation'
   | 'troopMovementAdventure'
 >;
 
@@ -120,7 +117,6 @@ export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
   troopMovementFindNewVillage: BaseTroopMovementEvent;
   troopMovementAttack: BaseTroopMovementEvent;
   troopMovementRaid: BaseTroopMovementEvent;
-  troopMovementOasisOccupation: BaseTroopMovementEvent;
   troopMovementAdventure: BaseTroopMovementEvent;
   adventurePointIncrease: BaseGameEvent;
   heroRevival: BaseGameEvent;
@@ -138,7 +134,6 @@ export type TroopMovementEvent =
   | GameEvent<'troopMovementFindNewVillage'>
   | GameEvent<'troopMovementAttack'>
   | GameEvent<'troopMovementRaid'>
-  | GameEvent<'troopMovementOasisOccupation'>
   | GameEvent<'troopMovementAdventure'>;
 
 export type BuildingEvent =

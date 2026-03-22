@@ -386,12 +386,12 @@ const TileModalActions = ({ tile }: TileModalProps) => {
     });
 
     if (isOasisTile(tile)) {
-      // Oasis - use tile ID and oasis-occupation type
+      // Oasis - use tile ID and attack type (backend detects oasis and handles occupation logic)
       params.set('targetId', String(tile.id));
       params.set('villageName', 'Oasis');
       params.set('playerName', tile.owner?.name ?? 'Nature');
       params.set('faction', tile.owner?.faction ?? 'nature');
-      params.set('type', 'oasis-occupation');
+      params.set('type', 'attack');
     } else if (
       isOccupiedOccupiableTile(tile) &&
       tile.ownerVillage &&

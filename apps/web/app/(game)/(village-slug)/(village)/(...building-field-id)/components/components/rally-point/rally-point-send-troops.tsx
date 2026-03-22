@@ -114,6 +114,7 @@ export const RallyPointSendTroops = () => {
     }
 
     // Initial movement type from URL
+    // Oasis targets use troopMovementAttack (the backend detects oasis and handles occupation logic)
     if (searchParamsType === 'attack') {
       setMovementType('troopMovementAttack');
     } else if (searchParamsType === 'raid') {
@@ -121,7 +122,8 @@ export const RallyPointSendTroops = () => {
     } else if (searchParamsType === 'reinforce') {
       setMovementType('troopMovementReinforcements');
     } else if (searchParamsType === 'oasis-occupation') {
-      setMovementType('troopMovementOasisOccupation');
+      // Oasis attacks use troopMovementAttack - backend handles oasis-specific logic
+      setMovementType('troopMovementAttack');
     }
   }, [
     searchParamsType,

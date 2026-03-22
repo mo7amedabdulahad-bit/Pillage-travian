@@ -39,7 +39,6 @@ import {
   isFindNewVillageTroopMovementEvent,
   isHeroHealthRegenerationEvent,
   isHeroRevivalEvent,
-  isOasisOccupationTroopMovementEvent,
   isOasisReleaseEvent,
   isReturnTroopMovementEvent,
   isScheduledBuildingEvent,
@@ -533,110 +532,6 @@ export const validateEventCreationPrerequisites = (
 
     if (!hasAvailableAdventurePoints) {
       throw new Error('No adventure points available');
-    }
-  }
-
-  if (isOasisOccupationTroopMovementEvent(event)) {
-    const { villageId, troops } = event;
-
-    const heroInTroops = troops.some((t) => t.unitId === 'HERO');
-
-    // Hero is optional for oasis attacks - without hero, it's just combat with no loyalty reduction
-    if (heroInTroops) {
-      const heroHealth = database.selectValue({
-        sql: `
-          SELECT health
-          FROM heroes
-          WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id)
-        `,
-        bind: { $village_id: villageId },
-        schema: z.number().nullable(),
-      });
-
-      if (heroHealth == null || heroHealth <= 0) {
-        throw new Error('Hero must be alive to occupy an oasis');
-      }
-    }
-
-    const { occupiedOases, occupiedOasisSlots } = database.selectObject({
-      sql: `
-        SELECT
-          (
-            SELECT COUNT(*)
-            FROM
-              oasis
-            WHERE
-              village_id = $village_id
-          ) AS occupiedOases,
-          (
-            SELECT
-              CASE
-                WHEN bf.level >= 20 THEN 3
-                WHEN bf.level >= 15 THEN 2
-                WHEN bf.level >= 10 THEN 1
-                ELSE 0
-              END
-            FROM
-              building_fields bf
-                JOIN building_ids bi ON bi.id = bf.building_id
-            WHERE
-              bf.village_id = $village_id
-              AND bi.building = 'HEROS_MANSION'
-            LIMIT 1
-          ) AS occupiedOasisSlots;
-      `,
-      bind: {
-        $village_id: villageId,
-      },
-      schema: z.strictObject({
-        occupiedOases: z.number(),
-        occupiedOasisSlots: z.number().nullable(),
-      }),
-    })!;
-
-    if (occupiedOases >= (occupiedOasisSlots ?? 0)) {
-      throw new Error('No free oasis occupation slots available');
-    }
-
-    const targetTileId = event.targetId;
-
-    const targetOasisData = database.selectObject({
-      sql: `
-        SELECT o.tile_id, o.village_id AS owner_village_id, t.x, t.y
-        FROM oasis o
-        JOIN tiles t ON t.id = o.tile_id
-        WHERE o.tile_id = $tile_id
-      `,
-      bind: { $tile_id: targetTileId },
-      schema: z.strictObject({
-        tile_id: z.number(),
-        owner_village_id: z.number().nullable(),
-        x: z.number(),
-        y: z.number(),
-      }),
-    });
-
-    if (!targetOasisData) {
-      throw new Error('Target tile is not an oasis');
-    }
-
-    const sourceVillage = database.selectObject({
-      sql: 'SELECT player_id FROM villages WHERE id = $village_id',
-      bind: { $village_id: villageId },
-      schema: z.strictObject({ player_id: z.number() }),
-    })!;
-
-    const targetOwnerVillageId = targetOasisData.owner_village_id;
-    if (targetOwnerVillageId !== null) {
-      const targetOwnerPlayerId = database.selectValue({
-        sql: 'SELECT player_id FROM villages WHERE id = $village_id',
-        bind: { $village_id: targetOwnerVillageId },
-        schema: z.number().nullable(),
-      });
-
-      if (targetOwnerPlayerId === sourceVillage.player_id) {
-        throw new Error('You already occupy this oasis');
-      }
     }
   }
 };
@@ -1225,9 +1120,6 @@ export const getEventStartTime = (
     return Date.now();
   }
   if (isFindNewVillageTroopMovementEvent(event)) {
-    return Date.now();
-  }
-  if (isOasisOccupationTroopMovementEvent(event)) {
     return Date.now();
   }
   if (isReturnTroopMovementEvent(event)) {

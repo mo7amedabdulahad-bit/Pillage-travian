@@ -18,7 +18,6 @@ import {
   adventureMovementResolver,
   attackMovementResolver,
   findNewVillageMovementResolver,
-  oasisOccupationMovementResolver,
   raidMovementResolver,
   reinforcementMovementResolver,
   relocationMovementResolver,
@@ -62,9 +61,6 @@ export const getGameEventResolver = (gameEventType: GameEventType) => {
     }
     case 'troopMovementRaid': {
       return raidMovementResolver;
-    }
-    case 'troopMovementOasisOccupation': {
-      return oasisOccupationMovementResolver;
     }
     case 'troopMovementAdventure': {
       return adventureMovementResolver;
