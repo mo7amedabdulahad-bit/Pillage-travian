@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { resourceSchema } from '@pillage-first/types/models/resource';
 import { createController } from '../utils/controller';
 import { updateVillageResourcesAt } from '../utils/village';
+import { createEvents } from './utils/create-event';
 
 export const occupyOasis = createController(
   '/villages/:villageId/oasis/:oasisId',
@@ -68,34 +69,12 @@ export const abandonOasis = createController(
   '/villages/:villageId/oasis/:oasisId',
   'delete',
 )(({ database, path: { oasisId, villageId } }) => {
-  database.transaction((db) => {
-    updateVillageResourcesAt(db, villageId, Date.now());
-
-    db.exec({
-      sql: `
-        DELETE
-        FROM effects
-        WHERE source = 'oasis'
-          AND village_id = $village_id
-          AND source_specifier = $source_specifier;
-      `,
-      bind: {
-        $village_id: villageId,
-        $source_specifier: oasisId,
-      },
-    });
-
-    db.exec({
-      sql: `
-        UPDATE oasis
-        SET village_id = NULL
-        WHERE tile_id = $oasis_tile_id
-          AND village_id = $village_id;
-      `,
-      bind: {
-        $oasis_tile_id: oasisId,
-        $village_id: villageId,
-      },
-    });
+  createEvents<'oasisRelease'>(database, {
+    type: 'oasisRelease',
+    villageId,
+    meta: {
+      oasisTileId: oasisId,
+      villageId,
+    },
   });
 });

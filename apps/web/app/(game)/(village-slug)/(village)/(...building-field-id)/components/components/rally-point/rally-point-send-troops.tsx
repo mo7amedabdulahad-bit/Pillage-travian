@@ -1,4 +1,3 @@
-import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
@@ -80,33 +79,31 @@ export const RallyPointSendTroops = () => {
           | 'npc8',
       )
     : null;
-  const isAlly =
-    reputation?.reputationLevel &&
-    ['ecstatic', 'honored', 'respected', 'friendly', 'player'].includes(
-      reputation.reputationLevel,
-    );
-  const canReinforce = !!isAlly;
-  const canAttack = !isAlly;
+
+  const searchParamsType = searchParams.get('type');
+  const searchParamsTargetId = searchParams.get('targetId');
+  const searchParamsVillageName = searchParams.get('villageName');
+  const searchParamsPlayerName = searchParams.get('playerName');
+  const searchParamsFaction = searchParams.get('faction');
+  const searchParamsX = searchParams.get('x');
+  const searchParamsY = searchParams.get('y');
 
   useEffect(() => {
-    const x = searchParams.get('x');
-    const y = searchParams.get('y');
-    const targetId = searchParams.get('targetId');
-    const villageName = searchParams.get('villageName');
-    const playerName = searchParams.get('playerName');
-    const faction = searchParams.get('faction');
+    setTargetX(searchParamsX ?? '');
+    setTargetY(searchParamsY ?? '');
 
-    setTargetX(x ?? '');
-    setTargetY(y ?? '');
-
-    if (targetId && villageName && playerName) {
-      setTargetName(villageName);
-      setTargetPlayerName(playerName);
+    if (
+      searchParamsTargetId &&
+      searchParamsVillageName &&
+      searchParamsPlayerName
+    ) {
+      setTargetName(searchParamsVillageName);
+      setTargetPlayerName(searchParamsPlayerName);
       setTargetVillage({
-        id: Number(targetId),
-        name: villageName,
-        player_name: playerName,
-        faction: faction ?? 'nature',
+        id: Number(searchParamsTargetId),
+        name: searchParamsVillageName,
+        player_name: searchParamsPlayerName,
+        faction: searchParamsFaction ?? 'nature',
       });
       setIsMapPrefilledTargetLocked(true);
     } else {
@@ -116,16 +113,25 @@ export const RallyPointSendTroops = () => {
       setIsMapPrefilledTargetLocked(false);
     }
 
-    const type = searchParams.get('type');
     // Initial movement type from URL
-    if (type === 'attack') {
+    if (searchParamsType === 'attack') {
       setMovementType('troopMovementAttack');
-    } else if (type === 'raid') {
+    } else if (searchParamsType === 'raid') {
       setMovementType('troopMovementRaid');
-    } else if (type === 'reinforce') {
+    } else if (searchParamsType === 'reinforce') {
       setMovementType('troopMovementReinforcements');
+    } else if (searchParamsType === 'oasis-occupation') {
+      setMovementType('troopMovementOasisOccupation');
     }
-  }, [searchParams]);
+  }, [
+    searchParamsType,
+    searchParamsTargetId,
+    searchParamsVillageName,
+    searchParamsPlayerName,
+    searchParamsFaction,
+    searchParamsX,
+    searchParamsY,
+  ]);
 
   const unlockPrefilledTarget = () => {
     if (!isMapPrefilledTargetLocked) {
@@ -137,18 +143,6 @@ export const RallyPointSendTroops = () => {
     setTargetName('');
     setTargetPlayerName('');
   };
-
-  // Adjust mission type based on reputation when target is found
-  useEffect(() => {
-    if (canReinforce && movementType !== 'troopMovementReinforcements') {
-      setMovementType('troopMovementReinforcements');
-    } else if (
-      !canReinforce &&
-      movementType === 'troopMovementReinforcements'
-    ) {
-      setMovementType('troopMovementAttack');
-    }
-  }, [canReinforce, movementType]);
 
   const handleNext = async () => {
     if (isMapPrefilledTargetLocked && targetVillage) {
@@ -212,9 +206,13 @@ export const RallyPointSendTroops = () => {
       return;
     }
 
+    // For oasis targets, use the movementType directly (attack = full attack, raid = just loot)
+    // For other targets, use the movementType as well
+    const eventType: TroopMovementEventType = movementType;
+
     await sendTroops({
       targetId: targetVillage.id,
-      type: movementType,
+      type: eventType,
       troops,
       scoutMode: isScoutsOnly ? scoutMode : undefined,
     });
@@ -496,14 +494,10 @@ export const RallyPointSendTroops = () => {
                 <RadioGroupItem
                   value="troopMovementReinforcements"
                   id="reinforcements"
-                  disabled={!canReinforce}
                 />
                 <Label
                   htmlFor="reinforcements"
-                  className={clsx(
-                    'text-base cursor-pointer',
-                    !canReinforce && 'opacity-40 grayscale strike',
-                  )}
+                  className="text-base cursor-pointer"
                 >
                   {t('Reinforcement')}
                 </Label>
@@ -512,14 +506,10 @@ export const RallyPointSendTroops = () => {
                 <RadioGroupItem
                   value="troopMovementAttack"
                   id="attack"
-                  disabled={!canAttack}
                 />
                 <Label
                   htmlFor="attack"
-                  className={clsx(
-                    'text-base cursor-pointer',
-                    !canAttack && 'opacity-40 grayscale strike',
-                  )}
+                  className="text-base cursor-pointer"
                 >
                   {t('Attack: Normal')}
                 </Label>
@@ -528,14 +518,10 @@ export const RallyPointSendTroops = () => {
                 <RadioGroupItem
                   value="troopMovementRaid"
                   id="raid"
-                  disabled={!canAttack}
                 />
                 <Label
                   htmlFor="raid"
-                  className={clsx(
-                    'text-base cursor-pointer',
-                    !canAttack && 'opacity-40 grayscale strike',
-                  )}
+                  className="text-base cursor-pointer"
                 >
                   {t('Attack: Raid')}
                 </Label>

@@ -11,6 +11,10 @@ import {
   heroRevivalResolver,
 } from '../controllers/resolvers/hero-resolvers';
 import {
+  oasisReleaseResolver,
+  oasisTickResolver,
+} from '../controllers/resolvers/oasis-resolvers';
+import {
   adventureMovementResolver,
   attackMovementResolver,
   findNewVillageMovementResolver,
@@ -73,6 +77,12 @@ export const getGameEventResolver = (gameEventType: GameEventType) => {
     }
     case 'heroHealthRegeneration': {
       return heroHealthRegenerationResolver;
+    }
+    case 'oasisLoyaltyRegeneration': {
+      return oasisTickResolver;
+    }
+    case 'oasisRelease': {
+      return oasisReleaseResolver;
     }
     case 'unitResearch': {
       return unitResearchResolver;

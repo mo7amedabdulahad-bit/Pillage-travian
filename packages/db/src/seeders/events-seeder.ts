@@ -44,6 +44,14 @@ export const eventsSeeder = (database: DbFacade, server: Server): void => {
     null,
   ]);
 
+  eventsToInsert.push([
+    'oasisLoyaltyRegeneration',
+    server.createdAt,
+    Math.floor((5 * 60 * 1000) / server.configuration.speed),
+    null,
+    null,
+  ]);
+
   batchInsert(
     database,
     'events',

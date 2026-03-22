@@ -385,23 +385,22 @@ const TileModalActions = ({ tile }: TileModalProps) => {
       y: String(y),
     });
 
-    const villageFromTile =
-      (isOccupiedOccupiableTile(tile) || isOccupiedOasisTile(tile)) &&
+    if (isOasisTile(tile)) {
+      // Oasis - use tile ID and oasis-occupation type
+      params.set('targetId', String(tile.id));
+      params.set('villageName', 'Oasis');
+      params.set('playerName', tile.owner?.name ?? 'Nature');
+      params.set('faction', tile.owner?.faction ?? 'nature');
+      params.set('type', 'oasis-occupation');
+    } else if (
+      isOccupiedOccupiableTile(tile) &&
       tile.ownerVillage &&
       tile.owner
-        ? {
-            id: tile.ownerVillage.id,
-            name: tile.ownerVillage.name,
-            player_name: tile.owner.name,
-            faction: tile.owner.faction,
-          }
-        : null;
-
-    if (villageFromTile) {
-      params.set('targetId', String(villageFromTile.id));
-      params.set('villageName', villageFromTile.name);
-      params.set('playerName', villageFromTile.player_name);
-      params.set('faction', villageFromTile.faction);
+    ) {
+      params.set('targetId', String(tile.ownerVillage.id));
+      params.set('villageName', tile.ownerVillage.name);
+      params.set('playerName', tile.owner.name);
+      params.set('faction', tile.owner.faction);
     } else {
       setIsResolvingRallyPointTarget(true);
 

@@ -70,10 +70,14 @@ const applyScoutLosses = (
   return { survivors, losses };
 };
 
-const getCrannyCapacity = (database: DbFacade, villageId: number): number => {
+const getCrannyCapacity = (
+  database: DbFacade,
+  villageId: number,
+  tribe: string,
+): { level: number; capacity: number } => {
   const crannyData = database.selectObject({
     sql: `
-      SELECT bf.level 
+      SELECT bf.level
       FROM building_fields bf
       JOIN building_ids bi ON bi.id = bf.building_id
       WHERE bf.village_id = $village_id AND bi.building = 'CRANNY'
@@ -84,11 +88,90 @@ const getCrannyCapacity = (database: DbFacade, villageId: number): number => {
 
   const crannyLevel = crannyData?.level ?? 0;
 
-  const crannyValuesPerLevel = [
-    0, 100, 130, 170, 220, 280, 360, 460, 600, 770, 1000,
-  ];
+  const isGaul = tribe.toLowerCase() === 'gaul';
+  const multiplier = isGaul ? 1000 : 500;
 
-  return crannyValuesPerLevel[crannyLevel] ?? 0;
+  return { level: crannyLevel, capacity: crannyLevel * multiplier };
+};
+
+const CHIEF_UNITS = new Set([
+  'ROMAN_CHIEF',
+  'GAUL_CHIEF',
+  'TEUTONIC_CHIEF',
+  'EGYPTIAN_CHIEF',
+  'HUN_CHIEF',
+  'SPARTAN_CHIEF',
+  'NATARIAN_CHIEF',
+]);
+
+const isChiefUnit = (unitId: string): boolean => {
+  return CHIEF_UNITS.has(unitId);
+};
+
+const _countChiefsSurvived = (
+  troops: { unitId: string; amount: number }[],
+): number => {
+  return troops.reduce((sum, troop) => {
+    if (isChiefUnit(troop.unitId)) {
+      return sum + troop.amount;
+    }
+    return sum;
+  }, 0);
+};
+
+const _LOYALTY_REDUCTION_PER_CHIEF = 5;
+
+const _updateVillageLoyalty = (
+  database: DbFacade,
+  villageId: number,
+  loyaltyReduction: number,
+): number => {
+  const currentLoyalty =
+    database.selectValue({
+      sql: 'SELECT loyalty FROM villages WHERE id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.number().nullable(),
+    }) ?? 100;
+
+  const newLoyalty = Math.max(0, currentLoyalty - loyaltyReduction);
+
+  database.exec({
+    sql: 'UPDATE villages SET loyalty = $loyalty WHERE id = $village_id',
+    bind: { $loyalty: newLoyalty, $village_id: villageId },
+  });
+
+  return newLoyalty;
+};
+
+const _transferVillageOwnership = (
+  database: DbFacade,
+  villageId: number,
+  newPlayerId: number,
+): void => {
+  database.exec({
+    sql: 'UPDATE villages SET player_id = $player_id, loyalty = 100 WHERE id = $village_id',
+    bind: { $player_id: newPlayerId, $village_id: villageId },
+  });
+};
+
+const _hasPalaceOrResidence = (
+  database: DbFacade,
+  villageId: number,
+): boolean => {
+  const result = database.selectValue({
+    sql: `
+      SELECT EXISTS(
+        SELECT 1 FROM building_fields bf
+        JOIN building_ids bi ON bi.id = bf.building_id
+        WHERE bf.village_id = $village_id
+          AND bi.building IN ('RESIDENCE', 'COMMAND_CENTER')
+          AND bf.level > 0
+      )
+    `,
+    bind: { $village_id: villageId },
+    schema: z.number(),
+  });
+  return result === 1;
 };
 
 type ScoutMovementArgs = {
@@ -258,7 +341,11 @@ const resolveScoutMovement = (
     }),
   });
 
-  const crannyCapacity = getCrannyCapacity(database, targetId);
+  const crannyData = getCrannyCapacity(
+    database,
+    targetId,
+    defenderVillage.tribe,
+  );
 
   const wallAndPalace = database.selectObjects({
     sql: `
@@ -304,17 +391,18 @@ const resolveScoutMovement = (
   const canSeeDefences = scoutMode === 'defence';
 
   const reportResources =
-    canSeeResources && defenderResources && crannyCapacity >= 0
+    canSeeResources && defenderResources && crannyData.capacity >= 0
       ? ([
-          Math.max(0, defenderResources.wood - crannyCapacity),
-          Math.max(0, defenderResources.clay - crannyCapacity),
-          Math.max(0, defenderResources.iron - crannyCapacity),
-          Math.max(0, defenderResources.wheat - crannyCapacity),
+          Math.max(0, defenderResources.wood - crannyData.capacity),
+          Math.max(0, defenderResources.clay - crannyData.capacity),
+          Math.max(0, defenderResources.iron - crannyData.capacity),
+          Math.max(0, defenderResources.wheat - crannyData.capacity),
         ] as [number, number, number, number])
       : undefined;
 
+  // Always show troops if scout succeeds (for both resource and defence modes)
   const reportTroops =
-    canSeeDefences && attackerWins && attackerOutcome.survivors.length > 0
+    attackerWins && attackerOutcome.survivors.length > 0
       ? defenderTroops.map(({ unitId, amount }) => ({ unitId, amount }))
       : undefined;
 
@@ -342,7 +430,7 @@ const resolveScoutMovement = (
       wasDetected: defenderScouts.length > 0,
       scoutMode,
       resources: reportResources,
-      crannyCapacity: canSeeResources ? crannyCapacity : undefined,
+      crannyCapacity: canSeeResources ? crannyData.capacity : undefined,
       wallLevel: canSeeDefences ? wallLevel : undefined,
       palaceLevel: canSeeDefences ? palaceLevel : undefined,
       troops: reportTroops,
@@ -378,6 +466,324 @@ const resolveScoutMovement = (
 };
 
 /**
+ * Resolve combat for oasis targets (both attack and raid).
+ */
+const resolveOasisCombat = (
+  database: DbFacade,
+  villageId: number,
+  oasisTileId: number,
+  resolvesAt: number,
+  attackerTroopsRaw: {
+    unitId: string;
+    amount: number;
+    tileId: number;
+    source: number;
+  }[],
+  isRaid: boolean,
+): void => {
+  // Get oasis data
+  const oasisData = database.selectObject({
+    sql: `
+      SELECT
+        o.tile_id AS tileId,
+        o.village_id AS ownerVillageId,
+        o.loyalty,
+        v.player_id AS npcPlayerId
+      FROM oasis o
+      LEFT JOIN villages v ON v.id = o.village_id
+      WHERE o.tile_id = $tile_id
+    `,
+    bind: { $tile_id: oasisTileId },
+    schema: z.strictObject({
+      tileId: z.number(),
+      ownerVillageId: z.number().nullable(),
+      loyalty: z.number(),
+      npcPlayerId: z.number().nullable(),
+    }),
+  })!;
+
+  // Get attacker village info
+  const attackerVillage = database.selectObject({
+    sql: `
+      SELECT
+        v.name AS villageName,
+        p.name AS playerName,
+        p.faction_id AS factionId,
+        ti.tribe AS tribe
+      FROM villages v
+      JOIN players p ON v.player_id = p.id
+      JOIN tribe_ids ti ON p.tribe_id = ti.id
+      WHERE v.id = $id
+    `,
+    bind: { $id: villageId },
+    schema: z.strictObject({
+      villageName: z.string(),
+      playerName: z.string(),
+      factionId: z.number(),
+      tribe: z.string(),
+    }),
+  })!;
+
+  const heroInTroops = attackerTroopsRaw.some((t) => t.unitId === 'HERO');
+  const heroHealth = heroInTroops
+    ? database.selectValue({
+        sql: 'SELECT health FROM heroes WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id)',
+        bind: { $village_id: villageId },
+        schema: z.number().nullable(),
+      })
+    : 0;
+  const heroAlive = heroInTroops && heroHealth != null && heroHealth > 0;
+
+  const attackerTroops = getAttackerTroopsWithSmithy(
+    database,
+    villageId,
+    attackerTroopsRaw,
+  );
+
+  // Get defender troops (nature animals)
+  const defenderTroopsRaw = database.selectObjects({
+    sql: `
+      SELECT u.unit AS unitId, t.amount
+      FROM troops t
+      JOIN unit_ids u ON t.unit_id = u.id
+      WHERE t.tile_id = $tile_id AND t.amount > 0;
+    `,
+    bind: { $tile_id: oasisTileId },
+    schema: z.strictObject({
+      unitId: z.string(),
+      amount: z.number(),
+    }),
+  });
+
+  const defenderTroops = defenderTroopsRaw.map((t) => ({
+    unitId: t.unitId as UnitId,
+    amount: t.amount,
+    smithyLevel: 0,
+  }));
+
+  const result = resolveCombat(
+    attackerTroops,
+    defenderTroops,
+    { wallType: null, wallLevel: 0, palaceLevel: 0 },
+    [0, 0, 0, 0],
+    isRaid,
+  );
+
+  const attackerHeroDied =
+    heroInTroops &&
+    !result.attackerSurvivors.some(({ unitId }) => unitId === 'HERO');
+
+  if (attackerHeroDied) {
+    database.exec({
+      sql: 'UPDATE heroes SET health = 0 WHERE player_id = (SELECT player_id FROM villages WHERE id = $villageId);',
+      bind: { $villageId: villageId },
+    });
+    onHeroDeath(database, resolvesAt);
+  }
+
+  // Remove all defender troops and replace with survivors
+  database.exec({
+    sql: 'DELETE FROM troops WHERE tile_id = $tileId',
+    bind: { $tileId: oasisData.tileId },
+  });
+
+  const totalDefenderInitial = defenderTroops.reduce(
+    (sum, t) => sum + t.amount,
+    0,
+  );
+  const totalDefenderLost = result.defenderLosses.reduce(
+    (sum, t) => sum + t.amount,
+    0,
+  );
+  const defenderLossRatio =
+    totalDefenderInitial > 0 ? totalDefenderLost / totalDefenderInitial : 0;
+
+  const survivingDefenderTroops = [];
+  for (const def of defenderTroopsRaw) {
+    const lost = Math.round(def.amount * defenderLossRatio);
+    const survived = def.amount - lost;
+    if (survived > 0) {
+      survivingDefenderTroops.push({
+        unitId: def.unitId as UnitId,
+        amount: survived,
+        tileId: oasisData.tileId,
+        source: oasisData.tileId,
+      });
+    }
+  }
+  if (survivingDefenderTroops.length > 0) {
+    addTroops(database, survivingDefenderTroops);
+  }
+
+  const totalDefenderRemaining = result.defenderSurvivors.reduce(
+    (sum, t) => sum + t.amount,
+    0,
+  );
+
+  // Send survivors home
+  if (result.attackerSurvivors.length > 0) {
+    const sourceTileId = database.selectValue({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.number(),
+    })!;
+
+    createEvents<'troopMovementReturn'>(database, {
+      villageId: villageId,
+      targetId: villageId,
+      startsAt: resolvesAt,
+      troops: result.attackerSurvivors.map((s) => ({
+        unitId: s.unitId,
+        amount: s.amount,
+        tileId: oasisData.tileId,
+        source: sourceTileId,
+      })),
+      type: 'troopMovementReturn',
+      originalMovementType: isRaid ? 'raid' : 'attack',
+    });
+  }
+
+  // Calculate loyalty reduction for ATTACKS with hero (not raids)
+  let loyaltyDecrease: number | undefined;
+  let newLoyalty: number | undefined;
+
+  if (!isRaid && heroAlive && totalDefenderRemaining === 0) {
+    const isNpcOwned = oasisData.npcPlayerId !== null;
+    loyaltyDecrease = 20;
+
+    if (isNpcOwned) {
+      const npcOasisCount =
+        database.selectValue({
+          sql: 'SELECT COUNT(*) FROM oasis o JOIN villages v ON o.village_id = v.id WHERE v.player_id = $npcPlayerId',
+          bind: { $npcPlayerId: oasisData.npcPlayerId },
+          schema: z.number(),
+        }) ?? 0;
+
+      if (npcOasisCount >= 3) {
+        loyaltyDecrease = 30;
+      } else if (npcOasisCount === 2) {
+        loyaltyDecrease = 25;
+      }
+    }
+
+    newLoyalty = Math.max(0, oasisData.loyalty - loyaltyDecrease);
+
+    database.exec({
+      sql: 'UPDATE oasis SET loyalty = $loyalty WHERE tile_id = $tile_id',
+      bind: { $loyalty: newLoyalty, $tile_id: oasisTileId },
+    });
+  }
+
+  // Save combat report
+  const reportData = {
+    ...result,
+    attackerVillageName: attackerVillage.villageName,
+    defenderVillageName: 'Oasis',
+    attackerPlayerName: attackerVillage.playerName,
+    defenderPlayerName: 'Nature',
+    attackerTribe: attackerVillage.tribe,
+    defenderTribe: 'nature',
+    initialAttackerTroops: attackerTroopsRaw,
+    initialDefenderTroops: defenderTroopsRaw.map((d) => ({
+      unitId: d.unitId,
+      amount: d.amount,
+    })),
+    isRaid,
+    oasisLoyaltyDecrease: loyaltyDecrease,
+    oasisLoyaltyCurrent: newLoyalty,
+  };
+
+  saveCombatReport(
+    database,
+    reportData,
+    villageId,
+    oasisTileId,
+    resolvesAt,
+    attackerVillage.factionId,
+    null,
+  );
+
+  // Try to occupy oasis if it's an attack (not raid), hero alive, and all defenders dead
+  if (isRaid || !heroAlive || totalDefenderRemaining > 0 || newLoyalty! > 0) {
+    return;
+  }
+
+  // Check for free oasis slots
+  const occupiedOases =
+    database.selectValue({
+      sql: 'SELECT COUNT(*) FROM oasis WHERE village_id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    }) ?? 0;
+
+  const occupiedOasisSlots =
+    database.selectValue({
+      sql: `
+        SELECT CASE
+          WHEN bf.level >= 20 THEN 3
+          WHEN bf.level >= 15 THEN 2
+          WHEN bf.level >= 10 THEN 1
+          ELSE 0
+        END
+        FROM building_fields bf
+        JOIN building_ids bi ON bi.id = bf.building_id
+        WHERE bf.village_id = $village_id AND bi.building = 'HEROS_MANSION'
+        LIMIT 1
+      `,
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    }) ?? 0;
+
+  if (occupiedOases < occupiedOasisSlots) {
+    // Remove old owner's effects if any
+    if (oasisData.ownerVillageId) {
+      database.exec({
+        sql: 'DELETE FROM effects WHERE source = $source AND village_id = $village_id AND source_specifier = $source_specifier',
+        bind: {
+          $source: 'oasis',
+          $village_id: oasisData.ownerVillageId,
+          $source_specifier: oasisTileId,
+        },
+      });
+    }
+
+    // Assign oasis to attacker
+    database.exec({
+      sql: 'UPDATE oasis SET village_id = $village_id, loyalty = 100 WHERE tile_id = $tile_id',
+      bind: { $village_id: villageId, $tile_id: oasisTileId },
+    });
+
+    // Add production bonuses
+    const oasisBonuses = database.selectObjects({
+      sql: 'SELECT resource, bonus FROM oasis WHERE tile_id = $tile_id',
+      bind: { $tile_id: oasisTileId },
+      schema: z.object({ resource: z.string(), bonus: z.number() }),
+    });
+
+    for (const { resource, bonus } of oasisBonuses) {
+      const effectId = `${resource}Production`;
+      const value = bonus === 25 ? 1.25 : 1.5;
+
+      database.exec({
+        sql: `
+          INSERT INTO effects (effect_id, value, type, scope, source, village_id, source_specifier)
+          VALUES ((SELECT id FROM effect_ids WHERE effect = $effect_id), $value, $type, $scope, $source, $village_id, $source_specifier)
+        `,
+        bind: {
+          $effect_id: effectId,
+          $value: value,
+          $type: 'bonus',
+          $scope: 'village',
+          $source: 'oasis',
+          $village_id: villageId,
+          $source_specifier: oasisTileId,
+        },
+      });
+    }
+  }
+};
+
+/**
  * Shared logic for resolving combat in attack and raid movements.
  */
 export const resolveTroopMovementCombat = (
@@ -402,6 +808,26 @@ export const resolveTroopMovementCombat = (
       scoutMode,
       isRaid,
     });
+    return;
+  }
+
+  // Check if target is an oasis
+  const isOasis = database.selectValue({
+    sql: 'SELECT COUNT(*) FROM oasis WHERE tile_id = $tile_id',
+    bind: { $tile_id: targetId },
+    schema: z.number(),
+  })!;
+
+  if (isOasis) {
+    // Handle oasis combat separately
+    resolveOasisCombat(
+      database,
+      villageId,
+      targetId,
+      resolvesAt,
+      attackerTroopsRaw,
+      isRaid,
+    );
     return;
   }
 
@@ -567,10 +993,36 @@ export const resolveTroopMovementCombat = (
     );
   }
 
-  // 8. Handle loot
-  const lootTotal = result.loot.reduce((sum, v) => sum + v, 0);
+  // 8. Handle loot with cranny protection
+  // Cranny protects resources from being looted - attacker can only loot
+  // resources beyond the cranny capacity
+  const crannyData = getCrannyCapacity(database, targetId, targetVillage.tribe);
+  const totalDefenderResources = defenderResources.reduce(
+    (sum, v) => sum + v,
+    0,
+  );
+  const totalLootableResources = Math.max(
+    0,
+    totalDefenderResources - crannyData.capacity,
+  );
+  const totalLoot = result.loot.reduce((sum, v) => sum + v, 0);
+
+  let lootToApply: [number, number, number, number] = result.loot;
+  if (totalLoot > totalLootableResources && totalLootableResources > 0) {
+    const scaleFactor = totalLootableResources / totalLoot;
+    lootToApply = result.loot.map((v) => Math.floor(v * scaleFactor)) as [
+      number,
+      number,
+      number,
+      number,
+    ];
+  } else if (totalLootableResources <= 0) {
+    lootToApply = [0, 0, 0, 0];
+  }
+
+  const lootTotal = lootToApply.reduce((sum, v) => sum + v, 0);
   if (lootTotal > 0) {
-    subtractVillageResourcesAt(database, targetId, resolvesAt, result.loot);
+    subtractVillageResourcesAt(database, targetId, resolvesAt, lootToApply);
   }
 
   // 9. Attacker return movement

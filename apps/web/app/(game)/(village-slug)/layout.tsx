@@ -105,7 +105,7 @@ const Counter = ({ counter }: CounterProps) => {
 
   return (
     <span className="absolute size-5 lg:size-6 text-sm font-medium bg-background z-10 -top-2 lg:top-0 -right-2 lg:-right-3 rounded-full border lg:border-2 border-border shadow-md inline-flex justify-center items-center">
-      {counter > 99 ? '99' : counter}
+      {counter > 99 ? '99+' : counter}
     </span>
   );
 };
@@ -113,7 +113,8 @@ const Counter = ({ counter }: CounterProps) => {
 const ReportsCounter = () => {
   const { currentVillage } = useCurrentVillage();
   const { reports } = useReports({ villageId: currentVillage.id });
-  return <Counter counter={reports.length} />;
+  const unreadCount = reports.filter((report) => !report.isRead).length;
+  return <Counter counter={unreadCount} />;
 };
 
 const AdventurePointsCounter = () => {

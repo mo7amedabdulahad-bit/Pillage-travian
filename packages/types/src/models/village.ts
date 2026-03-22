@@ -22,6 +22,7 @@ export const villageSchema = z
     playerId: z.number(),
     name: z.string(),
     slug: z.string(),
+    loyalty: z.number().optional().default(100),
     coordinates: coordinatesSchema,
     lastUpdatedAt: z.number(),
     resources: z.strictObject({

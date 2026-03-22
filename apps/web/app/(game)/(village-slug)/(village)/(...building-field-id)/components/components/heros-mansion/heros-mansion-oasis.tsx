@@ -9,7 +9,6 @@ import {
 } from 'app/(game)/(village-slug)/components/building-layout';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useOccupiableOasisInRange } from 'app/(game)/(village-slug)/hooks/use-occupiable-oasis-in-range';
-import { useVillageTroops } from 'app/(game)/(village-slug)/hooks/use-village-troops';
 import { Icon } from 'app/components/icon';
 import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';
@@ -38,7 +37,7 @@ const UnoccupiedOasisSlot = ({
     <TableRow>
       <TableCell
         className="text-left"
-        colSpan={3}
+        colSpan={4}
       >
         <Text>
           {heroMansionLevel >= heroMansionLevelRequirement
@@ -68,6 +67,16 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
   const { abandonOasis } = useOccupiableOasisInRange();
 
   const { x, y } = occupiedOasis.oasis.coordinates;
+  const { loyalty, bonuses } = occupiedOasis.oasis;
+  const pendingReleaseAt = occupiedOasis.pendingReleaseAt;
+
+  const formatCountdown = (resolvesAt: number) => {
+    const now = Date.now();
+    const diff = Math.max(0, resolvesAt - now);
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
 
   return (
     <TableRow>
@@ -79,7 +88,7 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
         </Text>
       </TableCell>
       <TableCell className="whitespace-nowrap">
-        {occupiedOasis.oasis.bonuses.map(({ resource, bonus }, index) => (
+        {bonuses.map(({ resource, bonus }, index) => (
           <span
             className={clsx(
               'inline-flex items-center gap-1',
@@ -96,75 +105,35 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
         ))}
       </TableCell>
       <TableCell>
-        <Button
-          size="fit"
-          onClick={() => abandonOasis({ oasisId: occupiedOasis.oasis.id })}
-        >
-          {t('Abandon oasis')}
-        </Button>
+        <Text>{loyalty}%</Text>
+      </TableCell>
+      <TableCell>
+        {pendingReleaseAt ? (
+          <Text className="text-red-500">
+            {t('Releasing in {{time}}', {
+              time: formatCountdown(pendingReleaseAt),
+            })}
+          </Text>
+        ) : (
+          <Button
+            size="fit"
+            onClick={() => abandonOasis({ oasisId: occupiedOasis.oasis.id })}
+          >
+            {t('Release oasis')}
+          </Button>
+        )}
       </TableCell>
     </TableRow>
   );
 };
 
-type OccupiableOasisSlotActionsProps = {
+type OasisWithinReachSlotProps = {
   occupiableOasis: OccupiableOasis;
-  freeSlots: number;
 };
 
-const OccupiableOasisSlotActions = ({
+const OasisWithinReachSlot = ({
   occupiableOasis,
-  freeSlots,
-}: OccupiableOasisSlotActionsProps) => {
-  const { oasis, player } = occupiableOasis;
-
-  const { t } = useTranslation();
-  const { occupyOasis } = useOccupiableOasisInRange();
-  const { villageTroops } = useVillageTroops();
-  const { currentVillage } = useCurrentVillage();
-
-  const isHeroAvailable = useMemo(() => {
-    return villageTroops.some(
-      ({ unitId, tileId, source }) =>
-        unitId === 'HERO' &&
-        tileId === currentVillage.tileId &&
-        source === currentVillage.tileId,
-    );
-  }, [villageTroops, currentVillage.tileId]);
-
-  const isOccupiedByPlayer = player !== null && player.id === 0;
-
-  if (isOccupiedByPlayer) {
-    return <Text>{t('You already occupy this oasis')}</Text>;
-  }
-
-  if (!isHeroAvailable) {
-    return <Text>{t('Hero is not available')}</Text>;
-  }
-
-  if (freeSlots < 1) {
-    return <Text>{t('No free slots available')}</Text>;
-  }
-
-  return (
-    <Button
-      size="fit"
-      onClick={() => occupyOasis({ oasisId: oasis.id })}
-    >
-      {t('Occupy')}
-    </Button>
-  );
-};
-
-type OccupiableOasisSlotProps = {
-  occupiableOasis: OccupiableOasis;
-  freeSlots: number;
-};
-
-const OccupiableOasisSlot = ({
-  occupiableOasis,
-  freeSlots,
-}: OccupiableOasisSlotProps) => {
+}: OasisWithinReachSlotProps) => {
   const { oasis, village, player } = occupiableOasis;
 
   return (
@@ -213,12 +182,6 @@ const OccupiableOasisSlot = ({
           </span>
         ))}
       </TableCell>
-      <TableCell>
-        <OccupiableOasisSlotActions
-          occupiableOasis={occupiableOasis}
-          freeSlots={freeSlots}
-        />
-      </TableCell>
     </TableRow>
   );
 };
@@ -246,26 +209,6 @@ export const HerosMansionOasis = () => {
     | OccupiableOasis
     | undefined
   )[] = oasisOccupiedByCurrentVillage;
-
-  const availableSlots = (() => {
-    if (heroMansionLevel === 20) {
-      return 3;
-    }
-
-    if (heroMansionLevel >= 15) {
-      return 2;
-    }
-
-    if (heroMansionLevel >= 10) {
-      return 1;
-    }
-
-    return 0;
-  })();
-
-  const occupiedSlots = oasisOccupiedByCurrentVillage.length;
-
-  const freeSlots = availableSlots - occupiedSlots;
 
   return (
     <Section>
@@ -304,6 +247,9 @@ export const HerosMansionOasis = () => {
                     </TableHeaderCell>
                     <TableHeaderCell>
                       <Text>{t('Resources')}</Text>
+                    </TableHeaderCell>
+                    <TableHeaderCell>
+                      <Text>{t('Loyalty')}</Text>
                     </TableHeaderCell>
                     <TableHeaderCell>
                       <Text>{t('Actions')}</Text>
@@ -348,7 +294,7 @@ export const HerosMansionOasis = () => {
             <Text as="h2">{t('Oasis within reach')}</Text>
             <Text>
               {t(
-                'For an oasis to be occupiable, it has to be in a radius of 3 squares around your village. To successfully occupy an oasis, you have to have an empty oasis slot available.',
+                'For an oasis to be occupiable, it has to be in a radius of 3 squares around your village. To successfully occupy an oasis, you have to attack it with your hero and win.',
               )}
             </Text>
             <div className="overflow-x-scroll scrollbar-hidden">
@@ -367,16 +313,12 @@ export const HerosMansionOasis = () => {
                     <TableHeaderCell>
                       <Text>{t('Resources')}</Text>
                     </TableHeaderCell>
-                    <TableHeaderCell>
-                      <Text>{t('Actions')}</Text>
-                    </TableHeaderCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {occupiableOasisInRange.map((occupiableOasis) => (
-                    <OccupiableOasisSlot
+                    <OasisWithinReachSlot
                       key={occupiableOasis.oasis.id}
-                      freeSlots={freeSlots}
                       occupiableOasis={occupiableOasis}
                     />
                   ))}

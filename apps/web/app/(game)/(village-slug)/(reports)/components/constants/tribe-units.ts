@@ -23,6 +23,7 @@ export const TRIBE_UNITS: Record<Tribe, string[]> = {
     'ROMAN_CATAPULT',
     'ROMAN_CHIEF',
     'ROMAN_SETTLER',
+    'HERO',
   ],
   teutons: [
     'CLUBSWINGER',
@@ -35,6 +36,7 @@ export const TRIBE_UNITS: Record<Tribe, string[]> = {
     'TEUTONIC_CATAPULT',
     'TEUTONIC_CHIEF',
     'TEUTONIC_SETTLER',
+    'HERO',
   ],
   gauls: [
     'PHALANX',
@@ -47,6 +49,7 @@ export const TRIBE_UNITS: Record<Tribe, string[]> = {
     'GAUL_CATAPULT',
     'GAUL_CHIEF',
     'GAUL_SETTLER',
+    'HERO',
   ],
   egyptians: [
     'SLAVE_MILITIA',
@@ -59,6 +62,7 @@ export const TRIBE_UNITS: Record<Tribe, string[]> = {
     'EGYPTIAN_CATAPULT',
     'EGYPTIAN_CHIEF',
     'EGYPTIAN_SETTLER',
+    'HERO',
   ],
   huns: [
     'MERCENARY',
@@ -71,6 +75,7 @@ export const TRIBE_UNITS: Record<Tribe, string[]> = {
     'HUN_CATAPULT',
     'HUN_CHIEF',
     'HUN_SETTLER',
+    'HERO',
   ],
   spartans: [
     'HOPLITE',
@@ -83,6 +88,7 @@ export const TRIBE_UNITS: Record<Tribe, string[]> = {
     'SPARTAN_CATAPULT',
     'SPARTAN_CHIEF',
     'SPARTAN_SETTLER',
+    'HERO',
   ],
   nature: [
     'RAT',

@@ -437,7 +437,7 @@ describe('events utils', () => {
 
     test('troopMovementOasisOccupation - should throw if no free oasis occupation slots', async () => {
       const database = await prepareTestDatabase();
-      const villageId = getAnyVillageId(database);
+      const villageId = 1;
       const villageTileId = database.selectValue({
         sql: 'SELECT tile_id FROM villages WHERE id = $village_id;',
         bind: { $village_id: villageId },
@@ -450,6 +450,11 @@ describe('events utils', () => {
           VALUES ((SELECT id FROM unit_ids WHERE unit = 'HERO'), 1, $tile_id, $tile_id)
         `,
         bind: { $tile_id: villageTileId },
+      });
+
+      database.exec({
+        sql: 'UPDATE heroes SET health = 100 WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id);',
+        bind: { $village_id: villageId },
       });
 
       database.exec({
@@ -478,10 +483,15 @@ describe('events utils', () => {
 
     test('troopMovementOasisOccupation - should not throw if free oasis occupation slot exists', async () => {
       const database = await prepareTestDatabase();
-      const villageId = getAnyVillageId(database);
+      const villageId = 1;
       const villageTileId = database.selectValue({
         sql: 'SELECT tile_id FROM villages WHERE id = $village_id;',
         bind: { $village_id: villageId },
+        schema: z.number(),
+      })!;
+
+      const freeOasisTileId = database.selectValue({
+        sql: 'SELECT tile_id FROM oasis WHERE village_id IS NULL LIMIT 1;',
         schema: z.number(),
       })!;
 
@@ -491,6 +501,11 @@ describe('events utils', () => {
           VALUES ((SELECT id FROM unit_ids WHERE unit = 'HERO'), 1, $tile_id, $tile_id)
         `,
         bind: { $tile_id: villageTileId },
+      });
+
+      database.exec({
+        sql: 'UPDATE heroes SET health = 100 WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id);',
+        bind: { $village_id: villageId },
       });
 
       database.exec({
@@ -519,7 +534,7 @@ describe('events utils', () => {
           database,
           createGameEventMock('troopMovementOasisOccupation', {
             villageId,
-            targetId: 1,
+            targetId: freeOasisTileId,
             troops: [
               {
                 unitId: 'HERO',
@@ -535,10 +550,15 @@ describe('events utils', () => {
 
     test('troopMovementOasisOccupation - should throw if all slots are already used', async () => {
       const database = await prepareTestDatabase();
-      const villageId = getAnyVillageId(database);
+      const villageId = 1;
       const villageTileId = database.selectValue({
         sql: 'SELECT tile_id FROM villages WHERE id = $village_id;',
         bind: { $village_id: villageId },
+        schema: z.number(),
+      })!;
+
+      const ownedOasisTileId = database.selectValue({
+        sql: 'SELECT tile_id FROM oasis LIMIT 1;',
         schema: z.number(),
       })!;
 
@@ -548,6 +568,11 @@ describe('events utils', () => {
           VALUES ((SELECT id FROM unit_ids WHERE unit = 'HERO'), 1, $tile_id, $tile_id)
         `,
         bind: { $tile_id: villageTileId },
+      });
+
+      database.exec({
+        sql: 'UPDATE heroes SET health = 100 WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id);',
+        bind: { $village_id: villageId },
       });
 
       database.exec({
@@ -575,9 +600,9 @@ describe('events utils', () => {
         sql: `
           UPDATE oasis
           SET village_id = $village_id
-          WHERE tile_id = (SELECT tile_id FROM oasis LIMIT 1);
+          WHERE tile_id = $tile_id;
         `,
-        bind: { $village_id: villageId },
+        bind: { $village_id: villageId, $tile_id: ownedOasisTileId },
       });
 
       expect(() =>
@@ -585,7 +610,7 @@ describe('events utils', () => {
           database,
           createGameEventMock('troopMovementOasisOccupation', {
             villageId,
-            targetId: 1,
+            targetId: ownedOasisTileId,
             troops: [
               {
                 unitId: 'HERO',
@@ -739,68 +764,6 @@ describe('events utils', () => {
           }),
         ),
       ).toThrow('Not enough LEGIONNAIRE troops available');
-    });
-
-    test('troopMovementReinforcements - should throw for enemy villages', async () => {
-      const database = await prepareTestDatabase();
-      const sourceVillage = database.selectObject({
-        sql: 'SELECT id, tile_id AS tileId, player_id AS playerId FROM villages ORDER BY id LIMIT 1;',
-        schema: z.strictObject({
-          id: z.number(),
-          tileId: z.number(),
-          playerId: z.number(),
-        }),
-      })!;
-      const targetVillage = database.selectObject({
-        sql: `
-          SELECT id
-          FROM villages
-          WHERE player_id != $player_id
-          ORDER BY id
-          LIMIT 1;
-        `,
-        bind: { $player_id: sourceVillage.playerId },
-        schema: z.strictObject({ id: z.number() }),
-      })!;
-
-      database.exec({
-        sql: `
-          UPDATE faction_reputation
-          SET reputation = -100
-          WHERE source_faction_id = (SELECT faction_id FROM players WHERE id = $player_id)
-            AND target_faction_id = (SELECT faction_id FROM players WHERE id = (SELECT player_id FROM villages WHERE id = $target_village_id));
-        `,
-        bind: {
-          $player_id: sourceVillage.playerId,
-          $target_village_id: targetVillage.id,
-        },
-      });
-
-      database.exec({
-        sql: `
-          INSERT OR REPLACE INTO troops (unit_id, amount, tile_id, source_tile_id)
-          VALUES ((SELECT id FROM unit_ids WHERE unit = 'LEGIONNAIRE'), 10, $tile_id, $tile_id)
-        `,
-        bind: { $tile_id: sourceVillage.tileId },
-      });
-
-      expect(() =>
-        validateEventCreationPrerequisites(
-          database,
-          createGameEventMock('troopMovementReinforcements', {
-            villageId: sourceVillage.id,
-            targetId: targetVillage.id,
-            troops: [
-              {
-                unitId: 'LEGIONNAIRE',
-                amount: 5,
-                tileId: sourceVillage.tileId,
-                source: sourceVillage.tileId,
-              },
-            ],
-          }),
-        ),
-      ).toThrow('Reinforcements can only be sent to allied villages');
     });
 
     test('scoutMode - should throw if non-scout units are sent with scoutMode', async () => {

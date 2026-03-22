@@ -72,7 +72,7 @@ export const getOccupiableOasisInRange = createController(
           LIMIT 1
           ),
 
-        -- aggregate oasis info (bonuses + occupying village)
+        -- aggregate oasis info (bonuses + occupying village + loyalty)
         oasis_agg AS (
           SELECT
             ot.id AS tile_id,
@@ -80,7 +80,8 @@ export const getOccupiableOasisInRange = createController(
             ot.y AS y,
             ot.oasis_graphics AS oasis_graphics,
             JSON_GROUP_ARRAY(o.bonus) AS bonuses_json,
-            MAX(o.village_id) AS occupying_village_id
+            MAX(o.village_id) AS occupying_village_id,
+            MAX(o.loyalty) AS loyalty
           FROM
             tiles ot
               JOIN src_village sv ON 1 = 1
@@ -90,7 +91,19 @@ export const getOccupiableOasisInRange = createController(
             AND ot.x BETWEEN sv.vx - $radius AND sv.vx + $radius
             AND ot.y BETWEEN sv.vy - $radius AND sv.vy + $radius
           GROUP BY ot.id
-          )
+          ),
+
+        -- check for pending release events
+        pending_releases AS (
+          SELECT
+            e.meta,
+            e.resolves_at
+          FROM
+            events e
+          WHERE
+            e.type = 'oasisRelease'
+            AND e.resolves_at > $now
+        )
 
       SELECT
         oa.tile_id,
@@ -99,19 +112,22 @@ export const getOccupiableOasisInRange = createController(
         oa.oasis_graphics,
         oa.bonuses_json,
         oa.occupying_village_id,
+        oa.loyalty,
         v2.name AS occupying_village_name,
         v2.slug AS occupying_village_slug,
         vt2.x AS occupying_village_coordinates_x,
         vt2.y AS occupying_village_coordinates_y,
         p.id AS occupying_player_id,
         p.name AS occupying_player_name,
-        p.slug AS occupying_player_slug
+        p.slug AS occupying_player_slug,
+        pr.resolves_at AS pending_release_at
       FROM
         oasis_agg oa
           CROSS JOIN src_village sv
           LEFT JOIN villages v2 ON v2.id = oa.occupying_village_id
           LEFT JOIN tiles vt2 ON vt2.id = v2.tile_id
           LEFT JOIN players p ON p.id = v2.player_id
+          LEFT JOIN pending_releases pr ON pr.meta->>'$.oasisTileId' = CAST(oa.tile_id AS TEXT)
       ORDER BY
         (ABS(oa.x - sv.vx) + ABS(oa.y - sv.vy)),
         oa.tile_id;
@@ -119,6 +135,7 @@ export const getOccupiableOasisInRange = createController(
     bind: {
       $village_id: villageId,
       $radius: 3,
+      $now: Date.now(),
     },
     schema: getOccupiableOasisInRangeSchema,
   });

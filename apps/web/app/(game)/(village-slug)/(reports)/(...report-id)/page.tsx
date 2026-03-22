@@ -163,12 +163,9 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                       0,
                     )}
                   />
-                  {combatData.crannyCapacity !== undefined &&
-                    combatData.crannyCapacity > 0 && (
-                      <Text className="text-sm text-muted-foreground">
-                        {t('Cranny protection')}: {combatData.crannyCapacity}
-                      </Text>
-                    )}
+                  <Text>
+                    {t('Cranny')}: {combatData.crannyCapacity ?? 0}
+                  </Text>
                 </>
               )}
             {report.type === 'scout-attack' &&
@@ -184,21 +181,19 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                 </>
               )}
           </div>
-          {report.type === 'scout-attack' &&
-            combatData.scoutMode === 'defence' &&
-            combatData.troops && (
-              <TroopTable
-                title={t('Spotted troops')}
-                villageName={combatData.defenderVillageName}
-                tribe={combatData.defenderTribe as Tribe}
-                unitIds={TRIBE_UNITS[combatData.defenderTribe as Tribe]}
-                units={toUnitCounts(
-                  combatData.defenderTribe as Tribe,
-                  combatData.troops,
-                )}
-                losses={toUnitCounts(combatData.defenderTribe as Tribe, [])}
-              />
-            )}
+          {report.type === 'scout-attack' && combatData.troops && (
+            <TroopTable
+              title={t('Spotted troops')}
+              villageName={combatData.defenderVillageName}
+              tribe={combatData.defenderTribe as Tribe}
+              unitIds={TRIBE_UNITS[combatData.defenderTribe as Tribe]}
+              units={toUnitCounts(
+                combatData.defenderTribe as Tribe,
+                combatData.troops,
+              )}
+              losses={toUnitCounts(combatData.defenderTribe as Tribe, [])}
+            />
+          )}
         </div>
       </>
     );
@@ -286,6 +281,20 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                 capacity={lootCapacity}
               />
             )}
+
+            {combatData.oasisLoyaltyDecrease !== undefined &&
+              combatData.oasisLoyaltyCurrent !== undefined && (
+                <div className="rounded-md border border-border bg-muted/10 p-4">
+                  <Text className="font-semibold">{t('Oasis Loyalty')}</Text>
+                  <Text>
+                    {t('Loyalty decreased by')}:{' '}
+                    {combatData.oasisLoyaltyDecrease}%
+                  </Text>
+                  <Text>
+                    {t('Current loyalty')}: {combatData.oasisLoyaltyCurrent}%
+                  </Text>
+                </div>
+              )}
           </div>
         )}
       </div>

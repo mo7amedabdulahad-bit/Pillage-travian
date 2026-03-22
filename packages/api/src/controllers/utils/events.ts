@@ -40,6 +40,7 @@ import {
   isHeroHealthRegenerationEvent,
   isHeroRevivalEvent,
   isOasisOccupationTroopMovementEvent,
+  isOasisReleaseEvent,
   isReturnTroopMovementEvent,
   isScheduledBuildingEvent,
   isTroopMovementEvent,
@@ -48,7 +49,6 @@ import {
   isUnitResearchEvent,
 } from '@pillage-first/utils/guards/event';
 import { calculateDistanceBetweenPoints } from '@pillage-first/utils/math';
-import { getReputationLevel } from '@pillage-first/utils/reputation';
 import { selectAllRelevantEffectsByIdQuery } from '../../utils/queries/effect-queries';
 import { selectAllVillageEventsByTypeQuery } from '../../utils/queries/event-queries';
 import { calculateVillageResourcesAt } from '../../utils/village';
@@ -56,14 +56,6 @@ import { apiEffectSchema } from '../../utils/zod/effect-schemas';
 import { eventSchema } from '../../utils/zod/event-schemas';
 import { removeTroops } from '../resolvers/utils/troops.ts';
 import { calculateAdventureDuration } from './adventures.ts';
-
-const alliedReputationLevels = new Set([
-  'player',
-  'friendly',
-  'respected',
-  'honored',
-  'ecstatic',
-]);
 
 const validateTroopMovementPayload = (
   database: DbFacade,
@@ -92,9 +84,17 @@ const validateTroopMovementPayload = (
     'troopMovementRaid',
   ]);
 
-  const targetVillage = villageTargetMovementTypes.has(event.type)
-    ? (database.selectObject({
-        sql: `
+  // Check if target is an oasis tile
+  const isTargetOasis = database.selectValue({
+    sql: 'SELECT EXISTS(SELECT 1 FROM oasis WHERE tile_id = $tile_id) AS is_oasis',
+    bind: { $tile_id: event.targetId },
+    schema: z.number(),
+  });
+
+  const targetVillage =
+    villageTargetMovementTypes.has(event.type) && !isTargetOasis
+      ? (database.selectObject({
+          sql: `
           SELECT
             v.id,
             v.player_id AS playerId,
@@ -108,49 +108,34 @@ const validateTroopMovementPayload = (
             AND fr.target_faction_id = p.faction_id
           WHERE v.id = $targetId;
         `,
-        bind: {
-          $targetId: event.targetId,
-          $playerId: village.playerId,
-        },
-        schema: z.strictObject({
-          id: z.number(),
-          playerId: z.number().nullable(),
-          faction: z.string().nullable(),
-          reputation: z.number().nullable(),
-        }),
-      }) ?? null)
-    : null;
+          bind: {
+            $targetId: event.targetId,
+            $playerId: village.playerId,
+          },
+          schema: z.strictObject({
+            id: z.number(),
+            playerId: z.number().nullable(),
+            faction: z.string().nullable(),
+            reputation: z.number().nullable(),
+          }),
+        }) ?? null)
+      : null;
 
-  if (villageTargetMovementTypes.has(event.type) && !targetVillage) {
+  if (
+    villageTargetMovementTypes.has(event.type) &&
+    !targetVillage &&
+    !isTargetOasis
+  ) {
     throw new Error('Target village not found');
   }
 
-  const isAlliedTarget =
-    targetVillage !== null &&
-    (targetVillage.playerId === village.playerId ||
-      alliedReputationLevels.has(getReputationLevel(targetVillage.reputation)));
-
-  if (event.type === 'troopMovementReinforcements' && !isAlliedTarget) {
-    throw new Error('Reinforcements can only be sent to allied villages');
-  }
+  // NOTE: Ally/reputation-based restrictions are handled at the game event/reputation layer, not here.
 
   if (
     event.scoutMode !== undefined &&
     troops.some((troop) => unitsMap.get(troop.unitId)?.tier !== 'scout')
   ) {
     throw new Error('Only scout units can be sent on scout missions');
-  }
-
-  if (
-    (event.type === 'troopMovementAttack' ||
-      event.type === 'troopMovementRaid') &&
-    isAlliedTarget
-  ) {
-    throw new Error('Attack and raid can only target enemy villages');
-  }
-
-  if (event.scoutMode !== undefined && isAlliedTarget) {
-    throw new Error('Scout missions can only target enemy villages');
   }
 
   if (
@@ -552,7 +537,26 @@ export const validateEventCreationPrerequisites = (
   }
 
   if (isOasisOccupationTroopMovementEvent(event)) {
-    const { villageId } = event;
+    const { villageId, troops } = event;
+
+    const heroInTroops = troops.some((t) => t.unitId === 'HERO');
+
+    // Hero is optional for oasis attacks - without hero, it's just combat with no loyalty reduction
+    if (heroInTroops) {
+      const heroHealth = database.selectValue({
+        sql: `
+          SELECT health
+          FROM heroes
+          WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id)
+        `,
+        bind: { $village_id: villageId },
+        schema: z.number().nullable(),
+      });
+
+      if (heroHealth == null || heroHealth <= 0) {
+        throw new Error('Hero must be alive to occupy an oasis');
+      }
+    }
 
     const { occupiedOases, occupiedOasisSlots } = database.selectObject({
       sql: `
@@ -592,6 +596,64 @@ export const validateEventCreationPrerequisites = (
 
     if (occupiedOases >= (occupiedOasisSlots ?? 0)) {
       throw new Error('No free oasis occupation slots available');
+    }
+
+    const targetTileId = event.targetId;
+    const sourceCoords = database.selectObject({
+      sql: `
+        SELECT t.x, t.y
+        FROM villages v
+        JOIN tiles t ON t.id = v.tile_id
+        WHERE v.id = $village_id
+      `,
+      bind: { $village_id: villageId },
+      schema: z.strictObject({ x: z.number(), y: z.number() }),
+    })!;
+
+    const targetOasisData = database.selectObject({
+      sql: `
+        SELECT o.tile_id, o.village_id AS owner_village_id, t.x, t.y
+        FROM oasis o
+        JOIN tiles t ON t.id = o.tile_id
+        WHERE o.tile_id = $tile_id
+      `,
+      bind: { $tile_id: targetTileId },
+      schema: z.strictObject({
+        tile_id: z.number(),
+        owner_village_id: z.number().nullable(),
+        x: z.number(),
+        y: z.number(),
+      }),
+    });
+
+    if (!targetOasisData) {
+      throw new Error('Target tile is not an oasis');
+    }
+
+    const distance =
+      Math.abs(targetOasisData.x - sourceCoords.x) +
+      Math.abs(targetOasisData.y - sourceCoords.y);
+    if (distance > 3) {
+      throw new Error('Oasis is too far away');
+    }
+
+    const sourceVillage = database.selectObject({
+      sql: 'SELECT player_id FROM villages WHERE id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.strictObject({ player_id: z.number() }),
+    })!;
+
+    const targetOwnerVillageId = targetOasisData.owner_village_id;
+    if (targetOwnerVillageId !== null) {
+      const targetOwnerPlayerId = database.selectValue({
+        sql: 'SELECT player_id FROM villages WHERE id = $village_id',
+        bind: { $village_id: targetOwnerVillageId },
+        schema: z.number().nullable(),
+      });
+
+      if (targetOwnerPlayerId === sourceVillage.player_id) {
+        throw new Error('You already occupy this oasis');
+      }
     }
   }
 };
@@ -891,23 +953,21 @@ export const getEventDuration = (
   }
 
   if (isReturnTroopMovementEvent(event)) {
-    const { originalMovementType, targetId, villageId, troops } = event;
+    const { originalMovementType, targetId, troops } = event;
 
     if (originalMovementType === 'adventure') {
       return calculateAdventureDuration(database, true);
     }
-
-    const { tile_id: sourceTileId } = database.selectObject({
-      sql: 'SELECT tile_id FROM villages WHERE id = $villageId;',
-      bind: { $villageId: villageId },
-      schema: z.object({ tile_id: z.number() }),
-    })!;
 
     const { tile_id: targetTileId } = database.selectObject({
       sql: 'SELECT tile_id FROM villages WHERE id = $targetId;',
       bind: { $targetId: targetId },
       schema: z.object({ tile_id: z.number() }),
     })!;
+
+    // For return events, troops are returning FROM where they currently are (stored in troops[0].tileId)
+    // This could be an oasis tile or a village tile
+    const sourceTileId = troops.length > 0 ? troops[0].tileId : targetTileId;
 
     const sourceCoords = database.selectObject({
       sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
@@ -1044,6 +1104,15 @@ export const getEventDuration = (
     })!;
 
     return calculateHealthRegenerationEventDuration(healthRegeneration, speed);
+  }
+
+  if (isOasisReleaseEvent(event)) {
+    const { speed } = database.selectObject({
+      sql: 'SELECT speed FROM servers LIMIT 1;',
+      schema: z.object({ speed: speedSchema }),
+    })!;
+
+    return Math.ceil((6 * 60 * 60 * 1000) / speed);
   }
 
   console.error('Missing duration calculation for event', event);

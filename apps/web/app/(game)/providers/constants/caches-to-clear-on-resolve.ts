@@ -110,4 +110,10 @@ export const cachesToClearOnResolve: Handlers = {
   heroHealthRegeneration: () => {
     return [heroCacheKey];
   },
+  oasisLoyaltyRegeneration: () => {
+    return [];
+  },
+  oasisRelease: () => {
+    return [villageListing, effectsCacheKey, playerVillagesCacheKey];
+  },
 };

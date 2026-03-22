@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { resolveCombat } from '@pillage-first/game-assets/combat/combat-engine';
 import { newVillageUnitResearchFactory } from '@pillage-first/game-assets/factories/unit-research';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { newVillageQuestsFactory } from '@pillage-first/game-assets/quests';
@@ -13,10 +14,11 @@ import {
   updateVillageResourcesAt,
 } from '../../utils/village.ts';
 import { createEvents } from '../utils/create-event';
+import { getAttackerTroopsWithSmithy } from './utils/combat';
 import { resolveTroopMovementCombat } from './utils/combat-resolver.ts';
 import { onHeroDeath } from './utils/hero.ts';
 import { assessAdventureCountQuestCompletion } from './utils/quests.ts';
-import { saveAdventureReport } from './utils/reports.ts';
+import { saveAdventureReport, saveCombatReport } from './utils/reports.ts';
 import { addTroops } from './utils/troops.ts';
 
 export const adventureMovementResolver: Resolver<
@@ -173,7 +175,310 @@ export const adventureMovementResolver: Resolver<
 
 export const oasisOccupationMovementResolver: Resolver<
   GameEvent<'troopMovementOasisOccupation'>
-> = (_database, _args) => {};
+> = (database, args) => {
+  const { villageId, targetId, resolvesAt, troops: attackerTroopsRaw } = args;
+
+  const oasisData = database.selectObject({
+    sql: `
+      SELECT
+        o.tile_id AS tileId,
+        o.village_id AS ownerVillageId,
+        o.loyalty,
+        v.player_id AS npcPlayerId
+      FROM oasis o
+      LEFT JOIN villages v ON v.id = o.village_id
+      WHERE o.tile_id = $tile_id
+    `,
+    bind: { $tile_id: targetId },
+    schema: z.strictObject({
+      tileId: z.number(),
+      ownerVillageId: z.number().nullable(),
+      loyalty: z.number(),
+      npcPlayerId: z.number().nullable(),
+    }),
+  })!;
+
+  const attackerVillage = database.selectObject({
+    sql: `
+      SELECT
+        v.name AS villageName,
+        p.name AS playerName,
+        p.faction_id AS factionId,
+        ti.tribe AS tribe
+      FROM villages v
+      JOIN players p ON v.player_id = p.id
+      JOIN tribe_ids ti ON p.tribe_id = ti.id
+      WHERE v.id = $id
+    `,
+    bind: { $id: villageId },
+    schema: z.strictObject({
+      villageName: z.string(),
+      playerName: z.string(),
+      factionId: z.number(),
+      tribe: z.string(),
+    }),
+  })!;
+
+  const heroInTroops = attackerTroopsRaw.some((t) => t.unitId === 'HERO');
+  const heroHealth = heroInTroops
+    ? database.selectValue({
+        sql: 'SELECT health FROM heroes WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id)',
+        bind: { $village_id: villageId },
+        schema: z.number().nullable(),
+      })
+    : 0;
+  const heroAlive = heroInTroops && heroHealth != null && heroHealth > 0;
+
+  const attackerTroops = getAttackerTroopsWithSmithy(
+    database,
+    villageId,
+    attackerTroopsRaw,
+  );
+
+  // Get defender troops (nature animals) - no smithy for nature
+  const defenderTroopsRaw = database.selectObjects({
+    sql: `
+      SELECT u.unit AS unitId, t.amount
+      FROM troops t
+      JOIN unit_ids u ON t.unit_id = u.id
+      WHERE t.tile_id = $tile_id AND t.amount > 0;
+    `,
+    bind: { $tile_id: targetId },
+    schema: z.strictObject({
+      unitId: z.string(),
+      amount: z.number(),
+    }),
+  });
+
+  const defenderTroops = defenderTroopsRaw.map((t) => ({
+    unitId: t.unitId as import('@pillage-first/types/models/unit').UnitId,
+    amount: t.amount,
+    smithyLevel: 0,
+  }));
+
+  const result = resolveCombat(
+    attackerTroops,
+    defenderTroops,
+    { wallType: null, wallLevel: 0, palaceLevel: 0 },
+    [0, 0, 0, 0],
+    false,
+  );
+
+  const attackerHeroSurvived = result.attackerSurvivors.some(
+    ({ unitId }) => unitId === 'HERO',
+  );
+  const attackerHeroDied = heroInTroops && !attackerHeroSurvived;
+
+  if (attackerHeroDied) {
+    database.exec({
+      sql: 'UPDATE heroes SET health = 0 WHERE player_id = (SELECT player_id FROM villages WHERE id = $villageId);',
+      bind: { $villageId: villageId },
+    });
+    onHeroDeath(database, resolvesAt);
+  }
+
+  // Remove all defender troops and replace with survivors
+  database.exec({
+    sql: 'DELETE FROM troops WHERE tile_id = $tileId',
+    bind: { $tileId: oasisData.tileId },
+  });
+
+  const totalDefenderInitial = defenderTroops.reduce(
+    (sum, t) => sum + t.amount,
+    0,
+  );
+  const totalDefenderLost = result.defenderLosses.reduce(
+    (sum, t) => sum + t.amount,
+    0,
+  );
+  const defenderLossRatio =
+    totalDefenderInitial > 0 ? totalDefenderLost / totalDefenderInitial : 0;
+
+  const survivingDefenderTroops = [];
+  for (const def of defenderTroopsRaw) {
+    const lost = Math.round(def.amount * defenderLossRatio);
+    const survived = def.amount - lost;
+    if (survived > 0) {
+      survivingDefenderTroops.push({
+        unitId: def.unitId as import('@pillage-first/types/models/unit').UnitId,
+        amount: survived,
+        tileId: oasisData.tileId,
+        source: oasisData.tileId,
+      });
+    }
+  }
+  if (survivingDefenderTroops.length > 0) {
+    addTroops(database, survivingDefenderTroops);
+  }
+
+  const totalDefenderRemaining = result.defenderSurvivors.reduce(
+    (sum, t) => sum + t.amount,
+    0,
+  );
+
+  // Send survivors home
+  if (result.attackerSurvivors.length > 0) {
+    const sourceTileId = database.selectValue({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.number(),
+    })!;
+
+    createEvents<'troopMovementReturn'>(database, {
+      villageId: villageId,
+      targetId: villageId,
+      startsAt: resolvesAt,
+      troops: result.attackerSurvivors.map((s) => ({
+        unitId: s.unitId,
+        amount: s.amount,
+        tileId: oasisData.tileId,
+        source: sourceTileId,
+      })),
+      type: 'troopMovementReturn',
+      originalMovementType: 'oasis-occupation',
+    });
+  }
+
+  // Calculate loyalty reduction if hero is alive and all defenders dead
+  let loyaltyDecrease: number | undefined;
+  let newLoyalty: number | undefined;
+
+  if (heroAlive && totalDefenderRemaining === 0) {
+    const isNpcOwned = oasisData.npcPlayerId !== null;
+
+    loyaltyDecrease = 20;
+    if (isNpcOwned) {
+      const npcOasisCount =
+        database.selectValue({
+          sql: 'SELECT COUNT(*) FROM oasis o JOIN villages v ON o.village_id = v.id WHERE v.player_id = $npcPlayerId',
+          bind: { $npcPlayerId: oasisData.npcPlayerId },
+          schema: z.number(),
+        }) ?? 0;
+
+      if (npcOasisCount >= 3) {
+        loyaltyDecrease = 30;
+      } else if (npcOasisCount === 2) {
+        loyaltyDecrease = 25;
+      }
+    }
+
+    newLoyalty = Math.max(0, oasisData.loyalty - loyaltyDecrease);
+
+    database.exec({
+      sql: 'UPDATE oasis SET loyalty = $loyalty WHERE tile_id = $tile_id',
+      bind: { $loyalty: newLoyalty, $tile_id: targetId },
+    });
+  }
+
+  // Save combat report
+  // Use null for defender faction since Nature has no faction (not 0, which would violate FK)
+  const reportData = {
+    ...result,
+    attackerVillageName: attackerVillage.villageName,
+    defenderVillageName: 'Oasis',
+    attackerPlayerName: attackerVillage.playerName,
+    defenderPlayerName: 'Nature',
+    attackerTribe: attackerVillage.tribe,
+    defenderTribe: 'nature',
+    initialAttackerTroops: attackerTroopsRaw,
+    initialDefenderTroops: defenderTroopsRaw.map((d) => ({
+      unitId: d.unitId,
+      amount: d.amount,
+    })),
+    isRaid: false,
+    oasisLoyaltyDecrease: loyaltyDecrease,
+    oasisLoyaltyCurrent: newLoyalty,
+  };
+
+  saveCombatReport(
+    database,
+    reportData,
+    villageId,
+    targetId,
+    resolvesAt,
+    attackerVillage.factionId,
+    null,
+  );
+
+  // Skip occupation logic if hero not alive or defenders remain
+  if (!heroAlive || totalDefenderRemaining > 0) {
+    return;
+  }
+
+  // Check for free oasis slots
+  const occupiedOases =
+    database.selectValue({
+      sql: 'SELECT COUNT(*) FROM oasis WHERE village_id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    }) ?? 0;
+
+  const occupiedOasisSlots =
+    database.selectValue({
+      sql: `
+      SELECT CASE
+        WHEN bf.level >= 20 THEN 3
+        WHEN bf.level >= 15 THEN 2
+        WHEN bf.level >= 10 THEN 1
+        ELSE 0
+      END
+      FROM building_fields bf
+      JOIN building_ids bi ON bi.id = bf.building_id
+      WHERE bf.village_id = $village_id AND bi.building = 'HEROS_MANSION'
+      LIMIT 1
+    `,
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    }) ?? 0;
+
+  if (newLoyalty! <= 0 && occupiedOases < occupiedOasisSlots) {
+    // Remove old owner's effects if any
+    if (oasisData.ownerVillageId) {
+      database.exec({
+        sql: 'DELETE FROM effects WHERE source = $source AND village_id = $village_id AND source_specifier = $source_specifier',
+        bind: {
+          $source: 'oasis',
+          $village_id: oasisData.ownerVillageId,
+          $source_specifier: targetId,
+        },
+      });
+    }
+
+    // Assign oasis to attacker
+    database.exec({
+      sql: 'UPDATE oasis SET village_id = $village_id, loyalty = 100 WHERE tile_id = $tile_id',
+      bind: { $village_id: villageId, $tile_id: targetId },
+    });
+
+    // Add production bonuses
+    const oasisBonuses = database.selectObjects({
+      sql: 'SELECT resource, bonus FROM oasis WHERE tile_id = $tile_id',
+      bind: { $tile_id: targetId },
+      schema: z.object({ resource: z.string(), bonus: z.number() }),
+    });
+
+    for (const { resource, bonus } of oasisBonuses) {
+      const effectId = `${resource}Production`;
+      const value = bonus === 25 ? 1.25 : 1.5;
+
+      database.exec({
+        sql: `
+          INSERT INTO effects (effect_id, value, type, scope, source, village_id, source_specifier)
+          VALUES ((SELECT id FROM effect_ids WHERE effect = $effect_id), $value, $type, $scope, $source, $village_id, $source_specifier)
+        `,
+        bind: {
+          $effect_id: effectId,
+          $value: value,
+          $type: 'bonus',
+          $scope: 'village',
+          $source: 'oasis',
+          $village_id: villageId,
+          $source_specifier: targetId,
+        },
+      });
+    }
+  }
+};
 
 export const findNewVillageMovementResolver: Resolver<
   GameEvent<'troopMovementFindNewVillage'>

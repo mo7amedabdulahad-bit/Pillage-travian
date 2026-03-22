@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { CombatResult } from '@pillage-first/game-assets/combat/combat-engine';
 import type { ScoutMode } from '@pillage-first/types/models/game-event';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
@@ -12,6 +13,9 @@ export type CombatReportData = CombatResult & {
   initialAttackerTroops: { unitId: string; amount: number }[];
   initialDefenderTroops: { unitId: string; amount: number }[];
   isRaid: boolean;
+  // Oasis occupation specific fields
+  oasisLoyaltyDecrease?: number;
+  oasisLoyaltyCurrent?: number;
 };
 
 export type AdventureReportData = {
@@ -55,37 +59,74 @@ export const saveCombatReport = (
   targetVillageId: number,
   timestamp: number,
   attackerFactionId: number,
-  defenderFactionId: number,
+  defenderFactionId: number | null,
 ): void => {
   const serializedData = JSON.stringify(data);
 
-  database.exec({
-    sql: `
-      INSERT INTO reports (
-        type,
-        village_id,
-        target_village_id,
-        timestamp,
-        attacker_faction_id,
-        defender_faction_id,
-        data,
-        is_read
-      )
-      VALUES
-        ($attackerType, $attackerVillageId, $defenderVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0),
-        ($defenderType, $defenderVillageId, $attackerVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0);
-    `,
-    bind: {
-      $attackerType: data.isRaid ? 'raid' : 'attack',
-      $defenderType: 'defence',
-      $attackerVillageId: villageId,
-      $defenderVillageId: targetVillageId,
-      $timestamp: timestamp,
-      $attackerFactionId: attackerFactionId,
-      $defenderFactionId: defenderFactionId,
-      $data: serializedData,
-    },
-  });
+  // Check if target is a village (for oasis attacks, targetVillageId is the oasis tile ID)
+  const isTargetVillage = database.selectValue({
+    sql: 'SELECT COUNT(*) FROM villages WHERE id = $id',
+    bind: { $id: targetVillageId },
+    schema: z.number(),
+  })!;
+
+  if (isTargetVillage) {
+    // Both attacker and defender reports for village vs village
+    database.exec({
+      sql: `
+        INSERT INTO reports (
+          type,
+          village_id,
+          target_village_id,
+          timestamp,
+          attacker_faction_id,
+          defender_faction_id,
+          data,
+          is_read
+        )
+        VALUES
+          ($attackerType, $attackerVillageId, $defenderVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0),
+          ($defenderType, $defenderVillageId, $attackerVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0);
+      `,
+      bind: {
+        $attackerType: data.isRaid ? 'raid' : 'attack',
+        $defenderType: 'defence',
+        $attackerVillageId: villageId,
+        $defenderVillageId: targetVillageId,
+        $timestamp: timestamp,
+        $attackerFactionId: attackerFactionId,
+        $defenderFactionId: defenderFactionId,
+        $data: serializedData,
+      },
+    });
+  } else {
+    // Oasis attack - only attacker report
+    database.exec({
+      sql: `
+        INSERT INTO reports (
+          type,
+          village_id,
+          target_village_id,
+          timestamp,
+          attacker_faction_id,
+          defender_faction_id,
+          data,
+          is_read
+        )
+        VALUES
+          ($attackerType, $attackerVillageId, $defenderVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0);
+      `,
+      bind: {
+        $attackerType: data.isRaid ? 'raid' : 'attack',
+        $attackerVillageId: villageId,
+        $defenderVillageId: targetVillageId,
+        $timestamp: timestamp,
+        $attackerFactionId: attackerFactionId,
+        $defenderFactionId: defenderFactionId,
+        $data: serializedData,
+      },
+    });
+  }
 };
 
 export const saveAdventureReport = (

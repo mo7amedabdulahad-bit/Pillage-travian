@@ -19,7 +19,14 @@ export const oasisSeeder = (database: DbFacade, server: Server): void => {
     }),
   });
 
-  const oasisBonuses: [number, Resource, number, null][] = [];
+  const oasisBonuses: [
+    number,
+    Resource,
+    number,
+    null | number,
+    number,
+    null,
+  ][] = [];
 
   for (const { id, oasis_graphics } of oasisTiles) {
     const { oasisResource } = decodeGraphicsProperty(oasis_graphics);
@@ -27,13 +34,13 @@ export const oasisSeeder = (database: DbFacade, server: Server): void => {
     const shouldHaveDoubleBonus = seededRandomIntFromInterval(prng, 1, 2) === 1;
 
     if (shouldHaveDoubleBonus) {
-      oasisBonuses.push([id, oasisResource, 50, null]);
+      oasisBonuses.push([id, oasisResource, 50, null, 100, null]);
 
       continue;
     }
 
     // If oasis does not have 50% bonus, push 25% bonus instead.
-    oasisBonuses.push([id, oasisResource, 25, null]);
+    oasisBonuses.push([id, oasisResource, 25, null, 100, null]);
 
     // If oasis is wheat, it can't have any other resource bonus
     if (oasisResource === 'wheat') {
@@ -47,13 +54,20 @@ export const oasisSeeder = (database: DbFacade, server: Server): void => {
       continue;
     }
 
-    oasisBonuses.push([id, 'wheat', 25, null]);
+    oasisBonuses.push([id, 'wheat', 25, null, 100, null]);
   }
 
   batchInsert(
     database,
     'oasis',
-    ['tile_id', 'resource', 'bonus', 'village_id'],
+    [
+      'tile_id',
+      'resource',
+      'bonus',
+      'village_id',
+      'loyalty',
+      'animal_spawned_at',
+    ],
     oasisBonuses,
   );
 };

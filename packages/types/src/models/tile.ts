@@ -69,6 +69,7 @@ const occupiedOasisTileSchema = baseOasisTileSchema
   .extend({
     owner: playerSchema,
     ownerVillage: tileVillageSchema,
+    loyalty: z.number(),
   })
   .meta({ id: 'OccupiedOasisTile' });
 

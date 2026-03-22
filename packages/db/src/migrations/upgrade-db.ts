@@ -66,4 +66,22 @@ export const upgradeDb = (database: DbFacade): void => {
   } catch (_e) {
     // Column might already exist, SQLite doesn't have ADD COLUMN IF NOT EXISTS
   }
+
+  // oasis loyalty column
+  try {
+    database.exec({
+      sql: 'ALTER TABLE oasis ADD COLUMN loyalty INTEGER NOT NULL DEFAULT 100;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  // oasis animal_spawned_at column
+  try {
+    database.exec({
+      sql: 'ALTER TABLE oasis ADD COLUMN animal_spawned_at INTEGER;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
 };

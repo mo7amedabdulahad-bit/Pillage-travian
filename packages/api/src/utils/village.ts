@@ -116,7 +116,7 @@ export const calculateVillageResourcesAt = (
     villageId,
   );
 
-  const { wood, clay, iron, wheat, last_updated_at } = database.selectObject({
+  const resources = database.selectObject({
     sql: `
       SELECT
         rs.updated_at AS last_updated_at,
@@ -135,7 +135,13 @@ export const calculateVillageResourcesAt = (
     `,
     bind: { $village_id: villageId },
     schema: currentResourcesSchema,
-  })!;
+  });
+
+  if (!resources) {
+    throw new Error(`Village ${villageId} not found or has no resource data`);
+  }
+
+  const { wood, clay, iron, wheat, last_updated_at } = resources;
 
   const {
     currentAmount: currentWood,

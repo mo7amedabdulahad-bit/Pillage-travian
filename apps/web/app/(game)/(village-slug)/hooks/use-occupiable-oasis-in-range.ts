@@ -1,4 +1,8 @@
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query';
 import { use } from 'react';
 import { z } from 'zod';
 import { coordinatesSchema } from '@pillage-first/types/models/coordinates';
@@ -22,6 +26,7 @@ const getOccupiableOasisInRangeSchema = z.strictObject({
         bonus: z.number(),
       }),
     ),
+    loyalty: z.number(),
   }),
   village: z
     .object({
@@ -38,6 +43,7 @@ const getOccupiableOasisInRangeSchema = z.strictObject({
       slug: z.string(),
     })
     .nullable(),
+  pendingReleaseAt: z.number().nullable(),
 });
 
 const occupiableOasisInRangeCacheKey = 'occupiable-oasis-in-range';
@@ -45,6 +51,7 @@ const occupiableOasisInRangeCacheKey = 'occupiable-oasis-in-range';
 export const useOccupiableOasisInRange = () => {
   const { fetcher } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
+  const queryClient = useQueryClient();
 
   const { data: occupiableOasisInRange } = useSuspenseQuery({
     queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id],
@@ -63,35 +70,21 @@ export const useOccupiableOasisInRange = () => {
         method: 'DELETE',
       });
     },
-    onSuccess: async (_data, _vars, _onMutateResult, context) => {
-      await context.client.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
         queryKey: [occupiableOasisInRangeCacheKey],
       });
-      await context.client.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: [effectsCacheKey],
       });
     },
-  });
-
-  const { mutate: occupyOasis } = useMutation<void, Error, AbandonOasisArgs>({
-    mutationFn: async ({ oasisId }) => {
-      await fetcher(`/villages/${currentVillage.id}/oasis/${oasisId}`, {
-        method: 'POST',
-      });
-    },
-    onSuccess: async (_data, _vars, _onMutateResult, context) => {
-      await context.client.invalidateQueries({
-        queryKey: [occupiableOasisInRangeCacheKey],
-      });
-      await context.client.invalidateQueries({
-        queryKey: [effectsCacheKey],
-      });
+    onError: (error) => {
+      alert(`Failed to release oasis: ${error.message}`);
     },
   });
 
   return {
     occupiableOasisInRange,
     abandonOasis,
-    occupyOasis,
   };
 };

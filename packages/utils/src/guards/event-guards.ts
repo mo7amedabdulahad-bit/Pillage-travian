@@ -146,3 +146,9 @@ export const isHeroHealthRegenerationEvent = (
 ): event is GameEvent<'heroHealthRegeneration'> => {
   return event.type === 'heroHealthRegeneration';
 };
+
+export const isOasisReleaseEvent = (
+  event: GameEvent,
+): event is GameEvent<'oasisRelease'> => {
+  return event.type === 'oasisRelease';
+};

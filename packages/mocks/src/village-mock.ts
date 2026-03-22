@@ -17,6 +17,7 @@ export const villageMock: Village = {
   buildingFields: [...resourceFields4446Mock, ...newVillageBuildingFieldsMock],
   resourceFieldComposition: '4446',
   playerId,
+  loyalty: 100,
   lastUpdatedAt: Date.now(),
   resources: {
     wood: 750,

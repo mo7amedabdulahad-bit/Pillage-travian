@@ -96,6 +96,7 @@ export const getOccupiableOasisInRangeSchema = z
     bonuses_json: z.string(),
     oasis_graphics: z.number(),
     occupying_village_id: z.number().nullable(),
+    loyalty: z.number(),
     occupying_village_coordinates_x: z.number().nullable(),
     occupying_village_coordinates_y: z.number().nullable(),
     occupying_village_name: z.string().nullable(),
@@ -103,6 +104,7 @@ export const getOccupiableOasisInRangeSchema = z
     occupying_player_id: z.number().nullable(),
     occupying_player_name: z.string().nullable(),
     occupying_player_slug: z.string().nullable(),
+    pending_release_at: z.number().nullable(),
   })
   .transform((t) => {
     const { oasisResource } = decodeGraphicsProperty(t.oasis_graphics);
@@ -135,6 +137,7 @@ export const getOccupiableOasisInRangeSchema = z
           y: t.tile_coordinates_y,
         },
         bonuses,
+        loyalty: t.loyalty,
       },
       player:
         t.occupying_player_id === null
@@ -156,6 +159,7 @@ export const getOccupiableOasisInRangeSchema = z
               name: t.occupying_village_name,
               slug: t.occupying_village_slug,
             },
+      pendingReleaseAt: t.pending_release_at,
     };
   })
   .pipe(
@@ -172,6 +176,7 @@ export const getOccupiableOasisInRangeSchema = z
             bonus: z.number(),
           }),
         ),
+        loyalty: z.number(),
       }),
       player: z
         .object({
@@ -191,6 +196,7 @@ export const getOccupiableOasisInRangeSchema = z
           slug: z.string().nullable(),
         })
         .nullable(),
+      pendingReleaseAt: z.number().nullable(),
     }),
   )
   .meta({ id: 'GetOccupiableOasisInRange' });

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { Tribe } from '@pillage-first/types/models/tribe';
+import { HeroIcon } from 'app/components/hero-icon';
 import { TroopIcon } from 'app/components/troop-icon';
 import {
   Table,
@@ -17,6 +18,27 @@ type TroopTableProps = {
   losses: number[];
   title: string;
   villageName: string;
+};
+
+const TroopOrHeroIcon = ({
+  tribe,
+  unitId,
+  size = 'small',
+}: {
+  tribe: Tribe;
+  unitId: string;
+  size?: 'small' | 'medium';
+}) => {
+  if (unitId === 'HERO') {
+    return <HeroIcon size={size} />;
+  }
+  return (
+    <TroopIcon
+      tribe={tribe}
+      unitId={unitId}
+      size={size}
+    />
+  );
 };
 
 export const TroopTable = ({
@@ -47,7 +69,7 @@ export const TroopTable = ({
                 className="p-1"
               >
                 <div className="flex justify-center">
-                  <TroopIcon
+                  <TroopOrHeroIcon
                     tribe={tribe}
                     unitId={id}
                     size="small"
