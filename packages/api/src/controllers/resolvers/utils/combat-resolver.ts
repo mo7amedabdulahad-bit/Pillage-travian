@@ -219,9 +219,9 @@ const resolveScoutMovement = (
       FROM villages v
       JOIN players p ON p.id = v.player_id
       JOIN tribe_ids ti ON ti.id = p.tribe_id
-      WHERE v.id = $villageId
+      WHERE v.id = $targetVillageId
     `,
-    bind: { $villageId: targetId },
+    bind: { $targetVillageId: targetId },
     schema: z.strictObject({
       tileId: z.number(),
       villageName: z.string(),
@@ -352,13 +352,13 @@ const resolveScoutMovement = (
       SELECT b.building AS buildingId, bf.level
       FROM building_fields bf
       JOIN building_ids b ON b.id = bf.building_id
-      WHERE bf.village_id = $villageId
+      WHERE bf.village_id = $targetVillageId
         AND b.building IN (
           'ROMAN_WALL', 'GAUL_WALL', 'TEUTONIC_WALL', 'EGYPTIAN_WALL', 'HUN_WALL', 'SPARTAN_WALL', 'NATAR_WALL', 'NATURE_WALL',
           'RESIDENCE', 'COMMAND_CENTER'
         )
     `,
-    bind: { $villageId: targetId },
+    bind: { $targetVillageId: targetId },
     schema: z.strictObject({
       buildingId: z.string(),
       level: z.number(),
