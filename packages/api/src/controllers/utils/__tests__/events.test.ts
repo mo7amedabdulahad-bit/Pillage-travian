@@ -1141,10 +1141,24 @@ describe('events utils', () => {
         sql: 'UPDATE tiles SET x = 3, y = 4 WHERE id = (SELECT tile_id FROM villages WHERE id = 2)',
       });
 
+      // Get the tile ID for village 2 (where troops are currently located)
+      const village2TileId = database.selectValue({
+        sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+        bind: { $villageId: targetVillageId },
+        schema: z.number(),
+      })!;
+
       const event = createGameEventMock('troopMovementReturn', {
         villageId: targetVillageId, // Currently at target, returning home
         targetId: villageId, // Returning to source
-        troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, source: 1 }],
+        troops: [
+          {
+            unitId: 'LEGIONNAIRE',
+            amount: 10,
+            tileId: village2TileId,
+            source: 1,
+          },
+        ],
         originalMovementType: 'attack',
       });
 

@@ -599,16 +599,6 @@ export const validateEventCreationPrerequisites = (
     }
 
     const targetTileId = event.targetId;
-    const sourceCoords = database.selectObject({
-      sql: `
-        SELECT t.x, t.y
-        FROM villages v
-        JOIN tiles t ON t.id = v.tile_id
-        WHERE v.id = $village_id
-      `,
-      bind: { $village_id: villageId },
-      schema: z.strictObject({ x: z.number(), y: z.number() }),
-    })!;
 
     const targetOasisData = database.selectObject({
       sql: `
@@ -628,13 +618,6 @@ export const validateEventCreationPrerequisites = (
 
     if (!targetOasisData) {
       throw new Error('Target tile is not an oasis');
-    }
-
-    const distance =
-      Math.abs(targetOasisData.x - sourceCoords.x) +
-      Math.abs(targetOasisData.y - sourceCoords.y);
-    if (distance > 3) {
-      throw new Error('Oasis is too far away');
     }
 
     const sourceVillage = database.selectObject({
