@@ -1032,27 +1032,23 @@ export const resolveTroopMovementCombat = (
 
   // 9. Attacker return movement
   if (result.attackerSurvivors.length > 0) {
+    // Extract sourceTileId once before the map to avoid redundant DB queries
+    const sourceTileId = database.selectValue({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.number(),
+    })!;
+
     createEvents<'troopMovementReturn'>(database, {
       villageId: targetId,
       targetId: villageId,
       startsAt: resolvesAt,
-      troops: result.attackerSurvivors.map((s) => {
-        // Find original source tile for each unit?
-        // Actually, troopMovementAttack already has a source defined in the event context?
-        // No, it just has the troops. We assume they all come from villageId.
-        const sourceTileId = database.selectValue({
-          sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
-          bind: { $villageId: villageId },
-          schema: z.number(),
-        })!;
-
-        return {
-          unitId: s.unitId,
-          amount: s.amount,
-          tileId: targetVillage.tileId, // Currently at target
-          source: sourceTileId, // Heading back to source
-        };
-      }),
+      troops: result.attackerSurvivors.map((s) => ({
+        unitId: s.unitId,
+        amount: s.amount,
+        tileId: targetVillage.tileId, // Currently at target
+        source: sourceTileId, // Heading back to source
+      })),
       type: 'troopMovementReturn',
       originalMovementType: isRaid ? 'raid' : 'attack',
       loot: result.loot,
