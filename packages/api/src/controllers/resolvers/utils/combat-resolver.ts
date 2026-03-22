@@ -655,9 +655,10 @@ const resolveOasisCombat = (
     loyaltyDecrease = 20;
 
     if (isNpcOwned) {
+      // Count distinct tiles, not rows (each oasis tile can have multiple resource bonus rows)
       const npcOasisCount =
         database.selectValue({
-          sql: 'SELECT COUNT(*) FROM oasis o JOIN villages v ON o.village_id = v.id WHERE v.player_id = $npcPlayerId',
+          sql: 'SELECT COUNT(DISTINCT o.tile_id) FROM oasis o JOIN villages v ON o.village_id = v.id WHERE v.player_id = $npcPlayerId',
           bind: { $npcPlayerId: oasisData.npcPlayerId },
           schema: z.number(),
         }) ?? 0;
@@ -712,9 +713,10 @@ const resolveOasisCombat = (
   }
 
   // Check for free oasis slots
+  // Count distinct tiles, not rows (each oasis tile can have multiple resource bonus rows)
   const occupiedOases =
     database.selectValue({
-      sql: 'SELECT COUNT(*) FROM oasis WHERE village_id = $village_id',
+      sql: 'SELECT COUNT(DISTINCT tile_id) FROM oasis WHERE village_id = $village_id',
       bind: { $village_id: villageId },
       schema: z.number(),
     }) ?? 0;

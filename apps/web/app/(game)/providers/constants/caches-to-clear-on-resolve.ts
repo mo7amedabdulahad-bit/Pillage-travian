@@ -77,14 +77,6 @@ export const cachesToClearOnResolve: Handlers = {
       reportsCacheKey,
     ];
   },
-  troopMovementOasisOccupation: () => {
-    return [
-      heroCacheKey,
-      villageListing,
-      effectsCacheKey,
-      playerVillagesCacheKey,
-    ];
-  },
   troopMovementAdventure: () => {
     return [
       heroCacheKey,

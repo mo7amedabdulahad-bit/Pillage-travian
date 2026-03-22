@@ -6,7 +6,6 @@ import {
   isAdventureTroopMovementEvent,
   isAttackTroopMovementEvent,
   isFindNewVillageTroopMovementEvent,
-  isOasisOccupationTroopMovementEvent,
   isRaidTroopMovementEvent,
   isReinforcementsTroopMovementEvent,
   isRelocationTroopMovementEvent,
@@ -98,24 +97,21 @@ const partitionTroopMovementEvents = (
       target.push(event);
       continue;
     }
-    if (isAttackTroopMovementEvent(event) || isRaidTroopMovementEvent(event)) {
-      const target =
-        currentVillageId === event.targetId
-          ? incomingOffensiveMovementEvents
-          : outgoingOffensiveMovementEvents;
-      target.push(event);
-      continue;
-    }
+    // Check scout first because scout events are also attack/raid events with scoutMode
     if (isScoutTroopMovementEvent(event)) {
       const target =
-        currentVillageId === event.targetId
+        currentVillageId === (event as TroopMovementEvent).targetId
           ? incomingOffensiveMovementEvents
           : outgoingOffensiveMovementEvents;
       target.push(event);
       continue;
     }
-    if (isOasisOccupationTroopMovementEvent(event)) {
-      outgoingOffensiveMovementEvents.push(event);
+    if (isAttackTroopMovementEvent(event) || isRaidTroopMovementEvent(event)) {
+      const target =
+        currentVillageId === (event as TroopMovementEvent).targetId
+          ? incomingOffensiveMovementEvents
+          : outgoingOffensiveMovementEvents;
+      target.push(event);
     }
   }
 
