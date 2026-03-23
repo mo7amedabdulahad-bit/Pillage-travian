@@ -3,7 +3,7 @@ import type { CombatResult } from '@pillage-first/game-assets/combat/combat-engi
 import type { ScoutMode } from '@pillage-first/types/models/game-event';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 
-export type CombatReportData = CombatResult & {
+export type CombatReportData = Omit<CombatResult, 'loot'> & {
   attackerVillageName: string;
   defenderVillageName: string;
   attackerPlayerName: string;
@@ -13,6 +13,7 @@ export type CombatReportData = CombatResult & {
   initialAttackerTroops: { unitId: string; amount: number }[];
   initialDefenderTroops: { unitId: string; amount: number }[];
   isRaid: boolean;
+  loot?: [number, number, number, number];
   // Oasis occupation specific fields
   oasisLoyaltyDecrease?: number;
   oasisLoyaltyCurrent?: number;

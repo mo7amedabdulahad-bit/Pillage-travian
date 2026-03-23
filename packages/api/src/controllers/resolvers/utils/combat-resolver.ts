@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { resolveCombat } from '@pillage-first/game-assets/combat/combat-engine';
+import {
+  calculateLoot,
+  calculateTotalCarryCapacity,
+  resolveCombat,
+} from '@pillage-first/game-assets/combat/combat-engine';
 import { unitsMap } from '@pillage-first/game-assets/units';
 import type {
   GameEvent,
@@ -468,8 +472,18 @@ const resolveScoutMovement = (
 /**
  * Single entry point for oasis combat — do not duplicate this logic.
  * Handles both attack and raid on oasis targets.
- * - Attack: Combat + loyalty reduction (if hero) + occupation (if loyalty = 0)
- * - Raid: Combat only, no loyalty reduction, no occupation
+ *
+ * ATTACK: Full battle to the death. Loyalty reduced ONLY if:
+ *   1. All defenders killed
+ *   2. Hero was sent AND survived
+ *   3. Free oasis slot exists in Hero's Mansion
+ *   Occupation happens when loyalty reaches 0.
+ *
+ * RAID: Hit-and-run. Only fights defenders encountered, loots resources,
+ *   never reduces loyalty, never occupies.
+ *
+ * LOOT: Both raids and attacks can steal resources from the oasis.
+ *   Steals up to 50% of available resources, capped by carry capacity.
  */
 const resolveOasisCombat = (
   database: DbFacade,
@@ -484,7 +498,7 @@ const resolveOasisCombat = (
   }[],
   isRaid: boolean,
 ): void => {
-  // Get oasis data
+  // ─── 1. Fetch oasis and attacker data ───
   const oasisData = database.selectObject({
     sql: `
       SELECT
@@ -505,7 +519,6 @@ const resolveOasisCombat = (
     }),
   })!;
 
-  // Get attacker village info
   const attackerVillage = database.selectObject({
     sql: `
       SELECT
@@ -543,7 +556,7 @@ const resolveOasisCombat = (
     attackerTroopsRaw,
   );
 
-  // Get defender troops (nature animals)
+  // ─── 2. Get defender troops (nature animals) ───
   const defenderTroopsRaw = database.selectObjects({
     sql: `
       SELECT u.unit AS unitId, t.amount
@@ -564,6 +577,7 @@ const resolveOasisCombat = (
     smithyLevel: 0,
   }));
 
+  // ─── 3. Resolve combat ───
   const result = resolveCombat(
     attackerTroops,
     defenderTroops,
@@ -584,7 +598,7 @@ const resolveOasisCombat = (
     onHeroDeath(database, resolvesAt);
   }
 
-  // Remove all defender troops and replace with survivors
+  // ─── 4. Update defender troops (replace with survivors) ───
   database.exec({
     sql: 'DELETE FROM troops WHERE tile_id = $tileId',
     bind: { $tileId: oasisData.tileId },
@@ -623,7 +637,58 @@ const resolveOasisCombat = (
     0,
   );
 
-  // Send survivors home
+  // ─── 5. Calculate loot (both raids and attacks) ───
+  let loot: [number, number, number, number] = [0, 0, 0, 0];
+
+  if (result.attackerSurvivors.length > 0) {
+    // Update oasis resources to current time
+    updateVillageResourcesAt(database, oasisTileId, resolvesAt);
+
+    // Fetch current oasis resources
+    const oasisResources = database.selectObject({
+      sql: `
+        SELECT wood, clay, iron, wheat
+        FROM resource_sites
+        WHERE tile_id = $tileId
+      `,
+      bind: { $tileId: oasisTileId },
+      schema: z.strictObject({
+        wood: z.number(),
+        clay: z.number(),
+        iron: z.number(),
+        wheat: z.number(),
+      }),
+    });
+
+    if (oasisResources) {
+      // Steal up to 50% of each resource
+      const availableLoot: [number, number, number, number] = [
+        Math.floor(oasisResources.wood * 0.5),
+        Math.floor(oasisResources.clay * 0.5),
+        Math.floor(oasisResources.iron * 0.5),
+        Math.floor(oasisResources.wheat * 0.5),
+      ];
+
+      // Calculate carry capacity of surviving troops
+      const carryCapacity = calculateTotalCarryCapacity(
+        result.attackerSurvivors.map((s) => ({
+          unitId: s.unitId as UnitId,
+          amount: s.amount,
+        })),
+      );
+
+      // Calculate actual loot capped by carry capacity
+      loot = calculateLoot(availableLoot, carryCapacity);
+
+      // Subtract looted resources from oasis
+      const totalLooted = loot.reduce((sum, v) => sum + v, 0);
+      if (totalLooted > 0) {
+        subtractVillageResourcesAt(database, oasisTileId, resolvesAt, loot);
+      }
+    }
+  }
+
+  // ─── 6. Send survivors home with loot ───
   if (result.attackerSurvivors.length > 0) {
     const sourceTileId = database.selectValue({
       sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
@@ -643,19 +708,51 @@ const resolveOasisCombat = (
       })),
       type: 'troopMovementReturn',
       originalMovementType: isRaid ? 'raid' : 'attack',
+      loot,
     });
   }
 
-  // Calculate loyalty reduction for ATTACKS with hero (not raids)
+  // ─── 7. Calculate oasis slot availability ───
+  const occupiedOases =
+    database.selectValue({
+      sql: 'SELECT COUNT(DISTINCT tile_id) FROM oasis WHERE village_id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    }) ?? 0;
+
+  const maxOasisSlots =
+    database.selectValue({
+      sql: `
+        SELECT CASE
+          WHEN bf.level >= 20 THEN 3
+          WHEN bf.level >= 15 THEN 2
+          WHEN bf.level >= 10 THEN 1
+          ELSE 0
+        END
+        FROM building_fields bf
+        JOIN building_ids bi ON bi.id = bf.building_id
+        WHERE bf.village_id = $village_id AND bi.building = 'HEROS_MANSION'
+        LIMIT 1
+      `,
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    }) ?? 0;
+
+  const freeOasisSlotsAvailable = maxOasisSlots - occupiedOases;
+
+  // ─── 8. Loyalty reduction: ONLY for attacks with hero, all defenders dead, free slot ───
   let loyaltyDecrease: number | undefined;
   let newLoyalty: number | undefined;
+  const attackerWon = totalDefenderRemaining === 0;
 
-  if (!isRaid && heroAlive && totalDefenderRemaining === 0) {
+  const canReduceLoyalty =
+    !isRaid && heroAlive && attackerWon && freeOasisSlotsAvailable > 0;
+
+  if (canReduceLoyalty) {
     const isNpcOwned = oasisData.npcPlayerId !== null;
-    loyaltyDecrease = 20;
+    loyaltyDecrease = 20; // default for unowned oasis
 
     if (isNpcOwned) {
-      // Count distinct tiles, not rows (each oasis tile can have multiple resource bonus rows)
       const npcOasisCount =
         database.selectValue({
           sql: 'SELECT COUNT(DISTINCT o.tile_id) FROM oasis o JOIN villages v ON o.village_id = v.id WHERE v.player_id = $npcPlayerId',
@@ -678,7 +775,8 @@ const resolveOasisCombat = (
     });
   }
 
-  // Save combat report
+  // ─── 9. Save combat report ───
+  const totalLooted = loot.reduce((sum, v) => sum + v, 0);
   const reportData = {
     ...result,
     attackerVillageName: attackerVillage.villageName,
@@ -693,6 +791,8 @@ const resolveOasisCombat = (
       amount: d.amount,
     })),
     isRaid,
+    // Use loot array if resources were stolen, otherwise use combat engine's result
+    loot: totalLooted > 0 ? loot : undefined,
     oasisLoyaltyDecrease: loyaltyDecrease,
     oasisLoyaltyCurrent: newLoyalty,
   };
@@ -707,84 +807,56 @@ const resolveOasisCombat = (
     null,
   );
 
-  // Try to occupy oasis if it's an attack (not raid), hero alive, and all defenders dead
-  if (isRaid || !heroAlive || totalDefenderRemaining > 0 || newLoyalty! > 0) {
+  // ─── 10. Occupation: only if attack, hero alive, all defenders dead, loyalty = 0, free slot ───
+  if (!canReduceLoyalty || newLoyalty! > 0) {
     return;
   }
 
-  // Check for free oasis slots
-  // Count distinct tiles, not rows (each oasis tile can have multiple resource bonus rows)
-  const occupiedOases =
-    database.selectValue({
-      sql: 'SELECT COUNT(DISTINCT tile_id) FROM oasis WHERE village_id = $village_id',
-      bind: { $village_id: villageId },
-      schema: z.number(),
-    }) ?? 0;
-
-  const occupiedOasisSlots =
-    database.selectValue({
-      sql: `
-        SELECT CASE
-          WHEN bf.level >= 20 THEN 3
-          WHEN bf.level >= 15 THEN 2
-          WHEN bf.level >= 10 THEN 1
-          ELSE 0
-        END
-        FROM building_fields bf
-        JOIN building_ids bi ON bi.id = bf.building_id
-        WHERE bf.village_id = $village_id AND bi.building = 'HEROS_MANSION'
-        LIMIT 1
-      `,
-      bind: { $village_id: villageId },
-      schema: z.number(),
-    }) ?? 0;
-
-  if (occupiedOases < occupiedOasisSlots) {
-    // Remove old owner's effects if any
-    if (oasisData.ownerVillageId) {
-      database.exec({
-        sql: 'DELETE FROM effects WHERE source = $source AND village_id = $village_id AND source_specifier = $source_specifier',
-        bind: {
-          $source: 'oasis',
-          $village_id: oasisData.ownerVillageId,
-          $source_specifier: oasisTileId,
-        },
-      });
-    }
-
-    // Assign oasis to attacker
+  // At this point: attack, hero alive, all defenders dead, loyalty = 0, free slot available
+  // Remove old owner's effects if any
+  if (oasisData.ownerVillageId) {
     database.exec({
-      sql: 'UPDATE oasis SET village_id = $village_id, loyalty = 100 WHERE tile_id = $tile_id',
-      bind: { $village_id: villageId, $tile_id: oasisTileId },
+      sql: 'DELETE FROM effects WHERE source = $source AND village_id = $village_id AND source_specifier = $source_specifier',
+      bind: {
+        $source: 'oasis',
+        $village_id: oasisData.ownerVillageId,
+        $source_specifier: oasisTileId,
+      },
     });
+  }
 
-    // Add production bonuses
-    const oasisBonuses = database.selectObjects({
-      sql: 'SELECT resource, bonus FROM oasis WHERE tile_id = $tile_id',
-      bind: { $tile_id: oasisTileId },
-      schema: z.object({ resource: z.string(), bonus: z.number() }),
+  // Assign oasis to attacker
+  database.exec({
+    sql: 'UPDATE oasis SET village_id = $village_id, loyalty = 100 WHERE tile_id = $tile_id',
+    bind: { $village_id: villageId, $tile_id: oasisTileId },
+  });
+
+  // Add production bonuses
+  const oasisBonuses = database.selectObjects({
+    sql: 'SELECT resource, bonus FROM oasis WHERE tile_id = $tile_id',
+    bind: { $tile_id: oasisTileId },
+    schema: z.object({ resource: z.string(), bonus: z.number() }),
+  });
+
+  for (const { resource, bonus } of oasisBonuses) {
+    const effectId = `${resource}Production`;
+    const value = bonus === 25 ? 1.25 : 1.5;
+
+    database.exec({
+      sql: `
+        INSERT INTO effects (effect_id, value, type, scope, source, village_id, source_specifier)
+        VALUES ((SELECT id FROM effect_ids WHERE effect = $effect_id), $value, $type, $scope, $source, $village_id, $source_specifier)
+      `,
+      bind: {
+        $effect_id: effectId,
+        $value: value,
+        $type: 'bonus',
+        $scope: 'village',
+        $source: 'oasis',
+        $village_id: villageId,
+        $source_specifier: oasisTileId,
+      },
     });
-
-    for (const { resource, bonus } of oasisBonuses) {
-      const effectId = `${resource}Production`;
-      const value = bonus === 25 ? 1.25 : 1.5;
-
-      database.exec({
-        sql: `
-          INSERT INTO effects (effect_id, value, type, scope, source, village_id, source_specifier)
-          VALUES ((SELECT id FROM effect_ids WHERE effect = $effect_id), $value, $type, $scope, $source, $village_id, $source_specifier)
-        `,
-        bind: {
-          $effect_id: effectId,
-          $value: value,
-          $type: 'bonus',
-          $scope: 'village',
-          $source: 'oasis',
-          $village_id: villageId,
-          $source_specifier: oasisTileId,
-        },
-      });
-    }
   }
 };
 
