@@ -127,7 +127,7 @@ export const getOccupiableOasisInRange = createController(
           LEFT JOIN villages v2 ON v2.id = oa.occupying_village_id
           LEFT JOIN tiles vt2 ON vt2.id = v2.tile_id
           LEFT JOIN players p ON p.id = v2.player_id
-          LEFT JOIN pending_releases pr ON pr.meta->>'$.oasisTileId' = CAST(oa.tile_id AS TEXT)
+          LEFT JOIN pending_releases pr ON JSON_EXTRACT(pr.meta, '$.oasisTileId') = oa.tile_id
       ORDER BY
         (ABS(oa.x - sv.vx) + ABS(oa.y - sv.vy)),
         oa.tile_id;
