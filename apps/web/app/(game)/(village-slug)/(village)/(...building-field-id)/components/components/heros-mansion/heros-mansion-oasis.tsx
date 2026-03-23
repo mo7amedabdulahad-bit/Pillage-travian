@@ -64,7 +64,8 @@ type OccupiedOasisSlotProps = {
 
 const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
   const { t } = useTranslation();
-  const { abandonOasis, cancelRelease } = useOccupiableOasisInRange();
+  const { abandonOasis, cancelRelease, isReleasing } =
+    useOccupiableOasisInRange();
 
   const { x, y } = occupiedOasis.oasis.coordinates;
   const { loyalty, bonuses } = occupiedOasis.oasis;
@@ -120,6 +121,7 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
               size="fit"
               variant="outline"
               onClick={() => cancelRelease({ oasisId: occupiedOasis.oasis.id })}
+              disabled={isReleasing}
             >
               {t('Cancel release')}
             </Button>
@@ -128,8 +130,9 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
           <Button
             size="fit"
             onClick={() => abandonOasis({ oasisId: occupiedOasis.oasis.id })}
+            disabled={isReleasing}
           >
-            {t('Release oasis')}
+            {isReleasing ? t('Processing...') : t('Release oasis')}
           </Button>
         )}
       </TableCell>

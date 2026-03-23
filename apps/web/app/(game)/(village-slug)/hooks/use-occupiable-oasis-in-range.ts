@@ -68,21 +68,27 @@ export const useOccupiableOasisInRange = () => {
     },
   });
 
-  const { mutate: abandonOasis } = useMutation<void, Error, AbandonOasisArgs>({
+  const { mutate: abandonOasis, isPending } = useMutation<
+    void,
+    Error,
+    AbandonOasisArgs
+  >({
     mutationFn: async ({ oasisId }) => {
       await fetcher(`/villages/${currentVillage.id}/oasis/${oasisId}`, {
         method: 'DELETE',
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: [occupiableOasisInRangeCacheKey],
+      // Invalidate the query to refetch the data
+      await queryClient.refetchQueries({
+        queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id],
       });
       await queryClient.invalidateQueries({
         queryKey: [effectsCacheKey],
       });
     },
     onError: (error) => {
+      console.error('Failed to release oasis:', error);
       alert(`Failed to release oasis: ${error.message}`);
     },
   });
@@ -98,11 +104,12 @@ export const useOccupiableOasisInRange = () => {
         );
       },
       onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: [occupiableOasisInRangeCacheKey],
+        await queryClient.refetchQueries({
+          queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id],
         });
       },
       onError: (error) => {
+        console.error('Failed to cancel release:', error);
         alert(`Failed to cancel release: ${error.message}`);
       },
     },
@@ -112,5 +119,6 @@ export const useOccupiableOasisInRange = () => {
     occupiableOasisInRange,
     abandonOasis,
     cancelRelease,
+    isReleasing: isPending,
   };
 };
