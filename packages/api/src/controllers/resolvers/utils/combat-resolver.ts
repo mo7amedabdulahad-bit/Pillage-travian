@@ -638,13 +638,11 @@ const resolveOasisCombat = (
   );
 
   // ─── 5. Calculate loot (both raids and attacks) ───
+  // Oases don't have villages, so we query resource_sites directly by tile_id
   let loot: [number, number, number, number] = [0, 0, 0, 0];
 
   if (result.attackerSurvivors.length > 0) {
-    // Update oasis resources to current time
-    updateVillageResourcesAt(database, oasisTileId, resolvesAt);
-
-    // Fetch current oasis resources
+    // Fetch current oasis resources directly from resource_sites
     const oasisResources = database.selectObject({
       sql: `
         SELECT wood, clay, iron, wheat
@@ -680,10 +678,28 @@ const resolveOasisCombat = (
       // Calculate actual loot capped by carry capacity
       loot = calculateLoot(availableLoot, carryCapacity);
 
-      // Subtract looted resources from oasis
+      // Subtract looted resources directly from oasis resource_sites
       const totalLooted = loot.reduce((sum, v) => sum + v, 0);
       if (totalLooted > 0) {
-        subtractVillageResourcesAt(database, oasisTileId, resolvesAt, loot);
+        database.exec({
+          sql: `
+            UPDATE resource_sites
+            SET wood = wood - $wood,
+                clay = clay - $clay,
+                iron = iron - $iron,
+                wheat = wheat - $wheat,
+                updated_at = $timestamp
+            WHERE tile_id = $tileId
+          `,
+          bind: {
+            $tileId: oasisTileId,
+            $wood: loot[0],
+            $clay: loot[1],
+            $iron: loot[2],
+            $wheat: loot[3],
+            $timestamp: resolvesAt,
+          },
+        });
       }
     }
   }
