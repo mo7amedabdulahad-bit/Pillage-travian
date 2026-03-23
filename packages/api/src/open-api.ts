@@ -656,6 +656,21 @@ export const paths = {
       },
     },
   },
+  '/developer-settings/:heroId/kill-hero': {
+    patch: {
+      summary: 'Kill the hero (set health to 0)',
+      requestParams: {
+        path: z.strictObject({
+          heroId: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '204': {
+          description: 'Hero killed',
+        },
+      },
+    },
+  },
   '/players/:playerId/farm-lists': {
     get: {
       summary: 'Get farm lists',

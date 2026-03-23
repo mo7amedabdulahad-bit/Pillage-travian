@@ -7,6 +7,7 @@ CREATE TABLE oasis
   bonus INTEGER NOT NULL,
   loyalty INTEGER NOT NULL DEFAULT 100,
   animal_spawned_at INTEGER,
+  loyalty_updated_at INTEGER,
 
   FOREIGN KEY (tile_id) REFERENCES tiles (id) ON DELETE CASCADE,
   FOREIGN KEY (village_id) REFERENCES villages (id) ON DELETE CASCADE

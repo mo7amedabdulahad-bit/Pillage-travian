@@ -4,8 +4,14 @@ import type { NatureUnitId } from '@pillage-first/types/models/unit';
 import type { Resolver } from '../../types/resolver';
 import { createEvents } from '../utils/create-event';
 
+// Oasis tick runs every 5 minutes (adjusted for server speed)
 const OASIS_TICK_INTERVAL_MS = 5 * 60 * 1000;
+
+// Animals respawn after 6 hours when all are cleared (adjusted for server speed)
 const ANIMAL_RESPAWN_BASE_MS = 6 * 60 * 60 * 1000;
+
+// Loyalty regenerates 1 point every 30 minutes at 1x speed
+const LOYALTY_REGEN_INTERVAL_MS = 30 * 60 * 1000;
 
 const oasisTroopCombinations: Record<string, [NatureUnitId, number, number][]> =
   {
@@ -43,14 +49,50 @@ export const oasisTickResolver: Resolver<
   })!;
 
   database.transaction((db) => {
-    db.exec({
+    // ─── Loyalty regeneration for ALL oases ───
+    // Regenerates 1 loyalty per 30 minutes at 1x speed (adjusted for server speed)
+    const regenInterval = LOYALTY_REGEN_INTERVAL_MS / serverSpeed;
+
+    const oasesNeedingRegen = db.selectObjects({
       sql: `
-        UPDATE oasis
-        SET loyalty = MIN(100, loyalty + 1)
-        WHERE village_id IS NOT NULL AND loyalty < 100;
+        SELECT
+          tile_id AS tileId,
+          loyalty,
+          COALESCE(loyalty_updated_at, $now) AS loyaltyUpdatedAt
+        FROM oasis
+        WHERE loyalty < 100
       `,
+      bind: { $now: resolvesAt },
+      schema: z.strictObject({
+        tileId: z.number(),
+        loyalty: z.number(),
+        loyaltyUpdatedAt: z.number(),
+      }),
     });
 
+    for (const oasis of oasesNeedingRegen) {
+      const elapsed = resolvesAt - oasis.loyaltyUpdatedAt;
+      const loyaltyToAdd = Math.floor(elapsed / regenInterval);
+
+      if (loyaltyToAdd > 0) {
+        const newLoyalty = Math.min(100, oasis.loyalty + loyaltyToAdd);
+        db.exec({
+          sql: `
+            UPDATE oasis
+            SET loyalty = $loyalty,
+                loyalty_updated_at = $now
+            WHERE tile_id = $tileId
+          `,
+          bind: {
+            $loyalty: newLoyalty,
+            $now: resolvesAt,
+            $tileId: oasis.tileId,
+          },
+        });
+      }
+    }
+
+    // ─── Animal respawn for unoccupied oases ───
     const unoccupiedOases = db.selectObjects({
       sql: `
         SELECT
@@ -181,7 +223,7 @@ export const oasisReleaseResolver: Resolver<GameEvent<'oasisRelease'>> = (
   database,
   args,
 ) => {
-  const { meta } = args;
+  const { meta, resolvesAt } = args;
   const { oasisTileId, villageId } = meta;
 
   database.exec({
@@ -200,12 +242,13 @@ export const oasisReleaseResolver: Resolver<GameEvent<'oasisRelease'>> = (
   database.exec({
     sql: `
       UPDATE oasis
-      SET village_id = NULL, loyalty = 100
+      SET village_id = NULL, loyalty = 100, loyalty_updated_at = $now
       WHERE tile_id = $tile_id AND village_id = $village_id;
     `,
     bind: {
       $tile_id: oasisTileId,
       $village_id: villageId,
+      $now: resolvesAt,
     },
   });
 };

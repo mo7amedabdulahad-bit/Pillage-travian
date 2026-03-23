@@ -786,8 +786,8 @@ const resolveOasisCombat = (
     newLoyalty = Math.max(0, oasisData.loyalty - loyaltyDecrease);
 
     database.exec({
-      sql: 'UPDATE oasis SET loyalty = $loyalty WHERE tile_id = $tile_id',
-      bind: { $loyalty: newLoyalty, $tile_id: oasisTileId },
+      sql: 'UPDATE oasis SET loyalty = $loyalty, loyalty_updated_at = $now WHERE tile_id = $tile_id',
+      bind: { $loyalty: newLoyalty, $now: resolvesAt, $tile_id: oasisTileId },
     });
   }
 
@@ -843,8 +843,8 @@ const resolveOasisCombat = (
 
   // Assign oasis to attacker
   database.exec({
-    sql: 'UPDATE oasis SET village_id = $village_id, loyalty = 100 WHERE tile_id = $tile_id',
-    bind: { $village_id: villageId, $tile_id: oasisTileId },
+    sql: 'UPDATE oasis SET village_id = $village_id, loyalty = 100, loyalty_updated_at = $now WHERE tile_id = $tile_id',
+    bind: { $village_id: villageId, $now: resolvesAt, $tile_id: oasisTileId },
   });
 
   // Add production bonuses

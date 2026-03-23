@@ -93,6 +93,7 @@ export const DeveloperToolsConsole = ({
     spawnHeroItem,
     levelUpHero,
     incrementHeroAdventurePoints,
+    killHero,
   } = useDeveloperSettings();
   const { hero } = useHero();
 
@@ -389,6 +390,20 @@ export const DeveloperToolsConsole = ({
             <div className="flex items-center gap-4">
               <Button onClick={() => incrementHeroAdventurePoints()}>
                 {t('Add 1 adventure point')}
+              </Button>
+            </div>
+          </SectionContent>
+
+          <Separator orientation="horizontal" />
+
+          <SectionContent>
+            <Text as="h3">{t('Hero death')}</Text>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="destructive"
+                onClick={() => killHero()}
+              >
+                {t('Kill hero')}
               </Button>
             </div>
           </SectionContent>

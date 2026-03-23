@@ -67,7 +67,8 @@ export const oasisSeeder = (database: DbFacade, server: Server): void => {
       'village_id',
       'loyalty',
       'animal_spawned_at',
+      'loyalty_updated_at',
     ],
-    oasisBonuses,
+    oasisBonuses.map((oasis) => [...oasis, null]),
   );
 };

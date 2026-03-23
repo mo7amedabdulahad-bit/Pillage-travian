@@ -203,3 +203,20 @@ export const incrementHeroAdventurePoints = createController(
     },
   });
 });
+
+export const killHero = createController(
+  '/developer-settings/:heroId/kill-hero',
+  'patch',
+)(({ database, path: { heroId } }) => {
+  // Set hero health to 0
+  database.exec({
+    sql: `
+      UPDATE heroes
+      SET health = 0
+      WHERE id = $hero_id
+    `,
+    bind: {
+      $hero_id: heroId,
+    },
+  });
+});

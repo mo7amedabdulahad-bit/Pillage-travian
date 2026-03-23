@@ -141,6 +141,19 @@ export const useDeveloperSettings = () => {
     },
   });
 
+  const { mutate: killHero } = useMutation<void>({
+    mutationFn: async () => {
+      await fetcher(`/developer-settings/${hero.id}/kill-hero`, {
+        method: 'PATCH',
+      });
+    },
+    onSuccess: async (_, _args, _onMutateResult, context) => {
+      await context.client.invalidateQueries({
+        queryKey: [heroCacheKey],
+      });
+    },
+  });
+
   return {
     developerSettings,
     updateDeveloperSetting,
@@ -148,5 +161,6 @@ export const useDeveloperSettings = () => {
     spawnHeroItem,
     levelUpHero,
     incrementHeroAdventurePoints,
+    killHero,
   };
 };
