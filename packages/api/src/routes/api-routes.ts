@@ -55,7 +55,11 @@ import {
   updateMapFilter,
 } from '../controllers/map-filters-controllers';
 import { getTilesWithBonuses } from '../controllers/oasis-bonus-finder-controllers';
-import { abandonOasis, occupyOasis } from '../controllers/oasis-controllers';
+import {
+  abandonOasis,
+  cancelOasisRelease,
+  occupyOasis,
+} from '../controllers/oasis-controllers';
 import {
   getMe,
   getPlayerBySlug,
@@ -179,6 +183,7 @@ const apiRoutes: Route[] = [
   createRoute(renameVillage),
   createRoute(occupyOasis),
   createRoute(abandonOasis),
+  createRoute(cancelOasisRelease),
   createRoute(getOccupiableOasisInRange),
   createRoute(getResearchedUnits),
 

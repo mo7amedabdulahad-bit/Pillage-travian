@@ -64,7 +64,7 @@ type OccupiedOasisSlotProps = {
 
 const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
   const { t } = useTranslation();
-  const { abandonOasis } = useOccupiableOasisInRange();
+  const { abandonOasis, cancelRelease } = useOccupiableOasisInRange();
 
   const { x, y } = occupiedOasis.oasis.coordinates;
   const { loyalty, bonuses } = occupiedOasis.oasis;
@@ -75,7 +75,8 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
     const diff = Math.max(0, resolvesAt - now);
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    return `${hours}h ${minutes}m ${seconds}s`;
   };
 
   return (
@@ -109,11 +110,20 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
       </TableCell>
       <TableCell>
         {pendingReleaseAt ? (
-          <Text className="text-red-500">
-            {t('Releasing in {{time}}', {
-              time: formatCountdown(pendingReleaseAt),
-            })}
-          </Text>
+          <div className="flex flex-col gap-2">
+            <Text className="text-red-500">
+              {t('Releasing in {{time}}', {
+                time: formatCountdown(pendingReleaseAt),
+              })}
+            </Text>
+            <Button
+              size="fit"
+              variant="outline"
+              onClick={() => cancelRelease({ oasisId: occupiedOasis.oasis.id })}
+            >
+              {t('Cancel release')}
+            </Button>
+          </div>
         ) : (
           <Button
             size="fit"

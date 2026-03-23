@@ -78,3 +78,31 @@ export const abandonOasis = createController(
     },
   });
 });
+
+export const cancelOasisRelease = createController(
+  '/villages/:villageId/oasis/:oasisId/cancel-release',
+  'delete',
+)(({ database, path: { oasisId, villageId } }) => {
+  // Find and delete the pending release event for this oasis
+  const releaseEvent = database.selectObject({
+    sql: `
+      SELECT id FROM events
+      WHERE type = 'oasisRelease'
+        AND village_id = $village_id
+        AND meta LIKE $meta_pattern
+      LIMIT 1
+    `,
+    bind: {
+      $village_id: villageId,
+      $meta_pattern: `%"oasisTileId":${oasisId}%`,
+    },
+    schema: z.strictObject({ id: z.number() }),
+  });
+
+  if (releaseEvent) {
+    database.exec({
+      sql: 'DELETE FROM events WHERE id = $id',
+      bind: { $id: releaseEvent.id },
+    });
+  }
+});

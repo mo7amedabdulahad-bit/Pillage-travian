@@ -16,6 +16,10 @@ type AbandonOasisArgs = {
   oasisId: Tile['id'];
 };
 
+type CancelReleaseArgs = {
+  oasisId: Tile['id'];
+};
+
 const getOccupiableOasisInRangeSchema = z.strictObject({
   oasis: z.strictObject({
     id: z.number(),
@@ -83,8 +87,30 @@ export const useOccupiableOasisInRange = () => {
     },
   });
 
+  const { mutate: cancelRelease } = useMutation<void, Error, CancelReleaseArgs>(
+    {
+      mutationFn: async ({ oasisId }) => {
+        await fetcher(
+          `/villages/${currentVillage.id}/oasis/${oasisId}/cancel-release`,
+          {
+            method: 'DELETE',
+          },
+        );
+      },
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: [occupiableOasisInRangeCacheKey],
+        });
+      },
+      onError: (error) => {
+        alert(`Failed to cancel release: ${error.message}`);
+      },
+    },
+  );
+
   return {
     occupiableOasisInRange,
     abandonOasis,
+    cancelRelease,
   };
 };

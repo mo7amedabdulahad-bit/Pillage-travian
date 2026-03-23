@@ -1345,6 +1345,22 @@ export const paths = {
       },
     },
   },
+  '/villages/:villageId/oasis/:oasisId/cancel-release': {
+    delete: {
+      summary: 'Cancel pending oasis release',
+      requestParams: {
+        path: z.strictObject({
+          villageId: z.coerce.number(),
+          oasisId: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '204': {
+          description: 'Release cancelled',
+        },
+      },
+    },
+  },
   '/oasis-bonus-finder': {
     get: {
       summary: 'Find tiles with specific oasis bonuses',
