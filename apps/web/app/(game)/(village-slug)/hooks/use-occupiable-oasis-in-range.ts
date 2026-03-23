@@ -3,7 +3,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query';
-import { use } from 'react';
+import { use, useState } from 'react';
 import { z } from 'zod';
 import { coordinatesSchema } from '@pillage-first/types/models/coordinates';
 import { resourceSchema } from '@pillage-first/types/models/resource';
@@ -56,9 +56,10 @@ export const useOccupiableOasisInRange = () => {
   const { fetcher } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
   const queryClient = useQueryClient();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { data: occupiableOasisInRange } = useSuspenseQuery({
-    queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id],
+    queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id, refreshKey],
     queryFn: async () => {
       const { data } = await fetcher(
         `/villages/${currentVillage.id}/occupiable-oasis`,
@@ -78,12 +79,10 @@ export const useOccupiableOasisInRange = () => {
         method: 'DELETE',
       });
     },
-    onSuccess: async () => {
-      // Invalidate the query to refetch the data
-      await queryClient.refetchQueries({
-        queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id],
-      });
-      await queryClient.invalidateQueries({
+    onSuccess: () => {
+      // Force refetch by changing the query key
+      setRefreshKey((prev) => prev + 1);
+      queryClient.removeQueries({
         queryKey: [effectsCacheKey],
       });
     },
@@ -103,10 +102,9 @@ export const useOccupiableOasisInRange = () => {
           },
         );
       },
-      onSuccess: async () => {
-        await queryClient.refetchQueries({
-          queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id],
-        });
+      onSuccess: () => {
+        // Force refetch by changing the query key
+        setRefreshKey((prev) => prev + 1);
       },
       onError: (error) => {
         console.error('Failed to cancel release:', error);
