@@ -414,3 +414,175 @@ export const raidMovementResolver: Resolver<GameEvent<'troopMovementRaid'>> = (
 ) => {
   resolveTroopMovementCombat(database, args, true);
 };
+
+export const settleMovementResolver: Resolver<
+  GameEvent<'troopMovementSettle'>
+> = (database, args) => {
+  const { villageId, targetTileId, resolvesAt, troops } = args;
+
+  // 1. Check tile is still empty (no village or oasis on it)
+  const tileOccupied = database.selectValue({
+    sql: `SELECT EXISTS(
+      SELECT 1 FROM villages WHERE tile_id = $tileId
+      UNION
+      SELECT 1 FROM oasis WHERE tile_id = $tileId
+    )`,
+    bind: { $tileId: targetTileId },
+    schema: z.number(),
+  });
+
+  if (tileOccupied) {
+    // Tile taken — return settlers home
+    const sourceTileId = database.selectValue({
+      sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    })!;
+
+    createEvents<'troopMovementReturn'>(database, {
+      villageId: villageId,
+      targetId: villageId,
+      startsAt: resolvesAt,
+      troops: troops.map((t) => ({
+        ...t,
+        tileId: targetTileId,
+        source: sourceTileId,
+      })),
+      type: 'troopMovementReturn',
+      originalMovementType: 'settle',
+    });
+    return;
+  }
+
+  // 2. Get player info from source village
+  const playerInfo = database.selectObject({
+    sql: `
+      SELECT p.id AS playerId, p.tribe_id AS tribeId, ti.tribe
+      FROM villages v
+      JOIN players p ON v.player_id = p.id
+      JOIN tribe_ids ti ON p.tribe_id = ti.id
+      WHERE v.id = $village_id
+    `,
+    bind: { $village_id: villageId },
+    schema: z.strictObject({
+      playerId: z.number(),
+      tribeId: z.number(),
+      tribe: playableTribeSchema,
+    }),
+  })!;
+
+  // 3. Get tile coordinates and resource field composition for naming
+  const tileInfo = database.selectObject({
+    sql: `
+      SELECT t.x, t.y, rfc.resource_field_composition AS resourceFieldComposition
+      FROM tiles t
+      LEFT JOIN resource_field_composition_ids rfc
+        ON t.resource_field_composition_id = rfc.id
+      WHERE t.id = $tile_id
+    `,
+    bind: { $tile_id: targetTileId },
+    schema: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+      resourceFieldComposition: resourceFieldCompositionSchema.nullable(),
+    }),
+  })!;
+
+  // 4. Create the village record with incremental slug
+  const { newVillageId } = database.selectObject({
+    sql: `
+      WITH
+        next_slug AS (
+          SELECT 'v-' || (COUNT(*) + 1) AS slug
+          FROM villages
+          WHERE player_id = $player_id
+        )
+      INSERT INTO villages (name, slug, tile_id, player_id, loyalty, loyalty_updated_at)
+      SELECT $name, (SELECT slug FROM next_slug), $tile_id, $player_id, 100, $now
+      RETURNING id AS newVillageId;
+    `,
+    bind: {
+      $name: `Village (${tileInfo.x}|${tileInfo.y})`,
+      $tile_id: targetTileId,
+      $player_id: playerInfo.playerId,
+      $now: resolvesAt,
+    },
+    schema: z.strictObject({ newVillageId: z.number() }),
+  })!;
+
+  // 5. Seed default buildings for new village
+  const buildingIdRows = database.selectObjects({
+    sql: 'SELECT id, building FROM building_ids',
+    schema: z.strictObject({ id: z.number(), building: z.string() }),
+  });
+
+  const buildingIdMap = new Map<string, number>(
+    buildingIdRows.map((b) => [b.building, b.id]),
+  );
+
+  const buildingFields = buildingFieldsFactory(
+    'player',
+    playerInfo.tribe,
+    tileInfo.resourceFieldComposition ?? '4446',
+  );
+
+  for (const { field_id, building_id, level } of buildingFields) {
+    database.exec({
+      sql: `
+        INSERT INTO building_fields (village_id, field_id, building_id, level)
+        VALUES ($village_id, $field_id, $buildingId, $level);
+      `,
+      bind: {
+        $village_id: newVillageId,
+        $field_id: field_id,
+        $buildingId: buildingIdMap.get(building_id)!,
+        $level: level,
+      },
+    });
+  }
+
+  // 6. Seed resource sites at 750 each (starting resources)
+  database.exec({
+    sql: `
+      INSERT INTO resource_sites (tile_id, wood, clay, iron, wheat, updated_at)
+      VALUES ($tile_id, 750, 750, 750, 750, $updatedAt)
+      ON CONFLICT(tile_id) DO NOTHING;
+    `,
+    bind: { $tile_id: targetTileId, $updatedAt: resolvesAt },
+  });
+
+  // 7. Seed initial quests
+  const quests = newVillageQuestsFactory(newVillageId, playerInfo.tribe);
+  for (const quest of quests) {
+    database.exec({
+      sql: `
+        INSERT INTO quests (quest_id, completed_at, collected_at, village_id)
+        VALUES ($questId, NULL, NULL, $village_id);
+      `,
+      bind: {
+        $questId: quest.id,
+        $village_id: newVillageId,
+      },
+    });
+  }
+
+  // 8. Seed unit research (tier 1 unit + settler)
+  const [tier1UnitId, settlerUnitId] = newVillageUnitResearchFactory(
+    playerInfo.tribe,
+  );
+  database.exec({
+    sql: `
+      INSERT INTO unit_research (village_id, unit_id)
+      SELECT $village_id, u.id
+      FROM unit_ids u
+      WHERE u.unit IN ($tier1Unit, $settlerUnit);
+    `,
+    bind: {
+      $village_id: newVillageId,
+      $tier1Unit: tier1UnitId,
+      $settlerUnit: settlerUnitId,
+    },
+  });
+
+  // 9. Settlers are consumed — do NOT create a return event for them
+};

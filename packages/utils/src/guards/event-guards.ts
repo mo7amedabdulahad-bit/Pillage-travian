@@ -145,3 +145,9 @@ export const isOasisReleaseEvent = (
 ): event is GameEvent<'oasisRelease'> => {
   return event.type === 'oasisRelease';
 };
+
+export const isSettleTroopMovementEvent = (
+  event: GameEvent,
+): event is GameEvent<'troopMovementSettle'> => {
+  return event.type === 'troopMovementSettle';
+};

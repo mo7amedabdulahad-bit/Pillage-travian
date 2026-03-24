@@ -8,7 +8,6 @@ import type {
   OccupiedOccupiableTile,
   Tile,
 } from '@pillage-first/types/models/tile';
-import { isFindNewVillageTroopMovementEvent } from '@pillage-first/utils/guards/event';
 import {
   isOasisTile,
   isOccupiableOasisTile,
@@ -202,23 +201,62 @@ type OccupiableTileModalProps = {
 const OccupiableTileModal = ({ tile }: OccupiableTileModalProps) => {
   const { t } = useTranslation();
   const { events } = useEvents();
+  const { villageTroops } = useVillageTroops();
+  const { currentVillage } = useCurrentVillage();
 
-  const hasOngoingVillageFindEventOnThisTile = events.some((event) => {
-    if (isFindNewVillageTroopMovementEvent(event)) {
-      return tile.id === event.targetId;
-    }
-
-    return false;
-  });
-
-  const { createEvent: createFindNewVillageEvent } = useCreateEvent(
-    'troopMovementFindNewVillage',
+  const hasOngoingSettleEventOnThisTile = events.some(
+    (event) =>
+      event.type === 'troopMovementSettle' &&
+      'targetTileId' in event &&
+      event.targetTileId === tile.id,
   );
 
-  const onFoundNewVillage = () => {
-    createFindNewVillageEvent({
-      targetId: tile.id,
-      troops: [],
+  // Check if player has at least 3 settlers available in current village
+  const availableSettlers = villageTroops
+    .filter(
+      (t) =>
+        t.unitId.endsWith('_SETTLER') &&
+        t.tileId === currentVillage.tileId &&
+        t.source === currentVillage.tileId,
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const hasEnoughSettlers = availableSettlers >= 3;
+
+  // Check resources (750 each)
+  const hasEnoughResources =
+    currentVillage.resources.wood >= 750 &&
+    currentVillage.resources.clay >= 750 &&
+    currentVillage.resources.iron >= 750 &&
+    currentVillage.resources.wheat >= 750;
+
+  const { createEvent: createSettleEvent } = useCreateEvent(
+    'troopMovementSettle',
+  );
+
+  const onSettleNewVillage = () => {
+    // Find the settler unit for this village's tribe
+    const settlerTroop = villageTroops.find(
+      (t) =>
+        t.unitId.endsWith('_SETTLER') &&
+        t.tileId === currentVillage.tileId &&
+        t.source === currentVillage.tileId,
+    );
+
+    if (!settlerTroop) {
+      return;
+    }
+
+    createSettleEvent({
+      targetTileId: tile.id,
+      troops: [
+        {
+          unitId: settlerTroop.unitId,
+          amount: 3,
+          tileId: currentVillage.tileId,
+          source: currentVillage.tileId,
+        },
+      ],
       cachesToClearImmediately: [playerTroopsCacheKey],
     });
   };
@@ -237,20 +275,34 @@ const OccupiableTileModal = ({ tile }: OccupiableTileModalProps) => {
       </DialogHeader>
       <div className="flex flex-col gap-2">
         <Text as="h3">{t('Actions')}</Text>
-        <Text>{t('No actions available')}</Text>
-        {hasOngoingVillageFindEventOnThisTile && (
+        {hasOngoingSettleEventOnThisTile && (
           <span className="text-gray-500">
             {t('Settlers are already on route to this location')}
           </span>
         )}
-        {false && (
-          <Button
-            size="fit"
-            variant="link"
-            onClick={onFoundNewVillage}
-          >
-            Found new village
-          </Button>
+        {!hasOngoingSettleEventOnThisTile && (
+          <>
+            {!hasEnoughSettlers && (
+              <Text className="text-sm text-muted-foreground">
+                {t('You need at least 3 settlers to found a new village.')}
+              </Text>
+            )}
+            {hasEnoughSettlers && !hasEnoughResources && (
+              <Text className="text-sm text-muted-foreground">
+                {t(
+                  'Not enough resources. Founding costs 750 of each resource.',
+                )}
+              </Text>
+            )}
+            <Button
+              size="fit"
+              variant="link"
+              disabled={!hasEnoughSettlers || !hasEnoughResources}
+              onClick={onSettleNewVillage}
+            >
+              {t('Settle new village')}
+            </Button>
+          </>
         )}
       </div>
     </>

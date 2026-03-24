@@ -315,6 +315,45 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                   )}
                 </div>
               )}
+
+            {combatData.catapultTarget1 !== undefined && (
+              <div className="rounded-md border border-border bg-muted/10 p-4">
+                <Text className="font-semibold">{t('Catapult fire')}</Text>
+                <Text>
+                  {t('Target')}:{' '}
+                  {t(`BUILDINGS.${combatData.catapultTarget1}.NAME`, {
+                    defaultValue: combatData.catapultTarget1,
+                  })}
+                  {' -> '}
+                  {combatData.catapultLevelsDestroyed1 !== undefined &&
+                  combatData.catapultLevelsDestroyed1 > 0
+                    ? t('destroyed {{count}} level(s)', {
+                        count: combatData.catapultLevelsDestroyed1,
+                      })
+                    : t('no damage dealt')}
+                </Text>
+                {combatData.catapultTarget2 !== undefined && (
+                  <Text>
+                    {t('Target 2')}:{' '}
+                    {t(`BUILDINGS.${combatData.catapultTarget2}.NAME`, {
+                      defaultValue: combatData.catapultTarget2,
+                    })}
+                    {' -> '}
+                    {combatData.catapultLevelsDestroyed2 !== undefined &&
+                    combatData.catapultLevelsDestroyed2 > 0
+                      ? t('destroyed {{count}} level(s)', {
+                          count: combatData.catapultLevelsDestroyed2,
+                        })
+                      : t('no damage dealt')}
+                  </Text>
+                )}
+                {combatData.villageDestroyed && (
+                  <Text className="font-semibold text-red-600">
+                    {t('Village destroyed!')}
+                  </Text>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

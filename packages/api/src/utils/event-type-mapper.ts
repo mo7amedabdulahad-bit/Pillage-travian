@@ -22,6 +22,7 @@ import {
   reinforcementMovementResolver,
   relocationMovementResolver,
   returnMovementResolver,
+  settleMovementResolver,
 } from '../controllers/resolvers/troop-movement-resolver';
 import { troopTrainingEventResolver } from '../controllers/resolvers/troop-resolvers';
 import { unitImprovementResolver } from '../controllers/resolvers/unit-improvement-resolvers';
@@ -64,6 +65,9 @@ export const getGameEventResolver = (gameEventType: GameEventType) => {
     }
     case 'troopMovementAdventure': {
       return adventureMovementResolver;
+    }
+    case 'troopMovementSettle': {
+      return settleMovementResolver;
     }
     case 'adventurePointIncrease': {
       return adventurePointIncreaseResolver;

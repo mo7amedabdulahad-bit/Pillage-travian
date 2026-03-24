@@ -53,7 +53,8 @@ export type TroopMovementType =
   | 'find-new-village'
   | 'attack'
   | 'raid'
-  | 'adventure';
+  | 'adventure'
+  | 'settle';
 
 export type ScoutMode = 'resource' | 'defence';
 
@@ -66,6 +67,11 @@ type BaseTroopMovementEvent = {
 type AttackTroopMovementEvent = BaseTroopMovementEvent & {
   catapultTarget1?: string;
   catapultTarget2?: string;
+};
+
+type SettleTroopMovementEvent = {
+  troops: Troop[];
+  targetTileId: number;
 };
 
 export type ReturnTroopMovementEvent = BaseTroopMovementEvent & {
@@ -86,6 +92,7 @@ export const gameEventTypeSchema = z.enum([
   'troopMovementAttack',
   'troopMovementRaid',
   'troopMovementAdventure',
+  'troopMovementSettle',
   'unitResearch',
   'unitImprovement',
   'adventurePointIncrease',
@@ -106,6 +113,7 @@ export type TroopMovementEventType = Extract<
   | 'troopMovementAttack'
   | 'troopMovementRaid'
   | 'troopMovementAdventure'
+  | 'troopMovementSettle'
 >;
 
 export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
@@ -123,6 +131,7 @@ export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
   troopMovementAttack: AttackTroopMovementEvent;
   troopMovementRaid: BaseTroopMovementEvent;
   troopMovementAdventure: BaseTroopMovementEvent;
+  troopMovementSettle: SettleTroopMovementEvent;
   adventurePointIncrease: BaseGameEvent;
   heroRevival: BaseGameEvent;
   heroHealthRegeneration: BaseGameEvent;

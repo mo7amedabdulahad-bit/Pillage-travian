@@ -42,6 +42,7 @@ import {
   isOasisReleaseEvent,
   isReturnTroopMovementEvent,
   isScheduledBuildingEvent,
+  isSettleTroopMovementEvent,
   isTroopMovementEvent,
   isTroopTrainingEvent,
   isUnitImprovementEvent,
@@ -882,6 +883,48 @@ export const getEventDuration = (
 
     return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600 * 1000);
   }
+  if (isSettleTroopMovementEvent(event)) {
+    const isInstantUnitTravelEnabled = database.selectValue({
+      sql: 'SELECT is_instant_unit_travel_enabled FROM developer_settings',
+      schema: z.number(),
+    })!;
+
+    if (isInstantUnitTravelEnabled) {
+      return 0;
+    }
+
+    const { villageId, troops, targetTileId } = event;
+
+    const { tile_id: sourceTileId } = database.selectObject({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId;',
+      bind: { $villageId: villageId },
+      schema: z.object({ tile_id: z.number() }),
+    })!;
+
+    const sourceCoords = database.selectObject({
+      sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
+      bind: { $tileId: sourceTileId },
+      schema: z.object({ x: z.number(), y: z.number() }),
+    })!;
+
+    const targetCoords = database.selectObject({
+      sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
+      bind: { $tileId: targetTileId },
+      schema: z.object({ x: z.number(), y: z.number() }),
+    })!;
+
+    const distance = calculateDistanceBetweenPoints(sourceCoords, targetCoords);
+    const slowestSpeed = Math.min(
+      ...troops.map((t) => unitsMap.get(t.unitId)!.unitSpeed),
+    );
+
+    const { speed: serverSpeed } = database.selectObject({
+      sql: 'SELECT speed FROM servers LIMIT 1;',
+      schema: z.object({ speed: speedSchema }),
+    })!;
+
+    return Math.ceil((distance / (slowestSpeed * serverSpeed)) * 3600 * 1000);
+  }
   if (isTroopMovementEvent(event)) {
     const isInstantUnitTravelEnabled = database.selectValue({
       sql: 'SELECT is_instant_unit_travel_enabled FROM developer_settings',
@@ -1133,6 +1176,9 @@ export const getEventStartTime = (
     return Date.now();
   }
   if (isFindNewVillageTroopMovementEvent(event)) {
+    return Date.now();
+  }
+  if (isSettleTroopMovementEvent(event)) {
     return Date.now();
   }
   if (isReturnTroopMovementEvent(event)) {
