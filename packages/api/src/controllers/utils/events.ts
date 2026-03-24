@@ -837,14 +837,16 @@ export const getEventDuration = (
       return calculateAdventureDuration(database, true);
     }
 
+    // targetId is the village ID the troops are returning TO
     const { tile_id: targetTileId } = database.selectObject({
       sql: 'SELECT tile_id FROM villages WHERE id = $targetId;',
       bind: { $targetId: targetId },
       schema: z.object({ tile_id: z.number() }),
     })!;
 
-    // For return events, troops are returning FROM where they currently are (stored in troops[0].tileId)
-    // This could be an oasis tile or a village tile
+    // troops[0].tileId is where troops are currently located (returning FROM)
+    // For oasis returns: troops[0].tileId = oasis tile_id (already handled correctly)
+    // For village returns: troops[0].tileId = enemy village tile_id
     const sourceTileId = troops.length > 0 ? troops[0].tileId : targetTileId;
 
     const sourceCoords = database.selectObject({
@@ -905,14 +907,25 @@ export const getEventDuration = (
       type === 'troopMovementReinforcements' ||
       type === 'troopMovementRelocation'
     ) {
-      const targetVillage = database.selectObject({
-        sql: 'SELECT tile_id FROM villages WHERE id = $targetId;',
+      // Check if target is an oasis tile (targetId IS tile_id for oasis targets)
+      const isOasisTarget = database.selectValue({
+        sql: 'SELECT EXISTS(SELECT 1 FROM oasis WHERE tile_id = $targetId)',
         bind: { $targetId: targetId },
-        schema: z.object({ tile_id: z.number() }),
+        schema: z.number(),
       });
-      targetTileId = targetVillage?.tile_id ?? targetId;
+
+      if (isOasisTarget) {
+        targetTileId = targetId; // For oasis targets, targetId is already the tile_id
+      } else {
+        const targetVillage = database.selectObject({
+          sql: 'SELECT tile_id FROM villages WHERE id = $targetId;',
+          bind: { $targetId: targetId },
+          schema: z.object({ tile_id: z.number() }),
+        });
+        targetTileId = targetVillage?.tile_id ?? targetId;
+      }
     } else {
-      // FindNewVillage, OasisOccupation, etc. targetId IS the tileId
+      // FindNewVillage, etc. targetId IS the tileId
       targetTileId = targetId;
     }
 

@@ -11,6 +11,7 @@ import type {
 } from '@pillage-first/types/models/game-event';
 import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
+import { updateOasisResourcesAt } from '../../../utils/oasis';
 import {
   calculateVillageResourcesAt,
   subtractVillageResourcesAt,
@@ -642,6 +643,9 @@ const resolveOasisCombat = (
   let loot: [number, number, number, number] = [0, 0, 0, 0];
 
   if (result.attackerSurvivors.length > 0) {
+    // Update oasis resources to current time before looting
+    updateOasisResourcesAt(database, oasisTileId, resolvesAt);
+
     // Fetch current oasis resources directly from resource_sites
     const oasisResources = database.selectObject({
       sql: `
@@ -913,9 +917,9 @@ export const resolveTroopMovementCombat = (
     return;
   }
 
-  // Check if target is an oasis
+  // Check if target is an oasis (EXISTS returns 0 or 1, correctly handles multi-bonus oases)
   const isOasis = database.selectValue({
-    sql: 'SELECT COUNT(*) FROM oasis WHERE tile_id = $tile_id',
+    sql: 'SELECT EXISTS(SELECT 1 FROM oasis WHERE tile_id = $tile_id) AS is_oasis',
     bind: { $tile_id: targetId },
     schema: z.number(),
   })!;

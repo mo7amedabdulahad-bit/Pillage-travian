@@ -83,7 +83,6 @@ export const updateDeveloperSettings = createController(
           'troopMovementFindNewVillage',
           'troopMovementAttack',
           'troopMovementRaid',
-          'troopMovementOasisOccupation',
           'troopMovementAdventure',
         ];
         break;

@@ -223,9 +223,13 @@ export const oasisReleaseResolver: Resolver<GameEvent<'oasisRelease'>> = (
   database,
   args,
 ) => {
-  const { meta, resolvesAt } = args;
-  const { oasisTileId, villageId } = meta;
+  // oasisTileId is stored in meta and spread into the event object during parsing
+  const { resolvesAt, oasisTileId, villageId } =
+    args as GameEvent<'oasisRelease'> & {
+      oasisTileId: number;
+    };
 
+  // Remove production bonus effects from the village
   database.exec({
     sql: `
       DELETE FROM effects
@@ -239,6 +243,7 @@ export const oasisReleaseResolver: Resolver<GameEvent<'oasisRelease'>> = (
     },
   });
 
+  // Release oasis: clear ownership, reset loyalty and loyalty_updated_at
   database.exec({
     sql: `
       UPDATE oasis
