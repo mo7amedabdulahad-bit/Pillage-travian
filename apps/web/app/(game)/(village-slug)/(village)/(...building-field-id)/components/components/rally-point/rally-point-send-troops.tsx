@@ -65,7 +65,7 @@ export const RallyPointSendTroops = () => {
   const [catapultTarget1, setCatapultTarget1] = useState<string>('random');
   const [catapultTarget2, setCatapultTarget2] = useState<string>('random');
 
-  // Catapult unit detection
+  // Catapult unit IDs per tribe
   const CATAPULT_UNITS = new Set([
     'ROMAN_CATAPULT',
     'GAUL_CATAPULT',
@@ -76,9 +76,30 @@ export const RallyPointSendTroops = () => {
     'NATARIAN_CATAPULT',
   ]);
 
-  const hasCatapults = Object.entries(troopAmounts).some(
-    ([unitId, amount]) => CATAPULT_UNITS.has(unitId) && Number(amount) > 0,
+  // How many catapults are entered in the troop inputs
+  const totalCatapults = Object.entries(troopAmounts).reduce(
+    (sum, [unitId, amount]) => {
+      if (CATAPULT_UNITS.has(unitId)) {
+        return sum + Number(amount || 0);
+      }
+      return sum;
+    },
+    0,
   );
+
+  const hasCatapults = totalCatapults > 0;
+
+  // Only show catapult targeting for normal attacks (not raids, scouts, reinforcements)
+  const showCatapultTargets =
+    hasCatapults && movementType === 'troopMovementAttack';
+
+  // Reset catapult targets when switching away from attack
+  useEffect(() => {
+    if (movementType !== 'troopMovementAttack') {
+      setCatapultTarget1('random');
+      setCatapultTarget2('random');
+    }
+  }, [movementType]);
 
   // Get Rally Point level
   const rpLevel =
@@ -297,12 +318,9 @@ export const RallyPointSendTroops = () => {
       type: eventType,
       troops,
       scoutMode: isScoutsOnly ? scoutMode : undefined,
-      catapultTarget1:
-        hasCatapults && movementType === 'troopMovementAttack'
-          ? catapultTarget1
-          : undefined,
+      catapultTarget1: showCatapultTargets ? catapultTarget1 : undefined,
       catapultTarget2:
-        hasCatapults && movementType === 'troopMovementAttack' && rpLevel >= 20
+        showCatapultTargets && rpLevel >= 20 && totalCatapults >= 20
           ? catapultTarget2
           : undefined,
     });
@@ -409,7 +427,7 @@ export const RallyPointSendTroops = () => {
                 </RadioGroup>
               </div>
             )}
-            {hasCatapults && movementType === 'troopMovementAttack' && (
+            {showCatapultTargets && (
               <div className="flex flex-col gap-2">
                 <Text className="font-semibold">{t('Catapult target')}:</Text>
                 <div className="flex items-center gap-2">
@@ -433,7 +451,7 @@ export const RallyPointSendTroops = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {rpLevel >= 20 && (
+                {rpLevel >= 20 && totalCatapults >= 20 && (
                   <div className="flex items-center gap-2">
                     <Label className="w-20">{t('Target 2')}:</Label>
                     <Select
@@ -666,6 +684,59 @@ export const RallyPointSendTroops = () => {
                 </Label>
               </div>
             </RadioGroup>
+
+            {/* Catapult targets — visible only for attacks with catapults */}
+            {showCatapultTargets && (
+              <div className="flex flex-col gap-2 mt-4 p-3 border rounded-xs bg-background">
+                <Text className="font-semibold text-sm">
+                  {t('Catapult target')}:
+                </Text>
+                <div className="flex items-center gap-2">
+                  <Label className="w-20 text-sm">{t('Target 1')}:</Label>
+                  <Select
+                    value={catapultTarget1}
+                    onValueChange={setCatapultTarget1}
+                  >
+                    <SelectTrigger className="w-48 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCatapultTargets().map((opt) => (
+                        <SelectItem
+                          key={opt.value}
+                          value={opt.value}
+                        >
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {rpLevel >= 20 && totalCatapults >= 20 && (
+                  <div className="flex items-center gap-2">
+                    <Label className="w-20 text-sm">{t('Target 2')}:</Label>
+                    <Select
+                      value={catapultTarget2}
+                      onValueChange={setCatapultTarget2}
+                    >
+                      <SelectTrigger className="w-48 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getCatapultTargets().map((opt) => (
+                          <SelectItem
+                            key={opt.value}
+                            value={opt.value}
+                          >
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
