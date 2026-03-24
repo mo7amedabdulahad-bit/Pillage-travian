@@ -63,6 +63,11 @@ type BaseTroopMovementEvent = {
   scoutMode?: ScoutMode;
 };
 
+type AttackTroopMovementEvent = BaseTroopMovementEvent & {
+  catapultTarget1?: string;
+  catapultTarget2?: string;
+};
+
 export type ReturnTroopMovementEvent = BaseTroopMovementEvent & {
   originalMovementType: TroopMovementType;
   loot?: [number, number, number, number];
@@ -115,7 +120,7 @@ export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
   troopMovementRelocation: BaseTroopMovementEvent;
   troopMovementReturn: ReturnTroopMovementEvent;
   troopMovementFindNewVillage: BaseTroopMovementEvent;
-  troopMovementAttack: BaseTroopMovementEvent;
+  troopMovementAttack: AttackTroopMovementEvent;
   troopMovementRaid: BaseTroopMovementEvent;
   troopMovementAdventure: BaseTroopMovementEvent;
   adventurePointIncrease: BaseGameEvent;

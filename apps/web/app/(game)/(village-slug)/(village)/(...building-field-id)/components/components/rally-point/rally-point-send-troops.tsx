@@ -13,6 +13,7 @@ import {
   SectionContent,
 } from 'app/(game)/(village-slug)/components/building-layout';
 import { ReputationBadge } from 'app/(game)/(village-slug)/components/reputation-badge';
+import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useRallyPoint } from 'app/(game)/(village-slug)/hooks/use-rally-point';
 import { useReputations } from 'app/(game)/(village-slug)/hooks/use-reputations';
 import { HeroIcon } from 'app/components/hero-icon';
@@ -22,6 +23,13 @@ import { Button } from 'app/components/ui/button';
 import { Input } from 'app/components/ui/input';
 import { Label } from 'app/components/ui/label';
 import { RadioGroup, RadioGroupItem } from 'app/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from 'app/components/ui/select';
 
 type Step = 'input' | 'confirm';
 
@@ -37,6 +45,7 @@ export const RallyPointSendTroops = () => {
   const [searchParams] = useSearchParams();
   const { deployableTroops, searchVillage, sendTroops, isSending } =
     useRallyPoint();
+  const { currentVillage } = useCurrentVillage();
   const { getReputation } = useReputations();
   const [step, setStep] = useState<Step>('input');
   const [targetName, setTargetName] = useState('');
@@ -53,6 +62,77 @@ export const RallyPointSendTroops = () => {
   const [isMapPrefilledTargetLocked, setIsMapPrefilledTargetLocked] =
     useState(false);
   const [scoutMode, setScoutMode] = useState<ScoutMode>('resource');
+  const [catapultTarget1, setCatapultTarget1] = useState<string>('random');
+  const [catapultTarget2, setCatapultTarget2] = useState<string>('random');
+
+  // Catapult unit detection
+  const CATAPULT_UNITS = new Set([
+    'ROMAN_CATAPULT',
+    'GAUL_CATAPULT',
+    'TEUTONIC_CATAPULT',
+    'EGYPTIAN_CATAPULT',
+    'HUN_CATAPULT',
+    'SPARTAN_CATAPULT',
+    'NATARIAN_CATAPULT',
+  ]);
+
+  const hasCatapults = Object.entries(troopAmounts).some(
+    ([unitId, amount]) => CATAPULT_UNITS.has(unitId) && Number(amount) > 0,
+  );
+
+  // Get Rally Point level
+  const rpLevel =
+    currentVillage.buildingFields.find((f) => f.buildingId === 'RALLY_POINT')
+      ?.level ?? 0;
+
+  // Get valid catapult targets based on RP level
+  const getCatapultTargets = (): { value: string; label: string }[] => {
+    const targets: { value: string; label: string }[] = [
+      { value: 'random', label: t('Random') },
+    ];
+
+    if (rpLevel >= 3) {
+      targets.push(
+        { value: 'WAREHOUSE', label: t('BUILDINGS.WAREHOUSE.NAME') },
+        { value: 'GRANARY', label: t('BUILDINGS.GRANARY.NAME') },
+      );
+    }
+
+    if (rpLevel >= 5) {
+      targets.push(
+        { value: 'WOOD_FIELD', label: t('Wood Field') },
+        { value: 'CLAY_PIT', label: t('Clay Pit') },
+        { value: 'IRON_MINE', label: t('Iron Mine') },
+        { value: 'CROPLAND', label: t('Cropland') },
+        { value: 'SAWMILL', label: t('BUILDINGS.SAWMILL.NAME') },
+        { value: 'BRICKYARD', label: t('BUILDINGS.BRICKYARD.NAME') },
+        { value: 'IRON_FOUNDRY', label: t('BUILDINGS.IRON_FOUNDRY.NAME') },
+        { value: 'GRAIN_MILL', label: t('BUILDINGS.GRAIN_MILL.NAME') },
+        { value: 'BAKERY', label: t('BUILDINGS.BAKERY.NAME') },
+      );
+    }
+
+    if (rpLevel >= 10) {
+      targets.push(
+        { value: 'BARRACKS', label: t('BUILDINGS.BARRACKS.NAME') },
+        { value: 'STABLE', label: t('BUILDINGS.STABLE.NAME') },
+        { value: 'WORKSHOP', label: t('BUILDINGS.WORKSHOP.NAME') },
+        { value: 'ACADEMY', label: t('BUILDINGS.ACADEMY.NAME') },
+        { value: 'SMITHY', label: t('BUILDINGS.SMITHY.NAME') },
+        { value: 'RALLY_POINT', label: t('BUILDINGS.RALLY_POINT.NAME') },
+        { value: 'MARKETPLACE', label: t('BUILDINGS.MARKETPLACE.NAME') },
+        { value: 'RESIDENCE', label: t('BUILDINGS.RESIDENCE.NAME') },
+        { value: 'PALACE', label: t('BUILDINGS.PALACE.NAME') },
+        { value: 'TREASURY', label: t('BUILDINGS.TREASURY.NAME') },
+        { value: 'HEROS_MANSION', label: t('BUILDINGS.HEROS_MANSION.NAME') },
+        { value: 'GREAT_BARRACKS', label: t('BUILDINGS.GREAT_BARRACKS.NAME') },
+        { value: 'GREAT_STABLE', label: t('BUILDINGS.GREAT_STABLE.NAME') },
+        { value: 'CITY_WALL', label: t('BUILDINGS.CITY_WALL.NAME') },
+      );
+    }
+
+    return targets;
+  };
 
   const isScoutsOnly = Object.entries(troopAmounts).every(
     ([unitId, amount]) => {
@@ -217,6 +297,14 @@ export const RallyPointSendTroops = () => {
       type: eventType,
       troops,
       scoutMode: isScoutsOnly ? scoutMode : undefined,
+      catapultTarget1:
+        hasCatapults && movementType === 'troopMovementAttack'
+          ? catapultTarget1
+          : undefined,
+      catapultTarget2:
+        hasCatapults && movementType === 'troopMovementAttack' && rpLevel >= 20
+          ? catapultTarget2
+          : undefined,
     });
 
     setStep('input');
@@ -319,6 +407,55 @@ export const RallyPointSendTroops = () => {
                     </Label>
                   </div>
                 </RadioGroup>
+              </div>
+            )}
+            {hasCatapults && movementType === 'troopMovementAttack' && (
+              <div className="flex flex-col gap-2">
+                <Text className="font-semibold">{t('Catapult target')}:</Text>
+                <div className="flex items-center gap-2">
+                  <Label className="w-20">{t('Target 1')}:</Label>
+                  <Select
+                    value={catapultTarget1}
+                    onValueChange={setCatapultTarget1}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCatapultTargets().map((opt) => (
+                        <SelectItem
+                          key={opt.value}
+                          value={opt.value}
+                        >
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {rpLevel >= 20 && (
+                  <div className="flex items-center gap-2">
+                    <Label className="w-20">{t('Target 2')}:</Label>
+                    <Select
+                      value={catapultTarget2}
+                      onValueChange={setCatapultTarget2}
+                    >
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getCatapultTargets().map((opt) => (
+                          <SelectItem
+                            key={opt.value}
+                            value={opt.value}
+                          >
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
             <div className="flex gap-2 justify-end mt-4">

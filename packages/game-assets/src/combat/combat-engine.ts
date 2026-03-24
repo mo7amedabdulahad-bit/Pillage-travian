@@ -22,6 +22,7 @@ export type WallType =
 export type DefenseModifiers = {
   wallType: WallType | null;
   wallLevel: number;
+  wallDurability: number;
   palaceLevel: number;
 };
 
@@ -53,6 +54,18 @@ const WALL_BONUS_BASE: Record<WallType, number> = {
   EGYPTIAN_WALL: 1.025,
   HUN_WALL: 1.015,
   SPARTAN_WALL: 1.02,
+};
+
+/** Wall durability: higher = harder to destroy with rams */
+export const WALL_DURABILITY: Record<string, number> = {
+  TEUTONIC_WALL: 5,
+  GAUL_WALL: 2,
+  ROMAN_WALL: 1,
+  EGYPTIAN_WALL: 4,
+  HUN_WALL: 1,
+  SPARTAN_WALL: 2,
+  NATURE_WALL: 3,
+  NATAR_WALL: 2,
 };
 
 // ───────────────────────────────────────────────────────────────
@@ -330,29 +343,29 @@ export const calculateLoot = (
 
 /**
  * Calculate how many wall levels rams destroy.
- * Simplified Travian formula: damage is proportional to surviving rams
- * relative to the number needed to fully destroy the wall.
- *
- * DDR (rams to destroy) ≈ wallLevel * wallBonusBase ^ wallLevel * ramStrengthFactor
- *
- * We use a simplified model: each surviving ram reduces wall level by
- * wallLevel * (survivingRams / DDR), where DDR scales with wall level.
+ * Travian formula: wallLevelsDestroyed = floor(numberOfRams / (wallDurability * wallLevel))
+ * If wall level is 0, rams have no target — skip.
+ * If result would reduce wall below 0, cap at 0.
  */
 export const calculateWallDamage = (
   survivingRams: number,
   wallLevel: number,
   wallType: WallType | null,
+  wallDurability: number,
 ): number => {
-  if (survivingRams <= 0 || wallLevel <= 0 || !wallType) {
+  if (
+    survivingRams <= 0 ||
+    wallLevel <= 0 ||
+    !wallType ||
+    wallDurability <= 0
+  ) {
     return 0;
   }
 
-  // Approximate DDR (rams needed to fully destroy wall at this level)
-  const base = WALL_BONUS_BASE[wallType];
-  const ddr = Math.ceil(wallLevel * base ** wallLevel * 2);
-
-  const levelReduction = Math.floor(wallLevel * (survivingRams / ddr));
-  return Math.min(levelReduction, wallLevel);
+  const levelsDestroyed = Math.floor(
+    survivingRams / (wallDurability * wallLevel),
+  );
+  return Math.min(levelsDestroyed, wallLevel);
 };
 
 // ───────────────────────────────────────────────────────────────
@@ -493,6 +506,7 @@ export const resolveCombat = (
     survivingRams,
     modifiers.wallLevel,
     modifiers.wallType,
+    modifiers.wallDurability,
   );
 
   // ─── Step 12: Loot ───

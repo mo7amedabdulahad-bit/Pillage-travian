@@ -4,6 +4,7 @@ import type {
   DefenseModifiers,
   WallType,
 } from '@pillage-first/game-assets/combat/combat-engine';
+import { WALL_DURABILITY } from '@pillage-first/game-assets/combat/combat-engine';
 import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 
@@ -94,12 +95,14 @@ export const fetchDefenseModifiers = (
 
   let wallType: WallType | null = null;
   let wallLevel = 0;
+  let wallDurability = 0;
   let palaceLevel = 0;
 
   for (const b of buildings) {
     if (b.buildingId.endsWith('_WALL')) {
       wallType = b.buildingId as WallType;
       wallLevel = b.level;
+      wallDurability = WALL_DURABILITY[b.buildingId] ?? 1;
     } else if (
       b.buildingId === 'RESIDENCE' ||
       b.buildingId === 'COMMAND_CENTER'
@@ -108,7 +111,7 @@ export const fetchDefenseModifiers = (
     }
   }
 
-  return { wallType, wallLevel, palaceLevel };
+  return { wallType, wallLevel, wallDurability, palaceLevel };
 };
 
 /**

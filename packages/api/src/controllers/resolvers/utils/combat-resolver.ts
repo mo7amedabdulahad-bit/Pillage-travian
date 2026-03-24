@@ -377,6 +377,301 @@ const _hasPalaceOrResidence = (
   return result === 1;
 };
 
+// ─── Catapult constants ───
+const TRIBE_CATAPULT: Record<string, string> = {
+  roman: 'ROMAN_CATAPULT',
+  gaul: 'GAUL_CATAPULT',
+  teuton: 'TEUTONIC_CATAPULT',
+  egyptian: 'EGYPTIAN_CATAPULT',
+  hun: 'HUN_CATAPULT',
+  spartan: 'SPARTAN_CATAPULT',
+};
+
+const CATAPULT_UNIT_IDS = new Set(Object.values(TRIBE_CATAPULT));
+
+const ALWAYS_EXCLUDED_FROM_SPECIFIC = new Set([
+  'CRANNY',
+  'STONEMASONS_LODGE',
+  'TRAPPER',
+]);
+
+/**
+ * Calculate total village population = sum of all building field levels.
+ */
+const _calculateVillagePopulation = (
+  database: DbFacade,
+  villageId: number,
+): number => {
+  const result = database.selectValue({
+    sql: 'SELECT COALESCE(SUM(level), 0) FROM building_fields WHERE village_id = $village_id',
+    bind: { $village_id: villageId },
+    schema: z.number(),
+  });
+  return result ?? 0;
+};
+
+/**
+ * Destroy a village completely — used when all buildings are reduced to 0.
+ * Only allowed for NPC villages (not the player's last village).
+ */
+const _destroyVillage = (
+  database: DbFacade,
+  villageId: number,
+  resolvesAt: number,
+): void => {
+  database.transaction((db) => {
+    // 1. Release connected oases
+    db.exec({
+      sql: `UPDATE oasis SET village_id = NULL, loyalty = 100, loyalty_updated_at = $now
+            WHERE village_id = $village_id`,
+      bind: { $village_id: villageId, $now: resolvesAt },
+    });
+    db.exec({
+      sql: `DELETE FROM effects WHERE source = 'oasis' AND village_id = $village_id`,
+      bind: { $village_id: villageId },
+    });
+
+    // 2. Remove all effects for the village
+    db.exec({
+      sql: 'DELETE FROM effects WHERE village_id = $village_id',
+      bind: { $village_id: villageId },
+    });
+
+    // 3. Delete all troops at this village's tile
+    const tileId = db.selectValue({
+      sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    })!;
+    db.exec({
+      sql: 'DELETE FROM troops WHERE tile_id = $tile_id',
+      bind: { $tile_id: tileId },
+    });
+
+    // 4. Cancel all pending events for this village
+    db.exec({
+      sql: 'DELETE FROM events WHERE village_id = $village_id AND resolves_at > $now',
+      bind: { $village_id: villageId, $now: resolvesAt },
+    });
+
+    // 5. Delete building fields
+    db.exec({
+      sql: 'DELETE FROM building_fields WHERE village_id = $village_id',
+      bind: { $village_id: villageId },
+    });
+
+    // 6. Delete resource sites
+    db.exec({
+      sql: 'DELETE FROM resource_sites WHERE tile_id = $tile_id',
+      bind: { $tile_id: tileId },
+    });
+
+    // 7. Delete the village record itself
+    db.exec({
+      sql: 'DELETE FROM villages WHERE id = $village_id',
+      bind: { $village_id: villageId },
+    });
+
+    // 8. Mark the tile as empty
+    db.exec({
+      sql: `UPDATE tiles SET type = 'empty' WHERE id = $tile_id`,
+      bind: { $tile_id: tileId },
+    });
+  });
+};
+
+type CatapultDamageResult = {
+  target1: string;
+  levelsDestroyed1: number;
+  target2?: string;
+  levelsDestroyed2?: number;
+  villageDestroyed?: boolean;
+};
+
+/**
+ * Resolve catapult building damage for a normal attack.
+ */
+const resolveCatapultDamage = (
+  database: DbFacade,
+  villageId: number,
+  targetVillageId: number,
+  catapultTarget1: string | undefined,
+  catapultTarget2: string | undefined,
+  survivingCatapults: number,
+  resolvesAt: number,
+): CatapultDamageResult => {
+  // 1. Get attacker's Rally Point level
+  const rpLevel =
+    database.selectValue({
+      sql: `
+        SELECT COALESCE(bf.level, 0)
+        FROM building_fields bf
+        JOIN building_ids bi ON bi.id = bf.building_id
+        WHERE bf.village_id = $village_id AND bi.building = 'RALLY_POINT'
+      `,
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    }) ?? 1;
+
+  // 2. Get attacker tribe and catapult smithy upgrade level
+  const attackerTribe = database.selectValue({
+    sql: `SELECT ti.tribe FROM villages v
+          JOIN players p ON v.player_id = p.id
+          JOIN tribe_ids ti ON p.tribe_id = ti.id
+          WHERE v.id = $village_id`,
+    bind: { $village_id: villageId },
+    schema: z.string(),
+  });
+
+  const catapultUnitId = attackerTribe
+    ? TRIBE_CATAPULT[attackerTribe.toLowerCase()]
+    : undefined;
+
+  const smithyLevel = catapultUnitId
+    ? (database.selectValue({
+        sql: `SELECT COALESCE(level, 0) FROM unit_improvements
+              WHERE player_id = (SELECT player_id FROM villages WHERE id = $village_id)
+                AND unit_id = (SELECT id FROM unit_ids WHERE unit = $unit_id)`,
+        bind: { $village_id: villageId, $unit_id: catapultUnitId },
+        schema: z.number(),
+      }) ?? 0)
+    : 0;
+
+  // 3. Get all buildings in the target village
+  const allBuildings = database.selectObjects({
+    sql: `
+      SELECT bi.building, bf.field_id AS fieldId, bf.level
+      FROM building_fields bf
+      JOIN building_ids bi ON bi.id = bf.building_id
+      WHERE bf.village_id = $village_id AND bf.level > 0
+      ORDER BY bf.level DESC
+    `,
+    bind: { $village_id: targetVillageId },
+    schema: z.strictObject({
+      building: z.string(),
+      fieldId: z.number(),
+      level: z.number(),
+    }),
+  });
+
+  if (allBuildings.length === 0) {
+    return { target1: 'none', levelsDestroyed1: 0 };
+  }
+
+  // Stonemason is always hit last
+  const STONEMASON = 'STONEMASONS_LODGE';
+  const normalBuildings = allBuildings.filter((b) => b.building !== STONEMASON);
+  const stonemason = allBuildings.find((b) => b.building === STONEMASON);
+  const randomPool = stonemason
+    ? [...normalBuildings, stonemason]
+    : normalBuildings;
+
+  const resolveTarget = (
+    targetSpec: string | undefined,
+  ): { building: string; fieldId: number; level: number } | null => {
+    if (!targetSpec || targetSpec === 'random') {
+      return randomPool.length > 0 ? randomPool[0] : null;
+    }
+
+    // Specific target: validate it's not excluded
+    if (ALWAYS_EXCLUDED_FROM_SPECIFIC.has(targetSpec)) {
+      return randomPool.length > 0 ? randomPool[0] : null;
+    }
+
+    // Find the highest-level instance of the target building
+    const target = allBuildings.find((b) => b.building === targetSpec);
+    if (!target) {
+      return randomPool.length > 0 ? randomPool[0] : null;
+    }
+
+    return target;
+  };
+
+  // 4. Calculate shots per level
+  const calcDamage = (
+    target: { building: string; fieldId: number; level: number } | null,
+    cats: number,
+  ): { target: string; fieldId: number; levelsDestroyed: number } | null => {
+    if (!target || cats <= 0) {
+      return null;
+    }
+    const shotsPerLevel = Math.ceil(
+      (target.level * 2) / (1 + smithyLevel * 0.05),
+    );
+    const levelsDestroyed =
+      shotsPerLevel > 0 ? Math.floor(cats / shotsPerLevel) : 0;
+    return {
+      target: target.building,
+      fieldId: target.fieldId,
+      levelsDestroyed: Math.min(levelsDestroyed, target.level),
+    };
+  };
+
+  // 5. Split catapults for double target (RP >= 20)
+  const useDoubleTarget =
+    rpLevel >= 20 && survivingCatapults >= 20 && catapultTarget2 != null;
+  const cats1 = useDoubleTarget
+    ? Math.floor(survivingCatapults / 2)
+    : survivingCatapults;
+  const cats2 = useDoubleTarget ? survivingCatapults - cats1 : 0;
+
+  const target1Data = resolveTarget(catapultTarget1);
+  const target2Data = useDoubleTarget ? resolveTarget(catapultTarget2) : null;
+
+  const damage1 = calcDamage(target1Data, cats1);
+  const damage2 = calcDamage(target2Data, cats2);
+
+  // 6. Apply damage to DB
+  if (damage1 && damage1.levelsDestroyed > 0) {
+    database.exec({
+      sql: 'UPDATE building_fields SET level = MAX(0, level - $dmg) WHERE village_id = $village_id AND field_id = $field_id',
+      bind: {
+        $dmg: damage1.levelsDestroyed,
+        $field_id: damage1.fieldId,
+        $village_id: targetVillageId,
+      },
+    });
+  }
+  if (damage2 && damage2.levelsDestroyed > 0) {
+    database.exec({
+      sql: 'UPDATE building_fields SET level = MAX(0, level - $dmg) WHERE village_id = $village_id AND field_id = $field_id',
+      bind: {
+        $dmg: damage2.levelsDestroyed,
+        $field_id: damage2.fieldId,
+        $village_id: targetVillageId,
+      },
+    });
+  }
+
+  // 7. Check if village is zeroed (all buildings at 0)
+  const population = _calculateVillagePopulation(database, targetVillageId);
+  let villageDestroyed = false;
+  if (population === 0) {
+    // Only destroy NPC villages, not player's villages
+    const isPlayerVillage = database.selectValue({
+      sql: 'SELECT EXISTS(SELECT 1 FROM villages WHERE id = $village_id AND player_id = 1)',
+      bind: { $village_id: targetVillageId },
+      schema: z.number(),
+    });
+    if (!isPlayerVillage) {
+      _destroyVillage(database, targetVillageId, resolvesAt);
+      villageDestroyed = true;
+    }
+  }
+
+  return {
+    target1: damage1?.target ?? 'none',
+    levelsDestroyed1: damage1?.levelsDestroyed ?? 0,
+    ...(damage2
+      ? {
+          target2: damage2.target,
+          levelsDestroyed2: damage2.levelsDestroyed,
+        }
+      : {}),
+    villageDestroyed,
+  };
+};
+
 type ScoutMovementArgs = {
   villageId: number;
   targetId: number;
@@ -780,7 +1075,7 @@ const resolveOasisCombat = (
   const result = resolveCombat(
     attackerTroops,
     defenderTroops,
-    { wallType: null, wallLevel: 0, palaceLevel: 0 },
+    { wallType: null, wallLevel: 0, wallDurability: 0, palaceLevel: 0 },
     [0, 0, 0, 0],
     isRaid,
   );
@@ -1289,14 +1584,44 @@ export const resolveTroopMovementCombat = (
     addTroops(database, survivingDefenderTroops);
   }
 
-  // 7. Handle wall damage
-  if (result.wallDamage > 0 && modifiers.wallType) {
+  // 7. Handle wall damage (rams only fire in normal attacks, not raids)
+  if (!isRaid && result.wallDamage > 0 && modifiers.wallType) {
     updateWallLevel(
       database,
       targetId,
       modifiers.wallType,
       Math.max(0, modifiers.wallLevel - result.wallDamage),
     );
+  }
+
+  // 7b. Catapult building damage (only in normal attacks, not raids)
+  let catapultReport: CatapultDamageResult | undefined;
+  if (!isRaid) {
+    const survivingCatapults = result.attackerSurvivors
+      .filter((t) => CATAPULT_UNIT_IDS.has(t.unitId))
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    if (survivingCatapults > 0) {
+      // Get catapult targets from event args
+      const catapultTarget1 =
+        'catapultTarget1' in args
+          ? (args as { catapultTarget1?: string }).catapultTarget1
+          : undefined;
+      const catapultTarget2 =
+        'catapultTarget2' in args
+          ? (args as { catapultTarget2?: string }).catapultTarget2
+          : undefined;
+
+      catapultReport = resolveCatapultDamage(
+        database,
+        villageId,
+        targetId,
+        catapultTarget1,
+        catapultTarget2,
+        survivingCatapults,
+        resolvesAt,
+      );
+    }
   }
 
   // 8. Handle loot with cranny protection
@@ -1411,6 +1736,17 @@ export const resolveTroopMovementCombat = (
         loyaltyReduction: reportLoyaltyReduction,
         newLoyalty: reportNewLoyalty,
         conquered: reportConquered,
+      }),
+      ...(catapultReport && {
+        catapultTarget1: catapultReport.target1,
+        catapultLevelsDestroyed1: catapultReport.levelsDestroyed1,
+        ...(catapultReport.target2 && {
+          catapultTarget2: catapultReport.target2,
+          catapultLevelsDestroyed2: catapultReport.levelsDestroyed2,
+        }),
+        ...(catapultReport.villageDestroyed && {
+          villageDestroyed: true,
+        }),
       }),
     },
     villageId,

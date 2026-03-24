@@ -23,6 +23,8 @@ export type SendTroopsArgs = {
   troops: { unitId: string; amount: number }[];
   targetId: number;
   scoutMode?: ScoutMode;
+  catapultTarget1?: string;
+  catapultTarget2?: string;
 };
 
 const villageSearchResultSchema = z.strictObject({
@@ -141,6 +143,8 @@ export const useRallyPoint = () => {
       type,
       troops,
       scoutMode,
+      catapultTarget1,
+      catapultTarget2,
     }: SendTroopsArgs) => {
       await fetcher('/events', {
         method: 'POST',
@@ -150,6 +154,8 @@ export const useRallyPoint = () => {
           targetId,
           troops,
           scoutMode,
+          ...(catapultTarget1 && { catapultTarget1 }),
+          ...(catapultTarget2 && { catapultTarget2 }),
         },
       });
     },

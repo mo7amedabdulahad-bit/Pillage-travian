@@ -29,6 +29,7 @@ const troop = (
 const defaultModifiers: DefenseModifiers = {
   wallType: null,
   wallLevel: 0,
+  wallDurability: 0,
   palaceLevel: 0,
 };
 
@@ -254,6 +255,7 @@ describe('resolveCombat', () => {
       {
         wallType: 'ROMAN_WALL',
         wallLevel: 15,
+        wallDurability: 1,
         palaceLevel: 0,
       },
       noResources,
@@ -311,14 +313,20 @@ describe('resolveCombat', () => {
 });
 
 describe('calculateWallDamage', () => {
-  test('no rams → no damage', () => {
-    expect(calculateWallDamage(0, 10, 'ROMAN_WALL')).toBe(0);
+  test('no rams -> no damage', () => {
+    expect(calculateWallDamage(0, 10, 'ROMAN_WALL', 1)).toBe(0);
   });
 
   test('rams reduce wall level', () => {
-    const damage = calculateWallDamage(50, 10, 'ROMAN_WALL');
-    expect(damage).toBeGreaterThanOrEqual(0);
-    expect(damage).toBeLessThanOrEqual(10);
+    // ROMAN_WALL durability=1, level=10: floor(50/(1*10))=5 levels destroyed
+    const damage = calculateWallDamage(50, 10, 'ROMAN_WALL', 1);
+    expect(damage).toBe(5);
+  });
+
+  test('teutonic wall with durability 5 needs more rams', () => {
+    // TEUTONIC_WALL durability=5, level=10: floor(50/(5*10))=1 level destroyed
+    const damage = calculateWallDamage(50, 10, 'TEUTONIC_WALL', 5);
+    expect(damage).toBe(1);
   });
 });
 

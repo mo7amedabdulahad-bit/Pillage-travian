@@ -21,6 +21,12 @@ export type CombatReportData = Omit<CombatResult, 'loot'> & {
   loyaltyReduction?: number;
   newLoyalty?: number;
   conquered?: boolean;
+  // Catapult building damage fields
+  catapultTarget1?: string;
+  catapultLevelsDestroyed1?: number;
+  catapultTarget2?: string;
+  catapultLevelsDestroyed2?: number;
+  villageDestroyed?: boolean;
 };
 
 export type AdventureReportData = {
