@@ -23,13 +23,6 @@ import { Button } from 'app/components/ui/button';
 import { Input } from 'app/components/ui/input';
 import { Label } from 'app/components/ui/label';
 import { RadioGroup, RadioGroupItem } from 'app/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from 'app/components/ui/select';
 
 type Step = 'input' | 'confirm';
 
@@ -442,27 +435,21 @@ export const RallyPointSendTroops = () => {
                   >
                     {t('Target 1')}:
                   </Label>
-                  <Select
+                  <select
+                    id="catapult-target-1"
                     value={catapultTarget1}
-                    onValueChange={setCatapultTarget1}
+                    onChange={(e) => setCatapultTarget1(e.target.value)}
+                    className="h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
                   >
-                    <SelectTrigger
-                      id="catapult-target-1"
-                      className="w-48"
-                    >
-                      <SelectValue placeholder={t('Select target')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getCatapultTargets().map((opt) => (
-                        <SelectItem
-                          key={opt.value}
-                          value={opt.value}
-                        >
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {getCatapultTargets().map((opt) => (
+                      <option
+                        key={opt.value}
+                        value={opt.value}
+                      >
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 {rpLevel >= 20 && totalCatapults >= 20 && (
                   <div className="flex items-center gap-2">
@@ -472,27 +459,21 @@ export const RallyPointSendTroops = () => {
                     >
                       {t('Target 2')}:
                     </Label>
-                    <Select
+                    <select
+                      id="catapult-target-2"
                       value={catapultTarget2}
-                      onValueChange={setCatapultTarget2}
+                      onChange={(e) => setCatapultTarget2(e.target.value)}
+                      className="h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
-                      <SelectTrigger
-                        id="catapult-target-2"
-                        className="w-48"
-                      >
-                        <SelectValue placeholder={t('Select target')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getCatapultTargets().map((opt) => (
-                          <SelectItem
-                            key={opt.value}
-                            value={opt.value}
-                          >
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {getCatapultTargets().map((opt) => (
+                        <option
+                          key={opt.value}
+                          value={opt.value}
+                        >
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>
@@ -720,27 +701,21 @@ export const RallyPointSendTroops = () => {
                   >
                     {t('Target 1')}:
                   </Label>
-                  <Select
+                  <select
+                    id="catapult-target-1-input"
                     value={catapultTarget1}
-                    onValueChange={setCatapultTarget1}
+                    onChange={(e) => setCatapultTarget1(e.target.value)}
+                    className="h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
                   >
-                    <SelectTrigger
-                      id="catapult-target-1-input"
-                      className="w-48 h-8"
-                    >
-                      <SelectValue placeholder={t('Select target')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getCatapultTargets().map((opt) => (
-                        <SelectItem
-                          key={opt.value}
-                          value={opt.value}
-                        >
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {getCatapultTargets().map((opt) => (
+                      <option
+                        key={opt.value}
+                        value={opt.value}
+                      >
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 {rpLevel >= 20 && totalCatapults >= 20 && (
                   <div className="flex items-center gap-2">
@@ -750,27 +725,21 @@ export const RallyPointSendTroops = () => {
                     >
                       {t('Target 2')}:
                     </Label>
-                    <Select
+                    <select
+                      id="catapult-target-2-input"
                       value={catapultTarget2}
-                      onValueChange={setCatapultTarget2}
+                      onChange={(e) => setCatapultTarget2(e.target.value)}
+                      className="h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
-                      <SelectTrigger
-                        id="catapult-target-2-input"
-                        className="w-48 h-8"
-                      >
-                        <SelectValue placeholder={t('Select target')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getCatapultTargets().map((opt) => (
-                          <SelectItem
-                            key={opt.value}
-                            value={opt.value}
-                          >
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {getCatapultTargets().map((opt) => (
+                        <option
+                          key={opt.value}
+                          value={opt.value}
+                        >
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>
