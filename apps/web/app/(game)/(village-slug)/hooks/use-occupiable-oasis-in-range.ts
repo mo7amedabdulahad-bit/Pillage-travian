@@ -3,13 +3,14 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query';
-import { use, useState } from 'react';
+import { use } from 'react';
 import { z } from 'zod';
 import { coordinatesSchema } from '@pillage-first/types/models/coordinates';
 import { resourceSchema } from '@pillage-first/types/models/resource';
 import type { Tile } from '@pillage-first/types/models/tile';
 import { effectsCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
+import { useServer } from 'app/(game)/(village-slug)/hooks/use-server';
 import { ApiContext } from 'app/(game)/providers/api-provider';
 
 type AbandonOasisArgs = {
@@ -55,11 +56,16 @@ const occupiableOasisInRangeCacheKey = 'occupiable-oasis-in-range';
 export const useOccupiableOasisInRange = () => {
   const { fetcher } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
+  const { serverSpeed } = useServer();
   const queryClient = useQueryClient();
-  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Release duration: 6 hours adjusted for server speed
+  const releaseDurationMs = (6 * 60 * 60 * 1000) / serverSpeed;
+
+  const currentQueryKey = [occupiableOasisInRangeCacheKey, currentVillage.id];
 
   const { data: occupiableOasisInRange } = useSuspenseQuery({
-    queryKey: [occupiableOasisInRangeCacheKey, currentVillage.id, refreshKey],
+    queryKey: currentQueryKey,
     queryFn: async () => {
       const { data } = await fetcher(
         `/villages/${currentVillage.id}/occupiable-oasis`,
@@ -75,16 +81,30 @@ export const useOccupiableOasisInRange = () => {
     AbandonOasisArgs
   >({
     mutationFn: async ({ oasisId }) => {
+      // Optimistically update the UI before the API call
+      const optimisticReleaseAt = Date.now() + releaseDurationMs;
+      queryClient.setQueryData(
+        currentQueryKey,
+        (old: typeof occupiableOasisInRange) => {
+          if (!old) {
+            return old;
+          }
+          return old.map((o) =>
+            o.oasis.id === oasisId
+              ? { ...o, pendingReleaseAt: optimisticReleaseAt }
+              : o,
+          );
+        },
+      );
+
       await fetcher(`/villages/${currentVillage.id}/oasis/${oasisId}`, {
         method: 'DELETE',
       });
     },
     onSuccess: () => {
-      // Force refetch by changing the query key
-      setRefreshKey((prev) => prev + 1);
-      queryClient.removeQueries({
-        queryKey: [effectsCacheKey],
-      });
+      // Don't refetch - optimistic update is correct
+      // Only refetch on page navigation
+      queryClient.removeQueries({ queryKey: [effectsCacheKey] });
     },
     onError: (error) => {
       console.error('Failed to release oasis:', error);
@@ -95,16 +115,26 @@ export const useOccupiableOasisInRange = () => {
   const { mutate: cancelRelease } = useMutation<void, Error, CancelReleaseArgs>(
     {
       mutationFn: async ({ oasisId }) => {
+        // Optimistically update the UI before the API call
+        queryClient.setQueryData(
+          currentQueryKey,
+          (old: typeof occupiableOasisInRange) => {
+            if (!old) {
+              return old;
+            }
+            return old.map((o) =>
+              o.oasis.id === oasisId ? { ...o, pendingReleaseAt: null } : o,
+            );
+          },
+        );
+
         await fetcher(
           `/villages/${currentVillage.id}/oasis/${oasisId}/cancel-release`,
-          {
-            method: 'DELETE',
-          },
+          { method: 'DELETE' },
         );
       },
       onSuccess: () => {
-        // Force refetch by changing the query key
-        setRefreshKey((prev) => prev + 1);
+        // Don't refetch - optimistic update is correct
       },
       onError: (error) => {
         console.error('Failed to cancel release:', error);

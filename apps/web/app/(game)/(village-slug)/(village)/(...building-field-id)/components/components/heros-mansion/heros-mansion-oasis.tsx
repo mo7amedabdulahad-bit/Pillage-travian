@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { Bookmark } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/components/bookmark';
@@ -62,6 +62,15 @@ type OccupiedOasisSlotProps = {
   occupiedOasis: OccupiableOasis;
 };
 
+const formatCountdown = (resolvesAt: number) => {
+  const now = Date.now();
+  const diff = Math.max(0, resolvesAt - now);
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  return `${hours}h ${minutes}m ${seconds}s`;
+};
+
 const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
   const { t } = useTranslation();
   const { abandonOasis, cancelRelease, isReleasing } =
@@ -71,14 +80,33 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
   const { loyalty, bonuses } = occupiedOasis.oasis;
   const pendingReleaseAt = occupiedOasis.pendingReleaseAt;
 
-  const formatCountdown = (resolvesAt: number) => {
-    const now = Date.now();
-    const diff = Math.max(0, resolvesAt - now);
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    return `${hours}h ${minutes}m ${seconds}s`;
-  };
+  // Live countdown state that updates every second
+  const [countdown, setCountdown] = useState(() =>
+    pendingReleaseAt ? formatCountdown(pendingReleaseAt) : null,
+  );
+
+  useEffect(() => {
+    if (!pendingReleaseAt) {
+      setCountdown(null);
+      return;
+    }
+
+    // Update immediately
+    setCountdown(formatCountdown(pendingReleaseAt));
+
+    // Update every second
+    const interval = setInterval(() => {
+      const remaining = pendingReleaseAt - Date.now();
+      if (remaining <= 0) {
+        setCountdown(null);
+        clearInterval(interval);
+        return;
+      }
+      setCountdown(formatCountdown(pendingReleaseAt));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [pendingReleaseAt]);
 
   return (
     <TableRow>
@@ -110,11 +138,11 @@ const OccupiedOasisSlot = ({ occupiedOasis }: OccupiedOasisSlotProps) => {
         <Text>{loyalty}%</Text>
       </TableCell>
       <TableCell>
-        {pendingReleaseAt ? (
+        {countdown ? (
           <div className="flex flex-col gap-2">
             <Text className="text-red-500">
               {t('Releasing in {{time}}', {
-                time: formatCountdown(pendingReleaseAt),
+                time: countdown,
               })}
             </Text>
             <Button

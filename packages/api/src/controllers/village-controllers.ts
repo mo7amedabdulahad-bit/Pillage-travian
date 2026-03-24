@@ -93,7 +93,7 @@ export const getOccupiableOasisInRange = createController(
           GROUP BY ot.id
           ),
 
-        -- check for pending release events
+        -- check for pending release events (only for this village)
         pending_releases AS (
           SELECT
             e.meta,
@@ -102,6 +102,7 @@ export const getOccupiableOasisInRange = createController(
             events e
           WHERE
             e.type = 'oasisRelease'
+            AND e.village_id = $village_id
             AND e.resolves_at > $now
         )
 

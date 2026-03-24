@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { GameEvent } from '@pillage-first/types/models/game-event';
 import { resourceSchema } from '@pillage-first/types/models/resource';
 import { createController } from '../utils/controller';
 import { updateVillageResourcesAt } from '../utils/village';
@@ -72,11 +73,8 @@ export const abandonOasis = createController(
   createEvents<'oasisRelease'>(database, {
     type: 'oasisRelease',
     villageId,
-    meta: {
-      oasisTileId: oasisId,
-      villageId,
-    },
-  });
+    oasisTileId: oasisId,
+  } as unknown as GameEvent<'oasisRelease'>);
 });
 
 export const cancelOasisRelease = createController(
@@ -89,12 +87,12 @@ export const cancelOasisRelease = createController(
       SELECT id FROM events
       WHERE type = 'oasisRelease'
         AND village_id = $village_id
-        AND meta LIKE $meta_pattern
+        AND JSON_EXTRACT(meta, '$.oasisTileId') = $oasisId
       LIMIT 1
     `,
     bind: {
       $village_id: villageId,
-      $meta_pattern: `%"oasisTileId":${oasisId}%`,
+      $oasisId: oasisId,
     },
     schema: z.strictObject({ id: z.number() }),
   });

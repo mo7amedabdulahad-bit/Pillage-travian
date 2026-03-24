@@ -728,7 +728,11 @@ const resolveOasisCombat = (
     });
   }
 
-  // ─── 7. Calculate oasis slot availability ───
+  // ─── 7. Check if attacker already owns this oasis ───
+  // Player cannot reduce loyalty of their own oasis
+  const attackerOwnsOasis = oasisData.ownerVillageId === villageId;
+
+  // ─── 8. Calculate oasis slot availability ───
   const occupiedOases =
     database.selectValue({
       sql: 'SELECT COUNT(DISTINCT tile_id) FROM oasis WHERE village_id = $village_id',
@@ -756,13 +760,18 @@ const resolveOasisCombat = (
 
   const freeOasisSlotsAvailable = maxOasisSlots - occupiedOases;
 
-  // ─── 8. Loyalty reduction: ONLY for attacks with hero, all defenders dead, free slot ───
+  // ─── 9. Loyalty reduction: ONLY for attacks with hero, all defenders dead, free slot, NOT own oasis ───
   let loyaltyDecrease: number | undefined;
   let newLoyalty: number | undefined;
   const attackerWon = totalDefenderRemaining === 0;
 
+  // Player cannot reduce loyalty of their own oasis
   const canReduceLoyalty =
-    !isRaid && heroAlive && attackerWon && freeOasisSlotsAvailable > 0;
+    !isRaid &&
+    heroAlive &&
+    attackerWon &&
+    freeOasisSlotsAvailable > 0 &&
+    !attackerOwnsOasis;
 
   if (canReduceLoyalty) {
     const isNpcOwned = oasisData.npcPlayerId !== null;
