@@ -80,6 +80,8 @@ const FREE_SETTINGS: (keyof DeveloperSettings)[] = [
   'isFreeHeroReviveEnabled',
 ];
 
+const UI_SETTINGS: (keyof DeveloperSettings)[] = ['isMaxLevelUpgradeEnabled'];
+
 export const DeveloperToolsConsole = ({
   isOpen,
   onOpenChange,
@@ -144,6 +146,7 @@ export const DeveloperToolsConsole = ({
     isFreeUnitResearchEnabled: t('Free unit research'),
     isInstantHeroReviveEnabled: t('Instant hero revives'),
     isFreeHeroReviveEnabled: t('Free hero revives'),
+    isMaxLevelUpgradeEnabled: t('Max level upgrade button'),
   };
 
   const SETTING_DESCRIPTIONS: Record<keyof DeveloperSettings, string> = {
@@ -172,6 +175,9 @@ export const DeveloperToolsConsole = ({
     ),
     isInstantHeroReviveEnabled: t('Heroes are revived instantly.'),
     isFreeHeroReviveEnabled: t('Heroes do not cost any resources to revive.'),
+    isMaxLevelUpgradeEnabled: t(
+      'Shows a button to upgrade buildings directly to max level.',
+    ),
   };
 
   return (
@@ -296,6 +302,39 @@ export const DeveloperToolsConsole = ({
             <Text as="h3">{t('Cost')}</Text>
             <div className="grid grid-cols-1 gap-4">
               {FREE_SETTINGS.map((setting) => (
+                <div
+                  key={setting}
+                  className="flex items-center justify-between gap-4"
+                >
+                  <div className="flex flex-col gap-1">
+                    <Label
+                      htmlFor={setting}
+                      className="text-sm font-semibold cursor-pointer"
+                    >
+                      {t(SETTING_LABELS[setting])}
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {t(SETTING_DESCRIPTIONS[setting])}
+                    </span>
+                  </div>
+                  <Switch
+                    id={setting}
+                    checked={developerSettings[setting]}
+                    onCheckedChange={(checked) =>
+                      handleUpdateSetting(setting, checked)
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </SectionContent>
+
+          <Separator orientation="horizontal" />
+
+          <SectionContent>
+            <Text as="h3">{t('UI')}</Text>
+            <div className="grid grid-cols-1 gap-4">
+              {UI_SETTINGS.map((setting) => (
                 <div
                   key={setting}
                   className="flex items-center justify-between gap-4"

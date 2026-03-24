@@ -1,4 +1,4 @@
-import { startTransition, use } from 'react';
+import { startTransition, use, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import {
@@ -12,11 +12,14 @@ import { useBuildingActions } from 'app/(game)/(village-slug)/(village)/hooks/us
 import { useBuildingVirtualLevel } from 'app/(game)/(village-slug)/(village)/hooks/use-building-virtual-level';
 import { assessBuildingConstructionReadiness } from 'app/(game)/(village-slug)/(village)/utils/building-requirements';
 import { ErrorBag } from 'app/(game)/(village-slug)/components/error-bag.tsx';
+import { playerVillagesCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import {
   useBuildingConstructionStatus,
   useBuildingUpgradeStatus,
 } from 'app/(game)/(village-slug)/hooks/use-building-level-change-status';
+import { useCreateEvent } from 'app/(game)/(village-slug)/hooks/use-create-event';
+import { useDeveloperSettings } from 'app/(game)/(village-slug)/hooks/use-developer-settings';
 import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
 import { Text } from 'app/components/text';
@@ -95,18 +98,49 @@ export const BuildingActions = () => {
   const tribe = useTribe();
   const { buildingFieldId } = use(BuildingFieldContext);
   const { preferences } = usePreferences();
+  const { developerSettings } = useDeveloperSettings();
   const { maxLevelByBuildingId, buildingIdsInQueue } =
     use(BuildingFieldContext);
   const { constructBuilding, upgradeBuilding } = useBuildingActions(
     buildingId,
     buildingFieldId,
   );
+  const { createEvent: createLevelChangeEvent } = useCreateEvent(
+    'buildingLevelChange',
+  );
   const { virtualLevel, doesBuildingExist } = useBuildingVirtualLevel(
     buildingId,
     buildingFieldId,
   );
 
-  const { isMaxLevel } = getBuildingDataForLevel(buildingId, virtualLevel);
+  const { building, isMaxLevel } = getBuildingDataForLevel(
+    buildingId,
+    virtualLevel,
+  );
+
+  const upgradeToMaxLevel = useCallback(() => {
+    if (preferences.isAutomaticNavigationAfterBuildingLevelChangeEnabled) {
+      navigate('..', { relative: 'path' });
+    }
+
+    startTransition(() => {
+      createLevelChangeEvent({
+        buildingFieldId,
+        buildingId,
+        level: building.maxLevel,
+        previousLevel: virtualLevel,
+        cachesToClearImmediately: [playerVillagesCacheKey],
+      });
+    });
+  }, [
+    building.maxLevel,
+    buildingFieldId,
+    buildingId,
+    virtualLevel,
+    createLevelChangeEvent,
+    navigate,
+    preferences.isAutomaticNavigationAfterBuildingLevelChangeEnabled,
+  ]);
 
   const navigateBack = async () => {
     await navigate('..', { relative: 'path' });
@@ -171,6 +205,18 @@ export const BuildingActions = () => {
         buildingLevel={virtualLevel}
         onBuildingUpgrade={onBuildingUpgrade}
       />
+      {developerSettings.isMaxLevelUpgradeEnabled && (
+        <Button
+          data-testid="building-actions-max-level-button"
+          variant="outline"
+          size="fit"
+          onClick={upgradeToMaxLevel}
+        >
+          {t('Upgrade to max level ({{level}})', {
+            level: building.maxLevel,
+          })}
+        </Button>
+      )}
     </section>
   );
 };

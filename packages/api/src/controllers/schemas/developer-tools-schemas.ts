@@ -14,6 +14,7 @@ export const getDeveloperSettingsSchema = z
     is_free_unit_research_enabled: z.number(),
     is_instant_hero_revive_enabled: z.number(),
     is_free_hero_revive_enabled: z.number(),
+    is_max_level_upgrade_enabled: z.number(),
   })
   .transform((t) => {
     return {
@@ -34,6 +35,7 @@ export const getDeveloperSettingsSchema = z
       isFreeUnitResearchEnabled: Boolean(t.is_free_unit_research_enabled),
       isInstantHeroReviveEnabled: Boolean(t.is_instant_hero_revive_enabled),
       isFreeHeroReviveEnabled: Boolean(t.is_free_hero_revive_enabled),
+      isMaxLevelUpgradeEnabled: Boolean(t.is_max_level_upgrade_enabled),
     };
   })
   .pipe(
@@ -49,6 +51,7 @@ export const getDeveloperSettingsSchema = z
       isFreeUnitResearchEnabled: z.boolean(),
       isInstantHeroReviveEnabled: z.boolean(),
       isFreeHeroReviveEnabled: z.boolean(),
+      isMaxLevelUpgradeEnabled: z.boolean(),
     }),
   )
   .meta({ id: 'GetDeveloperSettings' });

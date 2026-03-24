@@ -24,7 +24,8 @@ export const getDeveloperSettings = createController('/developer-settings')(
         is_free_unit_improvement_enabled,
         is_free_unit_research_enabled,
         is_instant_hero_revive_enabled,
-        is_free_hero_revive_enabled
+        is_free_hero_revive_enabled,
+        is_max_level_upgrade_enabled
       FROM
         developer_settings
     `,
@@ -207,7 +208,6 @@ export const killHero = createController(
   '/developer-settings/:heroId/kill-hero',
   'patch',
 )(({ database, path: { heroId } }) => {
-  // Set hero health to 0
   database.exec({
     sql: `
       UPDATE heroes

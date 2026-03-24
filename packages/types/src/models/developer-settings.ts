@@ -13,6 +13,7 @@ export const developerSettingsSchema = z
     isFreeUnitResearchEnabled: z.boolean(),
     isInstantHeroReviveEnabled: z.boolean(),
     isFreeHeroReviveEnabled: z.boolean(),
+    isMaxLevelUpgradeEnabled: z.boolean(),
   })
   .meta({ id: 'DeveloperSettings' });
 

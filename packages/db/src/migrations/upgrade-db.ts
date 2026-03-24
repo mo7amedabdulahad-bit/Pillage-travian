@@ -111,4 +111,13 @@ export const upgradeDb = (database: DbFacade): void => {
   } catch (_e) {
     // Column might already exist
   }
+
+  // developer_settings is_max_level_upgrade_enabled column
+  try {
+    database.exec({
+      sql: 'ALTER TABLE developer_settings ADD COLUMN is_max_level_upgrade_enabled INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
 };
