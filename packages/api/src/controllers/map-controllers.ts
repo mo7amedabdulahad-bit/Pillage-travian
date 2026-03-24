@@ -128,6 +128,8 @@ export const getTiles = createController('/tiles')(({ database }) => {
           WHEN t.type = 'oasis' AND v_owner.id IS NOT NULL THEN COALESCE(ew_owner.wheat_production_sum, 0)
           END AS population,
 
+        COALESCE(v.loyalty, v_owner.loyalty) AS village_loyalty,
+
         CASE
           WHEN t.type = 'free' THEN wi.item_id
           END AS item_id,

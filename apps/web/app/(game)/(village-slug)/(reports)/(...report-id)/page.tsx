@@ -295,6 +295,26 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                   </Text>
                 </div>
               )}
+
+            {combatData.loyaltyReduction !== undefined &&
+              combatData.loyaltyReduction > 0 && (
+                <div className="rounded-md border border-border bg-muted/10 p-4">
+                  <Text className="font-semibold">{t('Chief effect')}</Text>
+                  {combatData.conquered ? (
+                    <Text>
+                      {t('Village conquered! Loyalty was reduced to 0.')}
+                    </Text>
+                  ) : (
+                    <Text>
+                      {t('Village loyalty reduced by {{amount}}', {
+                        amount: combatData.loyaltyReduction,
+                      })}
+                      {combatData.newLoyalty !== undefined &&
+                        ` (${t('new loyalty')}: ${combatData.newLoyalty}%)`}
+                    </Text>
+                  )}
+                </div>
+              )}
           </div>
         )}
       </div>

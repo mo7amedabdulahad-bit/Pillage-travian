@@ -17,6 +17,10 @@ export type CombatReportData = Omit<CombatResult, 'loot'> & {
   // Oasis occupation specific fields
   oasisLoyaltyDecrease?: number;
   oasisLoyaltyCurrent?: number;
+  // Village chief attack fields
+  loyaltyReduction?: number;
+  newLoyalty?: number;
+  conquered?: boolean;
 };
 
 export type AdventureReportData = {

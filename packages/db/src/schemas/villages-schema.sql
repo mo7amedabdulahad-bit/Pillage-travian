@@ -5,7 +5,7 @@ CREATE TABLE villages
   slug TEXT,
   tile_id INTEGER NOT NULL,
   player_id INTEGER NOT NULL,
-  loyalty INTEGER DEFAULT 100,
+  loyalty INTEGER NOT NULL DEFAULT 100,
 
   UNIQUE (tile_id),
 

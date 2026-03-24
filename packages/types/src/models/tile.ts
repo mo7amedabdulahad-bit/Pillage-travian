@@ -10,6 +10,7 @@ const tileVillageSchema = z
     // TODO: NPC villages don't have a village slug. Should this be changed?
     slug: z.string().nullable(),
     population: z.number(),
+    loyalty: z.number().optional(),
   })
   .meta({ id: 'TileVillage' });
 

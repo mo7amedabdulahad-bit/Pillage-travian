@@ -967,9 +967,10 @@ export const resolveTroopMovementCombat = (
 
   const attackerVillage = database.selectObject({
     sql: `
-      SELECT 
-        v.name as name, 
-        p.name as playerName, 
+      SELECT
+        v.name as name,
+        p.id as playerId,
+        p.name as playerName,
         p.faction_id as factionId,
         ti.tribe as tribe
       FROM villages v
@@ -980,6 +981,7 @@ export const resolveTroopMovementCombat = (
     bind: { $id: villageId },
     schema: z.object({
       name: z.string(),
+      playerId: z.number(),
       playerName: z.string(),
       factionId: z.number(),
       tribe: z.string(),
@@ -1156,7 +1158,34 @@ export const resolveTroopMovementCombat = (
     } as GameEvent<'troopMovementReturn'>);
   }
 
-  // 10. Save report
+  // 10. Chief attack: loyalty reduction
+  let reportLoyaltyReduction: number | undefined;
+  let reportNewLoyalty: number | undefined;
+  let reportConquered: boolean | undefined;
+
+  if (!isRaid && result.attackerWins) {
+    const survivingChiefs = _countChiefsSurvived(result.attackerSurvivors);
+
+    if (survivingChiefs > 0) {
+      const loyaltyReduction = survivingChiefs * _LOYALTY_REDUCTION_PER_CHIEF;
+      const newLoyalty = _updateVillageLoyalty(
+        database,
+        targetId,
+        loyaltyReduction,
+      );
+
+      reportLoyaltyReduction = loyaltyReduction;
+      reportNewLoyalty = newLoyalty;
+
+      // Village conquest: loyalty reached 0 AND no palace/residence protects it
+      if (newLoyalty === 0 && !_hasPalaceOrResidence(database, targetId)) {
+        _transferVillageOwnership(database, targetId, attackerVillage.playerId);
+        reportConquered = true;
+      }
+    }
+  }
+
+  // 11. Save report
   saveCombatReport(
     database,
     {
@@ -1173,6 +1202,11 @@ export const resolveTroopMovementCombat = (
         amount: d.amount,
       })),
       isRaid,
+      ...(reportLoyaltyReduction !== undefined && {
+        loyaltyReduction: reportLoyaltyReduction,
+        newLoyalty: reportNewLoyalty,
+        conquered: reportConquered,
+      }),
     },
     villageId,
     targetId,
@@ -1181,6 +1215,6 @@ export const resolveTroopMovementCombat = (
     targetVillage.factionId,
   );
 
-  // 11. NPC Retaliation
+  // 12. NPC Retaliation
   handleNpcRetaliation(database, targetId, villageId, resolvesAt);
 };

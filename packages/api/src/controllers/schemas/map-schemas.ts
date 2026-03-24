@@ -26,6 +26,7 @@ export const getTilesSchema = z
     village_name: z.string().nullable(),
     village_slug: z.string().nullable(),
     population: z.number().nullable(),
+    village_loyalty: z.number().nullable(),
 
     item_id: z.number().nullable(),
   })
@@ -72,6 +73,7 @@ export const getTilesSchema = z
           name: t.village_name,
           slug: t.village_slug,
           population: t.population,
+          loyalty: t.village_loyalty ?? undefined,
         },
       }),
       ...(!isOccupied && {

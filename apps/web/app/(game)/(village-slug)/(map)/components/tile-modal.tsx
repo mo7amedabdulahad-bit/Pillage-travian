@@ -90,7 +90,7 @@ const TileModalPlayerInfo = ({ tile }: TileModalProps) => {
   const { getReputation } = useReputations();
 
   const { tribe, name, faction } = tile.owner!;
-  const { population } = tile.ownerVillage!;
+  const { population, loyalty } = tile.ownerVillage!;
 
   return (
     <div className="flex flex-col gap-2">
@@ -114,6 +114,11 @@ const TileModalPlayerInfo = ({ tile }: TileModalProps) => {
       <span>
         {t('Population')} - {population}
       </span>
+      {faction !== 'player' && loyalty !== undefined && (
+        <span>
+          {t('Loyalty')} - {loyalty}%
+        </span>
+      )}
     </div>
   );
 };
