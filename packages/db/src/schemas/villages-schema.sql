@@ -6,6 +6,7 @@ CREATE TABLE villages
   tile_id INTEGER NOT NULL,
   player_id INTEGER NOT NULL,
   loyalty INTEGER NOT NULL DEFAULT 100,
+  loyalty_updated_at INTEGER,
 
   UNIQUE (tile_id),
 

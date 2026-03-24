@@ -102,4 +102,13 @@ export const upgradeDb = (database: DbFacade): void => {
   } catch (_e) {
     // Column might already exist
   }
+
+  // villages loyalty_updated_at column
+  try {
+    database.exec({
+      sql: 'ALTER TABLE villages ADD COLUMN loyalty_updated_at INTEGER;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
 };

@@ -5,6 +5,7 @@ import {
   resolveCombat,
 } from '@pillage-first/game-assets/combat/combat-engine';
 import { unitsMap } from '@pillage-first/game-assets/units';
+import { getUnitDefinition } from '@pillage-first/game-assets/utils/units';
 import type {
   GameEvent,
   ScoutMode,
@@ -13,6 +14,7 @@ import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { updateOasisResourcesAt } from '../../../utils/oasis';
 import {
+  addVillageResourcesAt,
   calculateVillageResourcesAt,
   subtractVillageResourcesAt,
   updateVillageResourcesAt,
@@ -113,36 +115,110 @@ const isChiefUnit = (unitId: string): boolean => {
   return CHIEF_UNITS.has(unitId);
 };
 
-const _countChiefsSurvived = (
-  troops: { unitId: string; amount: number }[],
-): number => {
-  return troops.reduce((sum, troop) => {
-    if (isChiefUnit(troop.unitId)) {
-      return sum + troop.amount;
-    }
-    return sum;
-  }, 0);
+const CHIEF_LOYALTY_RANGES: Record<string, [number, number]> = {
+  ROMAN_CHIEF: [20, 30],
+  TEUTONIC_CHIEF: [20, 25],
+  GAUL_CHIEF: [20, 25],
+  EGYPTIAN_CHIEF: [20, 25],
+  HUN_CHIEF: [15, 30],
+  SPARTAN_CHIEF: [20, 25],
+  NATARIAN_CHIEF: [20, 25],
 };
 
-const _LOYALTY_REDUCTION_PER_CHIEF = 5;
+/**
+ * Calculates total loyalty reduction for a group of surviving chiefs.
+ * The random factor is rolled once per chief type and applied to all units
+ * of that type.
+ */
+const _calculateChiefLoyaltyReduction = (
+  troops: { unitId: string; amount: number }[],
+): number => {
+  let totalReduction = 0;
 
+  for (const troop of troops) {
+    if (!isChiefUnit(troop.unitId)) {
+      continue;
+    }
+
+    const range = CHIEF_LOYALTY_RANGES[troop.unitId] ?? [20, 25];
+    const [min, max] = range;
+
+    // Roll once per chief type, apply to all units of that type
+    const roll = Math.floor(Math.random() * (max - min + 1)) + min;
+    totalReduction += roll * troop.amount;
+  }
+
+  return totalReduction;
+};
+
+/**
+ * Reads the current loyalty for a village, accounting for passive regeneration
+ * since the last update.
+ *
+ * Regeneration rate: 2 loyalty points per 3 hours per level of the
+ * Residence/Command Center building.
+ */
+const _calculateCurrentLoyalty = (
+  database: DbFacade,
+  villageId: number,
+  now: number,
+): number => {
+  const row = database.selectObject({
+    sql: `
+      SELECT
+        v.loyalty,
+        v.loyalty_updated_at,
+        MAX(bf.level) AS adminBuildingLevel
+      FROM villages v
+      LEFT JOIN building_fields bf ON bf.village_id = v.id
+      LEFT JOIN building_ids bi ON bi.id = bf.building_id
+        AND bi.building IN ('RESIDENCE', 'COMMAND_CENTER')
+        AND bf.level > 0
+      WHERE v.id = $village_id
+      GROUP BY v.id
+    `,
+    bind: { $village_id: villageId },
+    schema: z.strictObject({
+      loyalty: z.number(),
+      loyalty_updated_at: z.number().nullable(),
+      adminBuildingLevel: z.number().nullable(),
+    }),
+  });
+
+  if (!row) {
+    return 100;
+  }
+
+  const adminLevel = row.adminBuildingLevel ?? 0;
+
+  if (adminLevel === 0 || row.loyalty_updated_at === null) {
+    return row.loyalty;
+  }
+
+  // 2 loyalty per 3 hours per level = (2/3) * level per hour
+  const elapsedHours =
+    Math.max(0, now - row.loyalty_updated_at) / (1000 * 3600);
+  const regen = Math.floor((2 / 3) * adminLevel * elapsedHours);
+  return Math.min(100, row.loyalty + regen);
+};
+
+/**
+ * Reduces village loyalty by the given amount, accounting for any passive
+ * regeneration since the last update. Writes the new loyalty and timestamp
+ * back to the DB.
+ */
 const _updateVillageLoyalty = (
   database: DbFacade,
   villageId: number,
   loyaltyReduction: number,
+  now: number,
 ): number => {
-  const currentLoyalty =
-    database.selectValue({
-      sql: 'SELECT loyalty FROM villages WHERE id = $village_id',
-      bind: { $village_id: villageId },
-      schema: z.number().nullable(),
-    }) ?? 100;
-
+  const currentLoyalty = _calculateCurrentLoyalty(database, villageId, now);
   const newLoyalty = Math.max(0, currentLoyalty - loyaltyReduction);
 
   database.exec({
-    sql: 'UPDATE villages SET loyalty = $loyalty WHERE id = $village_id',
-    bind: { $loyalty: newLoyalty, $village_id: villageId },
+    sql: 'UPDATE villages SET loyalty = $loyalty, loyalty_updated_at = $now WHERE id = $village_id',
+    bind: { $loyalty: newLoyalty, $village_id: villageId, $now: now },
   });
 
   return newLoyalty;
@@ -152,10 +228,132 @@ const _transferVillageOwnership = (
   database: DbFacade,
   villageId: number,
   newPlayerId: number,
+  resolvesAt: number,
 ): void => {
-  database.exec({
-    sql: 'UPDATE villages SET player_id = $player_id, loyalty = 100 WHERE id = $village_id',
-    bind: { $player_id: newPlayerId, $village_id: villageId },
+  database.transaction((db) => {
+    // 1. Transfer ownership and reset loyalty
+    db.exec({
+      sql: `UPDATE villages SET player_id = $player_id, loyalty = 100,
+            loyalty_updated_at = $now WHERE id = $village_id`,
+      bind: {
+        $player_id: newPlayerId,
+        $village_id: villageId,
+        $now: resolvesAt,
+      },
+    });
+
+    // 2. Get village tile_id for troop operations
+    const tileId = db.selectValue({
+      sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
+      bind: { $village_id: villageId },
+      schema: z.number(),
+    })!;
+
+    // 3. Reset wall to level 0 (all wall types)
+    db.exec({
+      sql: `
+        UPDATE building_fields
+        SET level = 0
+        WHERE village_id = $village_id
+          AND building_id IN (
+            SELECT id FROM building_ids
+            WHERE building IN (
+              'ROMAN_WALL', 'GAUL_WALL', 'TEUTONIC_WALL',
+              'EGYPTIAN_WALL', 'HUN_WALL', 'SPARTAN_WALL',
+              'NATAR_WALL', 'NATURE_WALL'
+            )
+          )
+      `,
+      bind: { $village_id: villageId },
+    });
+
+    // 4. Clear academy research for this village
+    db.exec({
+      sql: 'DELETE FROM unit_research WHERE village_id = $village_id',
+      bind: { $village_id: villageId },
+    });
+
+    // 5. Smithy upgrades (unit_improvements) are per-player, not per-village.
+    //    The attacker keeps their upgrades and they apply to the conquered village.
+    //    The old owner's upgrades remain for their other villages (if any).
+
+    // 6. Remove all defending troops from the village tile
+    db.exec({
+      sql: 'DELETE FROM troops WHERE tile_id = $tile_id',
+      bind: { $tile_id: tileId },
+    });
+
+    // 7. Cancel training queues and refund 50% resources
+    const trainingEvents = db.selectObjects({
+      sql: `
+        SELECT id, meta FROM events
+        WHERE village_id = $village_id
+          AND type = 'troopTraining'
+          AND resolves_at > $now
+      `,
+      bind: { $village_id: villageId, $now: resolvesAt },
+      schema: z.strictObject({ id: z.number(), meta: z.string() }),
+    });
+
+    let totalRefund = [0, 0, 0, 0];
+    for (const event of trainingEvents) {
+      try {
+        const meta = JSON.parse(event.meta) as {
+          unitId: string;
+          amount: number;
+          buildingId: string;
+        };
+        const { baseRecruitmentCost } = getUnitDefinition(
+          meta.unitId as UnitId,
+        );
+        const costModifier =
+          meta.buildingId === 'GREAT_BARRACKS' ||
+          meta.buildingId === 'GREAT_STABLE'
+            ? 3
+            : 1;
+        const fullCost = baseRecruitmentCost.map(
+          (c) => c * costModifier * meta.amount,
+        );
+        // Refund 50%
+        totalRefund = totalRefund.map(
+          (total, i) => total + Math.floor(fullCost[i] * 0.5),
+        );
+      } catch {
+        // If meta parsing fails, skip refund for this event
+      }
+    }
+
+    // Delete all training events
+    db.exec({
+      sql: `DELETE FROM events WHERE village_id = $village_id AND type = 'troopTraining' AND resolves_at > $now`,
+      bind: { $village_id: villageId, $now: resolvesAt },
+    });
+
+    // Apply 50% refund to the village
+    if (totalRefund.some((v) => v > 0)) {
+      addVillageResourcesAt(db, villageId, resolvesAt, totalRefund);
+    }
+
+    // 8. Release all connected oases (effects + oasis ownership)
+    db.exec({
+      sql: `
+        DELETE FROM effects
+        WHERE source = 'oasis' AND village_id = $village_id
+      `,
+      bind: { $village_id: villageId },
+    });
+    db.exec({
+      sql: `
+        UPDATE oasis
+        SET village_id = NULL, loyalty = 100, loyalty_updated_at = $now
+        WHERE village_id = $village_id
+      `,
+      bind: { $village_id: villageId, $now: resolvesAt },
+    });
+
+    // 9. DO NOT change the village tribe_id — tribe is kept after conquest.
+    // DO NOT remove tribe-specific buildings — same-tribe rule always applies
+    // since tribe is preserved.
   });
 };
 
@@ -1164,14 +1362,16 @@ export const resolveTroopMovementCombat = (
   let reportConquered: boolean | undefined;
 
   if (!isRaid && result.attackerWins) {
-    const survivingChiefs = _countChiefsSurvived(result.attackerSurvivors);
+    const loyaltyReduction = _calculateChiefLoyaltyReduction(
+      result.attackerSurvivors,
+    );
 
-    if (survivingChiefs > 0) {
-      const loyaltyReduction = survivingChiefs * _LOYALTY_REDUCTION_PER_CHIEF;
+    if (loyaltyReduction > 0) {
       const newLoyalty = _updateVillageLoyalty(
         database,
         targetId,
         loyaltyReduction,
+        resolvesAt,
       );
 
       reportLoyaltyReduction = loyaltyReduction;
@@ -1179,7 +1379,12 @@ export const resolveTroopMovementCombat = (
 
       // Village conquest: loyalty reached 0 AND no palace/residence protects it
       if (newLoyalty === 0 && !_hasPalaceOrResidence(database, targetId)) {
-        _transferVillageOwnership(database, targetId, attackerVillage.playerId);
+        _transferVillageOwnership(
+          database,
+          targetId,
+          attackerVillage.playerId,
+          resolvesAt,
+        );
         reportConquered = true;
       }
     }
