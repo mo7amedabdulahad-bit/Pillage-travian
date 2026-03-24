@@ -686,64 +686,6 @@ export const RallyPointSendTroops = () => {
                 </Label>
               </div>
             </RadioGroup>
-
-            {/* Catapult targets — visible only for attacks with catapults */}
-            {showCatapultUI && (
-              <div className="flex flex-col gap-2 mt-4 p-3 border rounded-xs bg-background">
-                <Text className="font-semibold text-sm">
-                  {t('Catapult target')}
-                  {totalCatapults > 0 && ` (${totalCatapults})`}
-                </Text>
-                <div className="flex items-center gap-2">
-                  <Label
-                    htmlFor="catapult-target-1-input"
-                    className="w-20 shrink-0 text-sm"
-                  >
-                    {t('Target 1')}:
-                  </Label>
-                  <select
-                    id="catapult-target-1-input"
-                    value={catapultTarget1}
-                    onChange={(e) => setCatapultTarget1(e.target.value)}
-                    className="h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                  >
-                    {getCatapultTargets().map((opt) => (
-                      <option
-                        key={opt.value}
-                        value={opt.value}
-                      >
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {rpLevel >= 20 && totalCatapults >= 20 && (
-                  <div className="flex items-center gap-2">
-                    <Label
-                      htmlFor="catapult-target-2-input"
-                      className="w-20 shrink-0 text-sm"
-                    >
-                      {t('Target 2')}:
-                    </Label>
-                    <select
-                      id="catapult-target-2-input"
-                      value={catapultTarget2}
-                      onChange={(e) => setCatapultTarget2(e.target.value)}
-                      className="h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    >
-                      {getCatapultTargets().map((opt) => (
-                        <option
-                          key={opt.value}
-                          value={opt.value}
-                        >
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
