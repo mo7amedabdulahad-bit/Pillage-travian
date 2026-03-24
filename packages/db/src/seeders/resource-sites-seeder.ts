@@ -13,8 +13,6 @@ const VillageSelectResultRowSchema = z.strictObject({
 
 const OasisSelectResultRowSchema = z.strictObject({
   id: z.number(),
-  bonus: z.number(),
-  count_per_tile: z.number(),
 });
 
 const villageSizeToResourceAmountMap = new Map<VillageSize, number>([
@@ -49,15 +47,10 @@ export const resourceSitesSeeder = (
 
   const oasis = database.selectObjects({
     sql: `
-      SELECT
-        tiles.id,
-        COUNT(oasis.tile_id) AS count_per_tile,
-        MAX(oasis.bonus) AS bonus
-      FROM
-        tiles
-          INNER JOIN oasis ON tiles.id = oasis.tile_id
-      GROUP BY
-        tiles.id;
+      SELECT tiles.id
+      FROM tiles
+      INNER JOIN oasis ON tiles.id = oasis.tile_id
+      GROUP BY tiles.id;
     `,
     schema: OasisSelectResultRowSchema,
   });
@@ -82,16 +75,11 @@ export const resourceSitesSeeder = (
     results.push([id, wood, clay, iron, wheat, updatedAt]);
   }
 
-  for (const { id, bonus, count_per_tile } of oasis) {
-    // If oasis has a 50% bonus or there's multiple bonuses, it has a higher resource limit
-    const resourceAmount = bonus === 50 || count_per_tile === 2 ? 2000 : 1000;
-    const [wood, clay, iron, wheat] = [
-      resourceAmount,
-      resourceAmount,
-      resourceAmount,
-      resourceAmount,
-    ];
-    results.push([id, wood, clay, iron, wheat, updatedAt]);
+  for (const { id } of oasis) {
+    // Oasis resources start at 0 — the time-based accumulation system in
+    // calculateOasisResourcesAt builds them up from updatedAt over time.
+    // Cap is 500 per resource type (enforced in oasis.ts).
+    results.push([id, 0, 0, 0, 0, updatedAt]);
   }
 
   batchInsert(
