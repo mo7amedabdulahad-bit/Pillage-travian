@@ -569,6 +569,13 @@ export const runEventCreationSideEffects = (
       removeTroops(database, troops);
     }
   }
+
+  // Settle events have troops but use a different type (targetTileId instead of targetId)
+  if (isSettleTroopMovementEvent(event)) {
+    for (const { troops } of events as GameEvent<'troopMovementSettle'>[]) {
+      removeTroops(database, troops);
+    }
+  }
 };
 
 // WARNING: `event` does not include `startsAt` and `duration` at this point in the flow!
@@ -667,6 +674,11 @@ export const getEventCost = (
     const { level } = calculateHeroLevel(experience);
 
     return calculateHeroRevivalCost(tribe, level);
+  }
+
+  if (isSettleTroopMovementEvent(event)) {
+    // Settling costs 750 of each resource
+    return [750, 750, 750, 750];
   }
 
   return [0, 0, 0, 0];

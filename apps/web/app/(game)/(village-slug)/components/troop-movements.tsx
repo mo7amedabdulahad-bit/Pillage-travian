@@ -1,6 +1,9 @@
 import { clsx } from 'clsx';
 import { Suspense } from 'react';
-import type { TroopMovementEvent } from '@pillage-first/types/models/game-event';
+import type {
+  GameEvent,
+  TroopMovementEvent,
+} from '@pillage-first/types/models/game-event';
 import type { Village } from '@pillage-first/types/models/village';
 import {
   isAdventureTroopMovementEvent,
@@ -11,6 +14,7 @@ import {
   isRelocationTroopMovementEvent,
   isReturnTroopMovementEvent,
   isScoutTroopMovementEvent,
+  isSettleTroopMovementEvent,
 } from '@pillage-first/utils/guards/event';
 import { Countdown } from 'app/(game)/(village-slug)/components/countdown';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
@@ -76,9 +80,16 @@ const partitionTroopMovementEvents = (
   const adventureMovementEvents: TroopMovementEvent[] = [];
   const findNewVillageMovementEvents: TroopMovementEvent[] = [];
 
+  // Settle events are not in TroopMovementEvent union, so handle them separately
+  const settleEvents: GameEvent<'troopMovementSettle'>[] = [];
+
   for (const event of events) {
     if (isFindNewVillageTroopMovementEvent(event)) {
       findNewVillageMovementEvents.push(event);
+      continue;
+    }
+    if (isSettleTroopMovementEvent(event)) {
+      settleEvents.push(event);
       continue;
     }
     if (isAdventureTroopMovementEvent(event)) {
@@ -122,6 +133,7 @@ const partitionTroopMovementEvents = (
     incomingDeploymentMovementEvents,
     adventureMovementEvents,
     findNewVillageMovementEvents,
+    settleEvents,
   };
 };
 
@@ -132,6 +144,7 @@ const TroopMovementsContent = () => {
 
   const {
     findNewVillageMovementEvents,
+    settleEvents,
     outgoingOffensiveMovementEvents,
     incomingOffensiveMovementEvents,
     outgoingDeploymentMovementEvents,
@@ -139,11 +152,17 @@ const TroopMovementsContent = () => {
     adventureMovementEvents,
   } = partitionTroopMovementEvents(troopMovementEvents, currentVillage.id);
 
+  // Combine findNewVillage and settle events for display
+  const expansionEvents = [
+    ...findNewVillageMovementEvents,
+    ...(settleEvents as unknown as TroopMovementEvent[]),
+  ];
+
   return (
     <aside className="flex flex-col gap-1 lg:gap-2 fixed left-0 top-30 lg:top-40 z-20">
       <TroopMovement
         type="findNewVillage"
-        events={findNewVillageMovementEvents}
+        events={expansionEvents}
       />
       <TroopMovement
         type="adventure"
