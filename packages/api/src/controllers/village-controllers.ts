@@ -47,7 +47,7 @@ export const getVillageBySlug = createController('/villages/:villageSlug')(
           LEFT JOIN resource_field_composition_ids rfc
                     ON t.resource_field_composition_id = rfc.id
       WHERE
-        v.slug = $slug
+        v.slug = $slug OR ('v-' || v.id) = $slug
       LIMIT 1;
     `,
       bind: { $slug: villageSlug },
