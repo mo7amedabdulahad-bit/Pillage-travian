@@ -355,7 +355,7 @@ describe('attackMovementResolver', () => {
     })!;
 
     expect(returnEvent.starts_at).toBe(mockEvent.resolvesAt);
-    expect(returnEvent.village_id).toBe(npcVillage.id);
+    expect(returnEvent.village_id).toBe(villageId);
     expect(returnEvent.meta.targetId).toBe(villageId);
     expect(
       database.selectValue({

@@ -329,6 +329,14 @@ const _transferVillageOwnership = (
       bind: { $village_id: villageId, $now: resolvesAt },
     });
 
+    // Delete other village-owned pending events, but preserve return/reinforcement
+    // movements that may belong to attackers returning from this village
+    db.exec({
+      sql: `DELETE FROM events WHERE village_id = $village_id AND resolves_at > $now
+            AND type NOT IN ('troopMovementReturn', 'troopMovementReinforcements')`,
+      bind: { $village_id: villageId, $now: resolvesAt },
+    });
+
     // Apply 50% refund to the village
     if (totalRefund.some((v) => v > 0)) {
       addVillageResourcesAt(db, villageId, resolvesAt, totalRefund);
@@ -997,7 +1005,7 @@ const resolveScoutMovement = (
     })!;
 
     createEvents<'troopMovementReturn'>(database, {
-      villageId: targetId,
+      villageId: villageId,
       targetId: villageId,
       startsAt: resolvesAt,
       troops: attackerOutcome.survivors.map(({ unitId, amount }) => ({
@@ -1773,22 +1781,20 @@ export const resolveTroopMovementCombat = (
       schema: z.number(),
     })!;
 
-    // When village was destroyed or conquered, troops go directly home
     const villageWasConquered = reportConquered ?? false;
-    const returnTargetId =
-      villageWasDestroyed || villageWasConquered ? villageId : targetId;
+    const troopsAtTileId =
+      villageWasDestroyed || villageWasConquered
+        ? sourceTileId
+        : targetVillage.tileId;
 
     createEvents<'troopMovementReturn'>(database, {
-      villageId: returnTargetId,
+      villageId: villageId,
       targetId: villageId,
       startsAt: resolvesAt,
       troops: result.attackerSurvivors.map((s) => ({
         unitId: s.unitId,
         amount: s.amount,
-        tileId:
-          villageWasDestroyed || villageWasConquered
-            ? sourceTileId
-            : targetVillage.tileId,
+        tileId: troopsAtTileId,
         source: sourceTileId,
       })),
       type: 'troopMovementReturn',
