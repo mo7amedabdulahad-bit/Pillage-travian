@@ -232,139 +232,135 @@ const _transferVillageOwnership = (
   newPlayerId: number,
   resolvesAt: number,
 ): void => {
-  database.transaction((db) => {
-    // 1. Transfer ownership and reset loyalty
-    db.exec({
-      sql: `UPDATE villages SET player_id = $player_id, loyalty = 100,
-            loyalty_updated_at = $now WHERE id = $village_id`,
-      bind: {
-        $player_id: newPlayerId,
-        $village_id: villageId,
-        $now: resolvesAt,
-      },
-    });
-
-    // 2. Get village tile_id for troop operations
-    const tileId = db.selectValue({
-      sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
-      bind: { $village_id: villageId },
-      schema: z.number(),
-    })!;
-
-    // 3. Reset wall to level 0 (all wall types)
-    db.exec({
-      sql: `
-        UPDATE building_fields
-        SET level = 0
-        WHERE village_id = $village_id
-          AND building_id IN (
-            SELECT id FROM building_ids
-            WHERE building IN (
-              'ROMAN_WALL', 'GAUL_WALL', 'TEUTONIC_WALL',
-              'EGYPTIAN_WALL', 'HUN_WALL', 'SPARTAN_WALL',
-              'NATAR_WALL', 'NATURE_WALL'
-            )
-          )
-      `,
-      bind: { $village_id: villageId },
-    });
-
-    // 4. Clear academy research for this village
-    db.exec({
-      sql: 'DELETE FROM unit_research WHERE village_id = $village_id',
-      bind: { $village_id: villageId },
-    });
-
-    // 5. Smithy upgrades (unit_improvements) are per-player, not per-village.
-    //    The attacker keeps their upgrades and they apply to the conquered village.
-    //    The old owner's upgrades remain for their other villages (if any).
-
-    // 6. Remove all defending troops from the village tile
-    db.exec({
-      sql: 'DELETE FROM troops WHERE tile_id = $tile_id',
-      bind: { $tile_id: tileId },
-    });
-
-    // 7. Cancel training queues and refund 50% resources
-    const trainingEvents = db.selectObjects({
-      sql: `
-        SELECT id, meta FROM events
-        WHERE village_id = $village_id
-          AND type = 'troopTraining'
-          AND resolves_at > $now
-      `,
-      bind: { $village_id: villageId, $now: resolvesAt },
-      schema: z.strictObject({ id: z.number(), meta: z.string() }),
-    });
-
-    let totalRefund = [0, 0, 0, 0];
-    for (const event of trainingEvents) {
-      try {
-        const meta = JSON.parse(event.meta) as {
-          unitId: string;
-          amount: number;
-          buildingId: string;
-        };
-        const { baseRecruitmentCost } = getUnitDefinition(
-          meta.unitId as UnitId,
-        );
-        const costModifier =
-          meta.buildingId === 'GREAT_BARRACKS' ||
-          meta.buildingId === 'GREAT_STABLE'
-            ? 3
-            : 1;
-        const fullCost = baseRecruitmentCost.map(
-          (c) => c * costModifier * meta.amount,
-        );
-        // Refund 50%
-        totalRefund = totalRefund.map(
-          (total, i) => total + Math.floor(fullCost[i] * 0.5),
-        );
-      } catch {
-        // If meta parsing fails, skip refund for this event
-      }
-    }
-
-    // Delete all training events
-    db.exec({
-      sql: `DELETE FROM events WHERE village_id = $village_id AND type = 'troopTraining' AND resolves_at > $now`,
-      bind: { $village_id: villageId, $now: resolvesAt },
-    });
-
-    // Delete other village-owned pending events, but preserve return/reinforcement
-    // movements that may belong to attackers returning from this village
-    db.exec({
-      sql: `DELETE FROM events WHERE village_id = $village_id AND resolves_at > $now
-            AND type NOT IN ('troopMovementReturn', 'troopMovementReinforcements')`,
-      bind: { $village_id: villageId, $now: resolvesAt },
-    });
-
-    // Apply 50% refund to the village
-    if (totalRefund.some((v) => v > 0)) {
-      addVillageResourcesAt(db, villageId, resolvesAt, totalRefund);
-    }
-
-    // 8. Release all connected oases (effects + oasis ownership)
-    db.exec({
-      sql: `
-        DELETE FROM effects
-        WHERE source = 'oasis' AND village_id = $village_id
-      `,
-      bind: { $village_id: villageId },
-    });
-    db.exec({
-      sql: `
-        UPDATE oasis
-        SET village_id = NULL, loyalty = 100, loyalty_updated_at = $now
-        WHERE village_id = $village_id
-      `,
-      bind: { $village_id: villageId, $now: resolvesAt },
-    });
-
-    // 9. DO NOT change the village tribe_id — tribe is kept after conquest.
-    // DO NOT remove tribe-specific buildings — same-tribe rule always applies
-    // since tribe is preserved.
+  // 1. Transfer ownership and reset loyalty
+  database.exec({
+    sql: `UPDATE villages SET player_id = $player_id, loyalty = 100,
+          loyalty_updated_at = $now WHERE id = $village_id`,
+    bind: {
+      $player_id: newPlayerId,
+      $village_id: villageId,
+      $now: resolvesAt,
+    },
   });
+
+  // 2. Get village tile_id for troop operations
+  const tileId = database.selectValue({
+    sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
+    bind: { $village_id: villageId },
+    schema: z.number(),
+  })!;
+
+  // 3. Reset wall to level 0 (all wall types)
+  database.exec({
+    sql: `
+      UPDATE building_fields
+      SET level = 0
+      WHERE village_id = $village_id
+        AND building_id IN (
+          SELECT id FROM building_ids
+          WHERE building IN (
+            'ROMAN_WALL', 'GAUL_WALL', 'TEUTONIC_WALL',
+            'EGYPTIAN_WALL', 'HUN_WALL', 'SPARTAN_WALL',
+            'NATAR_WALL', 'NATURE_WALL'
+          )
+        )
+    `,
+    bind: { $village_id: villageId },
+  });
+
+  // 4. Clear academy research for this village
+  database.exec({
+    sql: 'DELETE FROM unit_research WHERE village_id = $village_id',
+    bind: { $village_id: villageId },
+  });
+
+  // 5. Smithy upgrades (unit_improvements) are per-player, not per-village.
+  //    The attacker keeps their upgrades and they apply to the conquered village.
+  //    The old owner's upgrades remain for their other villages (if any).
+
+  // 6. Remove all defending troops from the village tile
+  database.exec({
+    sql: 'DELETE FROM troops WHERE tile_id = $tile_id',
+    bind: { $tile_id: tileId },
+  });
+
+  // 7. Cancel training queues and refund 50% resources
+  const trainingEvents = database.selectObjects({
+    sql: `
+      SELECT id, meta FROM events
+      WHERE village_id = $village_id
+        AND type = 'troopTraining'
+        AND resolves_at > $now
+    `,
+    bind: { $village_id: villageId, $now: resolvesAt },
+    schema: z.strictObject({ id: z.number(), meta: z.string() }),
+  });
+
+  let totalRefund = [0, 0, 0, 0];
+  for (const event of trainingEvents) {
+    try {
+      const meta = JSON.parse(event.meta) as {
+        unitId: string;
+        amount: number;
+        buildingId: string;
+      };
+      const { baseRecruitmentCost } = getUnitDefinition(meta.unitId as UnitId);
+      const costModifier =
+        meta.buildingId === 'GREAT_BARRACKS' ||
+        meta.buildingId === 'GREAT_STABLE'
+          ? 3
+          : 1;
+      const fullCost = baseRecruitmentCost.map(
+        (c) => c * costModifier * meta.amount,
+      );
+      // Refund 50%
+      totalRefund = totalRefund.map(
+        (total, i) => total + Math.floor(fullCost[i] * 0.5),
+      );
+    } catch {
+      // If meta parsing fails, skip refund for this event
+    }
+  }
+
+  // Delete all training events
+  database.exec({
+    sql: `DELETE FROM events WHERE village_id = $village_id AND type = 'troopTraining' AND resolves_at > $now`,
+    bind: { $village_id: villageId, $now: resolvesAt },
+  });
+
+  // Delete other village-owned pending events, but preserve return/reinforcement
+  // movements that may belong to attackers returning from this village
+  database.exec({
+    sql: `DELETE FROM events WHERE village_id = $village_id AND resolves_at > $now
+          AND type NOT IN ('troopMovementReturn', 'troopMovementReinforcements')`,
+    bind: { $village_id: villageId, $now: resolvesAt },
+  });
+
+  // Apply 50% refund to the village
+  if (totalRefund.some((v) => v > 0)) {
+    addVillageResourcesAt(database, villageId, resolvesAt, totalRefund);
+  }
+
+  // 8. Release all connected oases (effects + oasis ownership)
+  database.exec({
+    sql: `
+      DELETE FROM effects
+      WHERE source = 'oasis' AND village_id = $village_id
+    `,
+    bind: { $village_id: villageId },
+  });
+  database.exec({
+    sql: `
+      UPDATE oasis
+      SET village_id = NULL, loyalty = 100, loyalty_updated_at = $now
+      WHERE village_id = $village_id
+    `,
+    bind: { $village_id: villageId, $now: resolvesAt },
+  });
+
+  // 9. DO NOT change the village tribe_id — tribe is kept after conquest.
+  // DO NOT remove tribe-specific buildings — same-tribe rule always applies
+  // since tribe is preserved.
 };
 
 const _hasPalaceOrResidence = (
@@ -440,64 +436,62 @@ const _destroyVillage = (
   villageId: number,
   resolvesAt: number,
 ): void => {
-  database.transaction((db) => {
-    // 1. Release connected oases
-    db.exec({
-      sql: `UPDATE oasis SET village_id = NULL, loyalty = 100, loyalty_updated_at = $now
-            WHERE village_id = $village_id`,
-      bind: { $village_id: villageId, $now: resolvesAt },
-    });
-    db.exec({
-      sql: `DELETE FROM effects WHERE source = 'oasis' AND village_id = $village_id`,
-      bind: { $village_id: villageId },
-    });
+  // 1. Release connected oases
+  database.exec({
+    sql: `UPDATE oasis SET village_id = NULL, loyalty = 100, loyalty_updated_at = $now
+          WHERE village_id = $village_id`,
+    bind: { $village_id: villageId, $now: resolvesAt },
+  });
+  database.exec({
+    sql: `DELETE FROM effects WHERE source = 'oasis' AND village_id = $village_id`,
+    bind: { $village_id: villageId },
+  });
 
-    // 2. Remove all effects for the village
-    db.exec({
-      sql: 'DELETE FROM effects WHERE village_id = $village_id',
-      bind: { $village_id: villageId },
-    });
+  // 2. Remove all effects for the village
+  database.exec({
+    sql: 'DELETE FROM effects WHERE village_id = $village_id',
+    bind: { $village_id: villageId },
+  });
 
-    // 3. Delete all troops at this village's tile
-    const tileId = db.selectValue({
-      sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
-      bind: { $village_id: villageId },
-      schema: z.number(),
-    })!;
-    db.exec({
-      sql: 'DELETE FROM troops WHERE tile_id = $tile_id',
-      bind: { $tile_id: tileId },
-    });
+  // 3. Delete all troops at this village's tile
+  const tileId = database.selectValue({
+    sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
+    bind: { $village_id: villageId },
+    schema: z.number(),
+  })!;
+  database.exec({
+    sql: 'DELETE FROM troops WHERE tile_id = $tile_id',
+    bind: { $tile_id: tileId },
+  });
 
-    // 4. Cancel all pending events for this village
-    db.exec({
-      sql: 'DELETE FROM events WHERE village_id = $village_id AND resolves_at > $now',
-      bind: { $village_id: villageId, $now: resolvesAt },
-    });
+  // 4. Cancel all pending events for this village
+  database.exec({
+    sql: 'DELETE FROM events WHERE village_id = $village_id AND resolves_at > $now',
+    bind: { $village_id: villageId, $now: resolvesAt },
+  });
 
-    // 5. Delete building fields
-    db.exec({
-      sql: 'DELETE FROM building_fields WHERE village_id = $village_id',
-      bind: { $village_id: villageId },
-    });
+  // 5. Delete building fields
+  database.exec({
+    sql: 'DELETE FROM building_fields WHERE village_id = $village_id',
+    bind: { $village_id: villageId },
+  });
 
-    // 6. Delete resource sites
-    db.exec({
-      sql: 'DELETE FROM resource_sites WHERE tile_id = $tile_id',
-      bind: { $tile_id: tileId },
-    });
+  // 6. Delete resource sites
+  database.exec({
+    sql: 'DELETE FROM resource_sites WHERE tile_id = $tile_id',
+    bind: { $tile_id: tileId },
+  });
 
-    // 7. Delete the village record itself
-    db.exec({
-      sql: 'DELETE FROM villages WHERE id = $village_id',
-      bind: { $village_id: villageId },
-    });
+  // 7. Delete the village record itself
+  database.exec({
+    sql: 'DELETE FROM villages WHERE id = $village_id',
+    bind: { $village_id: villageId },
+  });
 
-    // 8. Mark the tile as empty
-    db.exec({
-      sql: `UPDATE tiles SET type = 'empty' WHERE id = $tile_id`,
-      bind: { $tile_id: tileId },
-    });
+  // 8. Mark the tile as empty
+  database.exec({
+    sql: `UPDATE tiles SET type = 'empty' WHERE id = $tile_id`,
+    bind: { $tile_id: tileId },
   });
 };
 
