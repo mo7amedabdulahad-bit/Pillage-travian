@@ -363,12 +363,18 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                   {t(`BUILDINGS.${combatData.catapultTarget1}.NAME`, {
                     defaultValue: combatData.catapultTarget1,
                   })}
+                  {combatData.catapultTarget1IsRandom
+                    ? ` (${t('Random')})`
+                    : ''}
                   {' -> '}
                   {combatData.catapultLevelsDestroyed1 !== undefined &&
                   combatData.catapultLevelsDestroyed1 > 0
                     ? t('destroyed {{count}} level(s)', {
                         count: combatData.catapultLevelsDestroyed1,
-                      })
+                      }) +
+                      (combatData.catapultTarget1Destroyed
+                        ? ` [${t('destroyed')}]`
+                        : '')
                     : t('no damage dealt')}
                 </Text>
                 {combatData.catapultTarget2 !== undefined && (
@@ -396,12 +402,18 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                       {t(`BUILDINGS.${combatData.catapultTarget2}.NAME`, {
                         defaultValue: combatData.catapultTarget2,
                       })}
+                      {combatData.catapultTarget2IsRandom
+                        ? ` (${t('Random')})`
+                        : ''}
                       {' -> '}
                       {combatData.catapultLevelsDestroyed2 !== undefined &&
                       combatData.catapultLevelsDestroyed2 > 0
                         ? t('destroyed {{count}} level(s)', {
                             count: combatData.catapultLevelsDestroyed2,
-                          })
+                          }) +
+                          (combatData.catapultTarget2Destroyed
+                            ? ` [${t('destroyed')}]`
+                            : '')
                         : t('no damage dealt')}
                     </Text>
                   </>

@@ -511,14 +511,31 @@ const _destroyVillage = (
 type CatapultDamageResult = {
   target1: string;
   levelsDestroyed1: number;
+  target1Destroyed?: boolean;
+  target1IsRandom?: boolean;
   target2?: string;
   levelsDestroyed2?: number;
+  target2Destroyed?: boolean;
+  target2IsRandom?: boolean;
   villageDestroyed?: boolean;
   target1RequestedName?: string;
   target1WasFallback?: boolean;
   target2RequestedName?: string;
   target2WasFallback?: boolean;
 };
+
+// Buildings excluded from ALL catapult targeting (specific and random)
+const CATAPULT_EXCLUDED_BUILDINGS = new Set([
+  ...ALWAYS_EXCLUDED_FROM_SPECIFIC,
+  'ROMAN_WALL',
+  'GAUL_WALL',
+  'TEUTONIC_WALL',
+  'EGYPTIAN_WALL',
+  'HUN_WALL',
+  'SPARTAN_WALL',
+  'NATAR_WALL',
+  'NATURE_WALL',
+]);
 
 /**
  * Resolve catapult building damage for a normal attack.
@@ -590,10 +607,15 @@ const resolveCatapultDamage = (
     return { target1: 'none', levelsDestroyed1: 0 };
   }
 
-  // Stonemason is always hit last
+  // Build random pool: exclude walls, excluded buildings, stonemason goes last
   const STONEMASON = 'STONEMASONS_LODGE';
-  const normalBuildings = allBuildings.filter((b) => b.building !== STONEMASON);
-  const stonemason = allBuildings.find((b) => b.building === STONEMASON);
+  const validBuildings = allBuildings.filter(
+    (b) => !CATAPULT_EXCLUDED_BUILDINGS.has(b.building),
+  );
+  const normalBuildings = validBuildings.filter(
+    (b) => b.building !== STONEMASON,
+  );
+  const stonemason = validBuildings.find((b) => b.building === STONEMASON);
   const randomPool = stonemason
     ? [...normalBuildings, stonemason]
     : normalBuildings;
@@ -608,24 +630,42 @@ const resolveCatapultDamage = (
     requestedName: string;
   } | null => {
     if (!targetSpec || targetSpec === 'random') {
-      return randomPool.length > 0
-        ? { ...randomPool[0], wasFallback: false, requestedName: 'random' }
-        : null;
+      if (randomPool.length === 0) {
+        return null;
+      }
+      const idx = Math.floor(Math.random() * randomPool.length);
+      return {
+        ...randomPool[idx],
+        wasFallback: false,
+        requestedName: 'random',
+      };
     }
 
-    // Specific target: validate it's not excluded
-    if (ALWAYS_EXCLUDED_FROM_SPECIFIC.has(targetSpec)) {
-      return randomPool.length > 0
-        ? { ...randomPool[0], wasFallback: true, requestedName: targetSpec }
-        : null;
+    // Specific target: validate it's not excluded (walls, cranny, trapper, stonemason)
+    if (CATAPULT_EXCLUDED_BUILDINGS.has(targetSpec)) {
+      if (randomPool.length === 0) {
+        return null;
+      }
+      const idx = Math.floor(Math.random() * randomPool.length);
+      return {
+        ...randomPool[idx],
+        wasFallback: true,
+        requestedName: targetSpec,
+      };
     }
 
     // Find the highest-level instance of the target building
     const target = allBuildings.find((b) => b.building === targetSpec);
     if (!target) {
-      return randomPool.length > 0
-        ? { ...randomPool[0], wasFallback: true, requestedName: targetSpec }
-        : null;
+      if (randomPool.length === 0) {
+        return null;
+      }
+      const idx = Math.floor(Math.random() * randomPool.length);
+      return {
+        ...randomPool[idx],
+        wasFallback: true,
+        requestedName: targetSpec,
+      };
     }
 
     return { ...target, wasFallback: false, requestedName: targetSpec };
@@ -677,7 +717,25 @@ const resolveCatapultDamage = (
   const target2Data = useDoubleTarget ? resolveTarget(catapultTarget2) : null;
 
   const damage1 = calcDamage(target1Data, cats1);
-  const damage2 = calcDamage(target2Data, cats2);
+
+  // If target2 points to the same building as target1, re-fetch the level after damage1
+  if (
+    target2Data &&
+    target1Data &&
+    target1Data.fieldId === target2Data.fieldId &&
+    damage1 &&
+    damage1.levelsDestroyed > 0
+  ) {
+    const updatedLevel =
+      database.selectValue({
+        sql: 'SELECT level FROM building_fields WHERE village_id = $village_id AND field_id = $field_id',
+        bind: { $village_id: targetVillageId, $field_id: target2Data.fieldId },
+        schema: z.number(),
+      }) ?? 0;
+    target2Data.level = updatedLevel;
+  }
+
+  const damage2 = useDoubleTarget ? calcDamage(target2Data, cats2) : null;
 
   // 6. Apply damage to DB and update population effect
   let totalPopulationLost = 0;
@@ -703,6 +761,28 @@ const resolveCatapultDamage = (
       );
     }
   }
+
+  // Re-fetch level for damage2 if same building as damage1
+  if (
+    damage2 &&
+    damage1 &&
+    target1Data &&
+    target2Data &&
+    target1Data.fieldId === target2Data.fieldId
+  ) {
+    const afterDamage1Level =
+      database.selectValue({
+        sql: 'SELECT level FROM building_fields WHERE village_id = $village_id AND field_id = $field_id',
+        bind: { $village_id: targetVillageId, $field_id: damage2.fieldId },
+        schema: z.number(),
+      }) ?? 0;
+    // Cap damage2 to remaining levels
+    damage2.levelsDestroyed = Math.min(
+      damage2.levelsDestroyed,
+      afterDamage1Level,
+    );
+  }
+
   if (damage2 && damage2.levelsDestroyed > 0) {
     database.exec({
       sql: 'UPDATE building_fields SET level = MAX(0, level - $dmg) WHERE village_id = $village_id AND field_id = $field_id',
@@ -754,6 +834,10 @@ const resolveCatapultDamage = (
   return {
     target1: damage1?.target ?? 'none',
     levelsDestroyed1: damage1?.levelsDestroyed ?? 0,
+    target1Destroyed: damage1
+      ? (target1Data?.level ?? 0) - damage1.levelsDestroyed <= 0
+      : undefined,
+    target1IsRandom: damage1?.requestedName === 'random',
     ...(damage1
       ? {
           target1RequestedName: damage1.requestedName,
@@ -764,6 +848,10 @@ const resolveCatapultDamage = (
       ? {
           target2: damage2.target,
           levelsDestroyed2: damage2.levelsDestroyed,
+          target2Destroyed: target2Data
+            ? target2Data.level - damage2.levelsDestroyed <= 0
+            : undefined,
+          target2IsRandom: damage2.requestedName === 'random',
           target2RequestedName: damage2.requestedName,
           target2WasFallback: damage2.wasFallback,
         }
@@ -1868,11 +1956,15 @@ export const resolveTroopMovementCombat = (
       ...(catapultReport && {
         catapultTarget1: catapultReport.target1,
         catapultLevelsDestroyed1: catapultReport.levelsDestroyed1,
+        catapultTarget1Destroyed: catapultReport.target1Destroyed,
+        catapultTarget1IsRandom: catapultReport.target1IsRandom,
         catapultTarget1RequestedName: catapultReport.target1RequestedName,
         catapultTarget1WasFallback: catapultReport.target1WasFallback,
         ...(catapultReport.target2 && {
           catapultTarget2: catapultReport.target2,
           catapultLevelsDestroyed2: catapultReport.levelsDestroyed2,
+          catapultTarget2Destroyed: catapultReport.target2Destroyed,
+          catapultTarget2IsRandom: catapultReport.target2IsRandom,
           catapultTarget2RequestedName: catapultReport.target2RequestedName,
           catapultTarget2WasFallback: catapultReport.target2WasFallback,
         }),

@@ -178,6 +178,7 @@
   "Demolish completely": "Demolish completely",
   "Description": "Description",
   "Destination": "Destination",
+  "destroyed": "destroyed",
   "destroyed {{count}} level(s)_one": "destroyed {{count}} level(s)",
   "destroyed {{count}} level(s)_other": "destroyed {{count}} level(s)",
   "Destroyed Town Hall": "Destroyed Town Hall",
