@@ -360,21 +360,32 @@ const _transferVillageOwnership = (
 const _hasPalaceOrResidence = (
   database: DbFacade,
   villageId: number,
-): boolean => {
-  const result = database.selectValue({
+): { exists: boolean; buildingName: string | null; level: number } => {
+  const result = database.selectObject({
     sql: `
-      SELECT EXISTS(
-        SELECT 1 FROM building_fields bf
-        JOIN building_ids bi ON bi.id = bf.building_id
-        WHERE bf.village_id = $village_id
-          AND bi.building IN ('RESIDENCE', 'COMMAND_CENTER')
-          AND bf.level > 0
-      )
+      SELECT bi.building AS buildingName, bf.level
+      FROM building_fields bf
+      JOIN building_ids bi ON bi.id = bf.building_id
+      WHERE bf.village_id = $village_id
+        AND bi.building IN ('RESIDENCE', 'COMMAND_CENTER')
+        AND bf.level > 0
+      ORDER BY bf.level DESC
+      LIMIT 1
     `,
     bind: { $village_id: villageId },
-    schema: z.number(),
+    schema: z.strictObject({
+      buildingName: z.string(),
+      level: z.number(),
+    }),
   });
-  return result === 1;
+  if (!result) {
+    return { exists: false, buildingName: null, level: 0 };
+  }
+  return {
+    exists: true,
+    buildingName: result.buildingName,
+    level: result.level,
+  };
 };
 
 // ─── Catapult constants ───
@@ -1695,23 +1706,28 @@ export const resolveTroopMovementCombat = (
   }
 
   // 9. Attacker return movement
+  // If the target village was destroyed by catapults, use attacker's own village as return target
+  const villageWasDestroyed = catapultReport?.villageDestroyed ?? false;
+
   if (result.attackerSurvivors.length > 0) {
-    // Extract sourceTileId once before the map to avoid redundant DB queries
     const sourceTileId = database.selectValue({
       sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
       bind: { $villageId: villageId },
       schema: z.number(),
     })!;
 
+    // When the target village no longer exist, troops return directly home
+    const returnTargetId = villageWasDestroyed ? villageId : targetId;
+
     createEvents<'troopMovementReturn'>(database, {
-      villageId: targetId,
+      villageId: returnTargetId,
       targetId: villageId,
       startsAt: resolvesAt,
       troops: result.attackerSurvivors.map((s) => ({
         unitId: s.unitId,
         amount: s.amount,
-        tileId: targetVillage.tileId, // Currently at target
-        source: sourceTileId, // Heading back to source
+        tileId: villageWasDestroyed ? sourceTileId : targetVillage.tileId,
+        source: sourceTileId,
       })),
       type: 'troopMovementReturn',
       originalMovementType: isRaid ? 'raid' : 'attack',
@@ -1723,6 +1739,8 @@ export const resolveTroopMovementCombat = (
   let reportLoyaltyReduction: number | undefined;
   let reportNewLoyalty: number | undefined;
   let reportConquered: boolean | undefined;
+  let reportProtectedBuildingName: string | undefined;
+  let reportProtectedBuildingLevel: number | undefined;
 
   if (!isRaid && result.attackerWins) {
     const loyaltyReduction = _calculateChiefLoyaltyReduction(
@@ -1741,7 +1759,8 @@ export const resolveTroopMovementCombat = (
       reportNewLoyalty = newLoyalty;
 
       // Village conquest: loyalty reached 0 AND no palace/residence protects it
-      if (newLoyalty === 0 && !_hasPalaceOrResidence(database, targetId)) {
+      const adminBuilding = _hasPalaceOrResidence(database, targetId);
+      if (newLoyalty === 0 && !adminBuilding.exists) {
         _transferVillageOwnership(
           database,
           targetId,
@@ -1749,6 +1768,10 @@ export const resolveTroopMovementCombat = (
           resolvesAt,
         );
         reportConquered = true;
+      } else if (newLoyalty > 0 && adminBuilding.exists) {
+        // Village is protected by admin building
+        reportProtectedBuildingName = adminBuilding.buildingName ?? undefined;
+        reportProtectedBuildingLevel = adminBuilding.level;
       }
     }
   }
@@ -1774,6 +1797,8 @@ export const resolveTroopMovementCombat = (
         loyaltyReduction: reportLoyaltyReduction,
         newLoyalty: reportNewLoyalty,
         conquered: reportConquered,
+        protectedBuildingName: reportProtectedBuildingName,
+        protectedBuildingLevel: reportProtectedBuildingLevel,
       }),
       ...(catapultReport && {
         catapultTarget1: catapultReport.target1,

@@ -412,7 +412,9 @@ export const resolveCombat = (
   const totalDefense = troopDefense + baseAndPalaceDefense * wallBonus;
 
   // ─── Step 6: Determine winner ───
-  const attackerWins = totalOffense >= totalDefense;
+  // If there are no defenders at all, attacker always wins
+  const hasDefenders = defenderTroops.length > 0;
+  const attackerWins = hasDefenders ? totalOffense >= totalDefense : true;
 
   // ─── Step 7: Total unit count for K calculation ───
   const attackerCount = attackerTroops.reduce((s, t) => s + t.amount, 0);

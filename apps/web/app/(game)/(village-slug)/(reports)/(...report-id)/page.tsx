@@ -301,16 +301,37 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
                 <div className="rounded-md border border-border bg-muted/10 p-4">
                   <Text className="font-semibold">{t('Chief effect')}</Text>
                   {combatData.conquered ? (
-                    <Text>
-                      {t('Village conquered! Loyalty was reduced to 0.')}
+                    <Text className="font-semibold">
+                      {t('Village CONQUERED.')}
                     </Text>
+                  ) : combatData.protectedBuildingName ? (
+                    <>
+                      <Text>
+                        {t(
+                          'Village is protected by a {{building}} (Level {{level}}).',
+                          {
+                            building: t(
+                              `BUILDINGS.${combatData.protectedBuildingName}.NAME`,
+                              {
+                                defaultValue: combatData.protectedBuildingName,
+                              },
+                            ),
+                            level: combatData.protectedBuildingLevel,
+                          },
+                        )}
+                      </Text>
+                      <Text>
+                        {t('Loyalty reduced to {{loyalty}}%.', {
+                          loyalty: combatData.newLoyalty,
+                        })}{' '}
+                        {t('Village not conquered.')}
+                      </Text>
+                    </>
                   ) : (
                     <Text>
-                      {t('Village loyalty reduced by {{amount}}', {
-                        amount: combatData.loyaltyReduction,
+                      {t('Loyalty reduced to {{loyalty}}%.', {
+                        loyalty: combatData.newLoyalty,
                       })}
-                      {combatData.newLoyalty !== undefined &&
-                        ` (${t('new loyalty')}: ${combatData.newLoyalty}%)`}
                     </Text>
                   )}
                 </div>

@@ -318,6 +318,46 @@ export const returnMovementResolver: Resolver<
 > = (database, args) => {
   const { targetId, troops, resolvesAt, loot } = args;
 
+  // Guard: if the target village no longer exists, use the troops' source tile
+  const villageExists = database.selectValue({
+    sql: 'SELECT EXISTS(SELECT 1 FROM villages WHERE id = $targetId)',
+    bind: { $targetId: targetId },
+    schema: z.number(),
+  });
+
+  if (!villageExists) {
+    // Find the home village via the troops' source tile
+    if (troops.length > 0) {
+      const homeVillageId = database.selectValue({
+        sql: 'SELECT id FROM villages WHERE tile_id = $tileId LIMIT 1',
+        bind: { $tileId: troops[0].source },
+        schema: z.number(),
+      });
+
+      if (homeVillageId) {
+        const homeTileId = database.selectValue({
+          sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+          bind: { $villageId: homeVillageId },
+          schema: z.number(),
+        })!;
+
+        updateVillageResourcesAt(database, homeVillageId, resolvesAt);
+        addTroops(
+          database,
+          troops.map((troop) => ({
+            ...troop,
+            tileId: homeTileId,
+          })),
+        );
+
+        if (loot) {
+          addVillageResourcesAt(database, homeVillageId, resolvesAt, loot);
+        }
+      }
+    }
+    return;
+  }
+
   const { tileId: targetTileId } = database.selectObject({
     sql: 'SELECT tile_id AS tileId FROM villages WHERE id = $targetId;',
     bind: { $targetId: targetId },
