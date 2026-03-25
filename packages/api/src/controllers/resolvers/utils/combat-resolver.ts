@@ -233,10 +233,13 @@ const _transferVillageOwnership = (
   resolvesAt: number,
 ): void => {
   // 1. Transfer ownership, reset loyalty, and generate slug if missing
+  // NPC villages have slug=null — generate one so the village is accessible via URL
   database.exec({
-    sql: `UPDATE villages SET player_id = $player_id, loyalty = 100,
-          loyalty_updated_at = $now,
-          slug = COALESCE(slug, 'v-' || id)
+    sql: `UPDATE villages
+          SET player_id = $player_id,
+              loyalty = 100,
+              loyalty_updated_at = $now,
+              slug = CASE WHEN slug IS NULL OR slug = '' THEN 'v-' || id ELSE slug END
           WHERE id = $village_id`,
     bind: {
       $player_id: newPlayerId,
@@ -244,6 +247,14 @@ const _transferVillageOwnership = (
       $now: resolvesAt,
     },
   });
+
+  // Verify the slug was set
+  const newSlug = database.selectValue({
+    sql: 'SELECT slug FROM villages WHERE id = $village_id',
+    bind: { $village_id: villageId },
+    schema: z.string().nullable(),
+  });
+  console.error(`[Chief] Conquered village ${villageId} slug: "${newSlug}"`);
 
   // 2. Get village tile_id for troop operations
   const tileId = database.selectValue({
