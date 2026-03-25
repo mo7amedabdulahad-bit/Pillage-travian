@@ -486,6 +486,10 @@ type CatapultDamageResult = {
   target2?: string;
   levelsDestroyed2?: number;
   villageDestroyed?: boolean;
+  target1RequestedName?: string;
+  target1WasFallback?: boolean;
+  target2RequestedName?: string;
+  target2WasFallback?: boolean;
 };
 
 /**
@@ -568,30 +572,54 @@ const resolveCatapultDamage = (
 
   const resolveTarget = (
     targetSpec: string | undefined,
-  ): { building: string; fieldId: number; level: number } | null => {
+  ): {
+    building: string;
+    fieldId: number;
+    level: number;
+    wasFallback: boolean;
+    requestedName: string;
+  } | null => {
     if (!targetSpec || targetSpec === 'random') {
-      return randomPool.length > 0 ? randomPool[0] : null;
+      return randomPool.length > 0
+        ? { ...randomPool[0], wasFallback: false, requestedName: 'random' }
+        : null;
     }
 
     // Specific target: validate it's not excluded
     if (ALWAYS_EXCLUDED_FROM_SPECIFIC.has(targetSpec)) {
-      return randomPool.length > 0 ? randomPool[0] : null;
+      return randomPool.length > 0
+        ? { ...randomPool[0], wasFallback: true, requestedName: targetSpec }
+        : null;
     }
 
     // Find the highest-level instance of the target building
     const target = allBuildings.find((b) => b.building === targetSpec);
     if (!target) {
-      return randomPool.length > 0 ? randomPool[0] : null;
+      return randomPool.length > 0
+        ? { ...randomPool[0], wasFallback: true, requestedName: targetSpec }
+        : null;
     }
 
-    return target;
+    return { ...target, wasFallback: false, requestedName: targetSpec };
   };
 
   // 4. Calculate shots per level
   const calcDamage = (
-    target: { building: string; fieldId: number; level: number } | null,
+    target: {
+      building: string;
+      fieldId: number;
+      level: number;
+      wasFallback: boolean;
+      requestedName: string;
+    } | null,
     cats: number,
-  ): { target: string; fieldId: number; levelsDestroyed: number } | null => {
+  ): {
+    target: string;
+    fieldId: number;
+    levelsDestroyed: number;
+    wasFallback: boolean;
+    requestedName: string;
+  } | null => {
     if (!target || cats <= 0) {
       return null;
     }
@@ -604,6 +632,8 @@ const resolveCatapultDamage = (
       target: target.building,
       fieldId: target.fieldId,
       levelsDestroyed: Math.min(levelsDestroyed, target.level),
+      wasFallback: target.wasFallback,
+      requestedName: target.requestedName,
     };
   };
 
@@ -643,7 +673,7 @@ const resolveCatapultDamage = (
     });
   }
 
-  // 7. Check if village is zeroed (all buildings at 0)
+  // 7. Recalculate population after damage
   const population = _calculateVillagePopulation(database, targetVillageId);
   let villageDestroyed = false;
   if (population === 0) {
@@ -662,10 +692,18 @@ const resolveCatapultDamage = (
   return {
     target1: damage1?.target ?? 'none',
     levelsDestroyed1: damage1?.levelsDestroyed ?? 0,
+    ...(damage1
+      ? {
+          target1RequestedName: damage1.requestedName,
+          target1WasFallback: damage1.wasFallback,
+        }
+      : {}),
     ...(damage2
       ? {
           target2: damage2.target,
           levelsDestroyed2: damage2.levelsDestroyed,
+          target2RequestedName: damage2.requestedName,
+          target2WasFallback: damage2.wasFallback,
         }
       : {}),
     villageDestroyed,
@@ -1740,9 +1778,13 @@ export const resolveTroopMovementCombat = (
       ...(catapultReport && {
         catapultTarget1: catapultReport.target1,
         catapultLevelsDestroyed1: catapultReport.levelsDestroyed1,
+        catapultTarget1RequestedName: catapultReport.target1RequestedName,
+        catapultTarget1WasFallback: catapultReport.target1WasFallback,
         ...(catapultReport.target2 && {
           catapultTarget2: catapultReport.target2,
           catapultLevelsDestroyed2: catapultReport.levelsDestroyed2,
+          catapultTarget2RequestedName: catapultReport.target2RequestedName,
+          catapultTarget2WasFallback: catapultReport.target2WasFallback,
         }),
         ...(catapultReport.villageDestroyed && {
           villageDestroyed: true,

@@ -24,8 +24,12 @@ export type CombatReportData = Omit<CombatResult, 'loot'> & {
   // Catapult building damage fields
   catapultTarget1?: string;
   catapultLevelsDestroyed1?: number;
+  catapultTarget1RequestedName?: string;
+  catapultTarget1WasFallback?: boolean;
   catapultTarget2?: string;
   catapultLevelsDestroyed2?: number;
+  catapultTarget2RequestedName?: string;
+  catapultTarget2WasFallback?: boolean;
   villageDestroyed?: boolean;
 };
 
