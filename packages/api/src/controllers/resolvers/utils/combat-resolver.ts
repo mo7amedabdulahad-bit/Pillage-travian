@@ -256,7 +256,13 @@ const _transferVillageOwnership = (
   });
   console.error(`[Chief] Conquered village ${villageId} slug: "${newSlug}"`);
 
-  // 2. Get village tile_id for troop operations
+  // 2. Delete old NPC reports for this village so they don't appear in player's inbox
+  database.exec({
+    sql: 'DELETE FROM reports WHERE village_id = $village_id',
+    bind: { $village_id: villageId },
+  });
+
+  // 3. Get village tile_id for troop operations
   const tileId = database.selectValue({
     sql: 'SELECT tile_id FROM villages WHERE id = $village_id',
     bind: { $village_id: villageId },
