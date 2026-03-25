@@ -5,6 +5,7 @@ import {
   resolveCombat,
 } from '@pillage-first/game-assets/combat/combat-engine';
 import { unitsMap } from '@pillage-first/game-assets/units';
+import { calculatePopulationDifference } from '@pillage-first/game-assets/utils/buildings';
 import { getUnitDefinition } from '@pillage-first/game-assets/utils/units';
 import type {
   GameEvent,
@@ -670,7 +671,9 @@ const resolveCatapultDamage = (
   const damage1 = calcDamage(target1Data, cats1);
   const damage2 = calcDamage(target2Data, cats2);
 
-  // 6. Apply damage to DB
+  // 6. Apply damage to DB and update population effect
+  let totalPopulationLost = 0;
+
   if (damage1 && damage1.levelsDestroyed > 0) {
     database.exec({
       sql: 'UPDATE building_fields SET level = MAX(0, level - $dmg) WHERE village_id = $village_id AND field_id = $field_id',
@@ -680,6 +683,17 @@ const resolveCatapultDamage = (
         $village_id: targetVillageId,
       },
     });
+
+    // Update population effect to match the damaged building levels
+    if (target1Data) {
+      const oldLevel = target1Data.level;
+      const newLevel = Math.max(0, oldLevel - damage1.levelsDestroyed);
+      totalPopulationLost += calculatePopulationDifference(
+        damage1.target as any,
+        oldLevel,
+        newLevel,
+      );
+    }
   }
   if (damage2 && damage2.levelsDestroyed > 0) {
     database.exec({
@@ -689,6 +703,27 @@ const resolveCatapultDamage = (
         $field_id: damage2.fieldId,
         $village_id: targetVillageId,
       },
+    });
+
+    if (target2Data) {
+      const oldLevel = target2Data.level;
+      const newLevel = Math.max(0, oldLevel - damage2.levelsDestroyed);
+      totalPopulationLost += calculatePopulationDifference(
+        damage2.target as any,
+        oldLevel,
+        newLevel,
+      );
+    }
+  }
+
+  // Update the base population effect so the UI shows correct population
+  if (totalPopulationLost > 0) {
+    database.exec({
+      sql: `UPDATE effects SET value = value - ($value)
+            WHERE effect_id = (SELECT id FROM effect_ids WHERE effect = 'wheatProduction')
+              AND type = 'base' AND scope = 'village' AND source = 'building'
+              AND village_id = $village_id AND source_specifier = 0`,
+      bind: { $value: totalPopulationLost, $village_id: targetVillageId },
     });
   }
 
