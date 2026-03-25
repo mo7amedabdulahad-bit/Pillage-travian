@@ -124,7 +124,7 @@ export const upgradeDb = (database: DbFacade): void => {
   // villages tribe_id column — stores the village's tribe independently of player_id
   try {
     database.exec({
-      sql: 'ALTER TABLE villages ADD COLUMN tribe_id INTEGER REFERENCES tribe_ids(id);',
+      sql: 'ALTER TABLE villages ADD COLUMN tribe_id INTEGER;',
     });
   } catch (_e) {
     // Column might already exist
