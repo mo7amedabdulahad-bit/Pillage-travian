@@ -233,8 +233,19 @@ const _transferVillageOwnership = (
   resolvesAt: number,
 ): void => {
   // 1. Transfer ownership, reset loyalty, and generate slug if missing
-  // NPC villages have slug=null — generate one so the village is accessible via URL
   // NOTE: tribe_id is NOT changed — the village keeps its original tribe
+
+  // Debug: check tribe_id before conquest
+  const preConquestTribe = database.selectValue({
+    sql: 'SELECT tribe_id FROM villages WHERE id = $village_id',
+    bind: { $village_id: villageId },
+    schema: z.number().nullable(),
+  });
+  console.error(
+    `[Chief] Pre-conquest tribe_id for village ${villageId}:`,
+    preConquestTribe,
+  );
+
   database.exec({
     sql: `UPDATE villages
           SET player_id = $player_id,
