@@ -383,6 +383,25 @@ export const resolveCombat = (
   defenderResources: [number, number, number, number],
   isRaid: boolean,
 ): CombatResult => {
+  // ─── Early return: no defenders means instant win, no casualties ───
+  const hasDefenders =
+    defenderTroops.length > 0 && defenderTroops.some((t) => t.amount > 0);
+
+  if (!hasDefenders) {
+    const carryCapacity = calculateTotalCarryCapacity(attackerTroops);
+    const loot = calculateLoot(defenderResources, carryCapacity);
+
+    return {
+      attackerWins: true,
+      attackerSurvivors: attackerTroops.map((t) => ({ ...t })),
+      attackerLosses: [],
+      defenderSurvivors: [],
+      defenderLosses: [],
+      loot,
+      wallDamage: 0,
+    };
+  }
+
   // ─── Step 1: Calculate offense ───
   const totalOffense = calculateTotalOffensePoints(attackerTroops);
 
@@ -412,9 +431,7 @@ export const resolveCombat = (
   const totalDefense = troopDefense + baseAndPalaceDefense * wallBonus;
 
   // ─── Step 6: Determine winner ───
-  // If there are no defenders at all, attacker always wins
-  const hasDefenders = defenderTroops.length > 0;
-  const attackerWins = hasDefenders ? totalOffense >= totalDefense : true;
+  const attackerWins = totalOffense >= totalDefense;
 
   // ─── Step 7: Total unit count for K calculation ───
   const attackerCount = attackerTroops.reduce((s, t) => s + t.amount, 0);

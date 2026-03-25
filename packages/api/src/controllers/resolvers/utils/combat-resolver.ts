@@ -1721,7 +1721,12 @@ export const resolveTroopMovementCombat = (
   let reportProtectedBuildingName: string | undefined;
   let reportProtectedBuildingLevel: number | undefined;
 
-  if (!isRaid && result.attackerWins) {
+  // Chiefs fire when: not a raid, AND either attacker won OR no defenders remain
+  const noDefendersRemain = defenderTroops.every((t) => t.amount === 0);
+  const attackerSucceeds =
+    !isRaid && (result.attackerWins || noDefendersRemain);
+
+  if (attackerSucceeds) {
     const loyaltyReduction = _calculateChiefLoyaltyReduction(
       result.attackerSurvivors,
     );
@@ -1749,11 +1754,17 @@ export const resolveTroopMovementCombat = (
               resolvesAt,
             );
             reportConquered = true;
+            console.error(
+              `[Chief] Village ${targetId} CONQUERED by player ${attackerVillage.playerId} (loyalty reduced by ${loyaltyReduction})`,
+            );
           } else {
             // Loyalty 0 but building protects — can't conquer
             reportProtectedBuildingName =
               adminBuilding.buildingName ?? undefined;
             reportProtectedBuildingLevel = adminBuilding.level;
+            console.error(
+              `[Chief] Village ${targetId} loyalty at 0 but protected by ${adminBuilding.buildingName} Lv${adminBuilding.level} — not conquered`,
+            );
           }
         } else {
           // Loyalty > 0 — check if building exists (for informational display)
@@ -1763,9 +1774,12 @@ export const resolveTroopMovementCombat = (
               adminBuilding.buildingName ?? undefined;
             reportProtectedBuildingLevel = adminBuilding.level;
           }
+          console.error(
+            `[Chief] Village ${targetId} loyalty reduced by ${loyaltyReduction} → ${newLoyalty}%`,
+          );
         }
       } catch (_e) {
-        // Chief attack failed (e.g., missing DB column) — don't block report
+        console.error('[Chief] Loyalty update failed:', _e);
       }
     }
   }

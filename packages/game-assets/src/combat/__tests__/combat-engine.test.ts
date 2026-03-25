@@ -220,8 +220,8 @@ describe('resolveCombat', () => {
     expect(result.defenderLosses).toHaveLength(0);
   });
 
-  test('lone attacker with < 83 offense always dies', () => {
-    // 1 legionnaire: attack=40 < 83
+  test('empty defenders → attacker wins with no losses', () => {
+    // 1 legionnaire: attack=40
     const attackers = [troop('LEGIONNAIRE', 1)];
     const defenders: CombatTroop[] = [];
 
@@ -233,10 +233,11 @@ describe('resolveCombat', () => {
       false,
     );
 
-    expect(result.attackerWins).toBe(false);
-    expect(result.attackerSurvivors).toHaveLength(0);
-    expect(result.attackerLosses).toHaveLength(1);
-    expect(result.attackerLosses[0].amount).toBe(1);
+    // When there are no defenders, attacker always wins with no casualties
+    expect(result.attackerWins).toBe(true);
+    expect(result.attackerSurvivors).toHaveLength(1);
+    expect(result.attackerSurvivors[0].amount).toBe(1);
+    expect(result.attackerLosses).toHaveLength(0);
   });
 
   test('wall defense helps defender win (from doc example)', () => {
