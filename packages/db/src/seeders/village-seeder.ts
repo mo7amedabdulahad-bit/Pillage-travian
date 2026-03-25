@@ -127,7 +127,7 @@ export const villageSeeder = (database: DbFacade, server: Server): void => {
     return Math.min(1, dist / usableRadius);
   };
 
-  // Player village (fixed)
+  // Player village (fixed) — tribe_id comes from player's tribe
   const { id: playerStartingTileId } = database.selectObject({
     sql: 'SELECT id FROM tiles WHERE x = 0 AND y = 0;',
     schema: z.strictObject({
@@ -135,18 +135,25 @@ export const villageSeeder = (database: DbFacade, server: Server): void => {
     }),
   })!;
 
+  const playerTribeId = database.selectValue({
+    sql: 'SELECT tribe_id FROM players WHERE id = $player_id',
+    bind: { $player_id: PLAYER_ID },
+    schema: z.number(),
+  })!;
+
   database.exec({
     sql: `
       INSERT INTO
-        villages (name, slug, tile_id, player_id)
+        villages (name, slug, tile_id, player_id, tribe_id)
       VALUES
-        ($name, $slug, $tile_id, $player_id);
+        ($name, $slug, $tile_id, $player_id, $tribe_id);
     `,
     bind: {
       $name: 'New village',
       $slug: 'v-1',
       $tile_id: playerStartingTileId,
       $player_id: PLAYER_ID,
+      $tribe_id: playerTribeId,
     },
   });
 
@@ -436,18 +443,29 @@ export const villageSeeder = (database: DbFacade, server: Server): void => {
     }
   }
 
-  // convert to rows & insert
+  // convert to rows & insert — each NPC village gets its player's tribe_id
+  const playerTribeMap = new Map<number, number>();
+  const tribeRows = database.selectObjects({
+    sql: 'SELECT id, tribe_id FROM players WHERE id != $player_id',
+    bind: { $player_id: PLAYER_ID },
+    schema: z.strictObject({ id: z.number(), tribe_id: z.number() }),
+  });
+  for (const { id, tribe_id } of tribeRows) {
+    playerTribeMap.set(id, tribe_id);
+  }
+
   const rows = playerToOccupiedFields.map(([playerId, { id: tileId }]) => {
     const adjective = seededRandomArrayElement(prng, npcVillageNameAdjectives);
     const noun = seededRandomArrayElement(prng, npcVillageNameNouns);
     const name = `${adjective}${noun}`;
-    return [name, null, tileId, playerId];
+    const tribeId = playerTribeMap.get(playerId) ?? null;
+    return [name, null, tileId, playerId, tribeId];
   });
 
   batchInsert(
     database,
     'villages',
-    ['name', 'slug', 'tile_id', 'player_id'],
+    ['name', 'slug', 'tile_id', 'player_id', 'tribe_id'],
     rows,
   );
 };

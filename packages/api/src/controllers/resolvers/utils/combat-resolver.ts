@@ -234,6 +234,7 @@ const _transferVillageOwnership = (
 ): void => {
   // 1. Transfer ownership, reset loyalty, and generate slug if missing
   // NPC villages have slug=null — generate one so the village is accessible via URL
+  // NOTE: tribe_id is NOT changed — the village keeps its original tribe
   database.exec({
     sql: `UPDATE villages
           SET player_id = $player_id,
@@ -570,9 +571,11 @@ const resolveCatapultDamage = (
 
   // 2. Get attacker tribe and catapult smithy upgrade level
   const attackerTribe = database.selectValue({
-    sql: `SELECT ti.tribe FROM villages v
-          JOIN players p ON v.player_id = p.id
-          JOIN tribe_ids ti ON p.tribe_id = ti.id
+    sql: `SELECT COALESCE(vt.tribe, pt.tribe)
+          FROM villages v
+          LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+          LEFT JOIN players p ON v.player_id = p.id
+          LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
           WHERE v.id = $village_id`,
     bind: { $village_id: villageId },
     schema: z.string(),
@@ -889,16 +892,22 @@ const resolveScoutMovement = (
 
   const attackerVillage = database.selectObject({
     sql: `
-      SELECT v.tile_id AS tileId, v.name AS villageName, p.name AS playerName, p.faction_id AS factionId, ti.tribe AS tribe
+      SELECT
+        v.name as villageName,
+        p.id as playerId,
+        p.name as playerName,
+        p.faction_id as factionId,
+        COALESCE(vt.tribe, pt.tribe) as tribe
       FROM villages v
-      JOIN players p ON p.id = v.player_id
-      JOIN tribe_ids ti ON ti.id = p.tribe_id
-      WHERE v.id = $villageId
+      JOIN players p ON v.player_id = p.id
+      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
+      WHERE v.id = $id
     `,
-    bind: { $villageId: villageId },
-    schema: z.strictObject({
-      tileId: z.number(),
+    bind: { $id: villageId },
+    schema: z.object({
       villageName: z.string(),
+      playerId: z.number(),
       playerName: z.string(),
       factionId: z.number(),
       tribe: z.string(),
@@ -907,10 +916,11 @@ const resolveScoutMovement = (
 
   const defenderVillage = database.selectObject({
     sql: `
-      SELECT v.tile_id AS tileId, v.name AS villageName, p.name AS playerName, p.faction_id AS factionId, ti.tribe AS tribe
+      SELECT v.tile_id AS tileId, v.name AS villageName, p.name AS playerName, p.faction_id AS factionId, COALESCE(vt.tribe, pt.tribe) as tribe
       FROM villages v
       JOIN players p ON p.id = v.player_id
-      JOIN tribe_ids ti ON ti.id = p.tribe_id
+      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
       WHERE v.id = $targetVillageId
     `,
     bind: { $targetVillageId: targetId },
@@ -1631,15 +1641,16 @@ export const resolveTroopMovementCombat = (
   // 2. Fetch target tile ID and basic info
   const targetVillage = database.selectObject({
     sql: `
-      SELECT 
-        v.tile_id as tileId, 
-        v.name as name, 
-        p.name as playerName, 
+      SELECT
+        v.tile_id as tileId,
+        v.name as name,
+        p.name as playerName,
         p.faction_id as factionId,
-        ti.tribe as tribe
+        COALESCE(vt.tribe, pt.tribe, 'nature') as tribe
       FROM villages v
       JOIN players p ON v.player_id = p.id
-      JOIN tribe_ids ti ON p.tribe_id = ti.id
+      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
       WHERE v.id = $id
     `,
     bind: { $id: targetId },
@@ -1659,10 +1670,11 @@ export const resolveTroopMovementCombat = (
         p.id as playerId,
         p.name as playerName,
         p.faction_id as factionId,
-        ti.tribe as tribe
+        COALESCE(vt.tribe, pt.tribe) as tribe
       FROM villages v
       JOIN players p ON v.player_id = p.id
-      JOIN tribe_ids ti ON p.tribe_id = ti.id
+      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
       WHERE v.id = $id
     `,
     bind: { $id: villageId },

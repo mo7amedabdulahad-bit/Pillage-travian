@@ -120,4 +120,24 @@ export const upgradeDb = (database: DbFacade): void => {
   } catch (_e) {
     // Column might already exist
   }
+
+  // villages tribe_id column — stores the village's tribe independently of player_id
+  try {
+    database.exec({
+      sql: 'ALTER TABLE villages ADD COLUMN tribe_id INTEGER REFERENCES tribe_ids(id);',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  // Populate tribe_id for existing villages from their player's tribe
+  try {
+    database.exec({
+      sql: `UPDATE villages SET tribe_id = (
+              SELECT p.tribe_id FROM players p WHERE p.id = villages.player_id
+            ) WHERE tribe_id IS NULL;`,
+    });
+  } catch (_e) {
+    // May fail if tribe_id column doesn't exist yet
+  }
 };

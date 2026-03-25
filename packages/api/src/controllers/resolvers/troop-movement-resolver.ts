@@ -528,7 +528,7 @@ export const settleMovementResolver: Resolver<
     }),
   })!;
 
-  // 4. Create the village record with incremental slug
+  // 4. Create the village record with incremental slug and tribe_id
   const { newVillageId } = database.selectObject({
     sql: `
       WITH
@@ -537,14 +537,15 @@ export const settleMovementResolver: Resolver<
           FROM villages
           WHERE player_id = $player_id
         )
-      INSERT INTO villages (name, slug, tile_id, player_id, loyalty, loyalty_updated_at)
-      SELECT $name, (SELECT slug FROM next_slug), $tile_id, $player_id, 100, $now
+      INSERT INTO villages (name, slug, tile_id, player_id, tribe_id, loyalty, loyalty_updated_at)
+      SELECT $name, (SELECT slug FROM next_slug), $tile_id, $player_id, $tribe_id, 100, $now
       RETURNING id AS newVillageId;
     `,
     bind: {
       $name: `Village (${tileInfo.x}|${tileInfo.y})`,
       $tile_id: targetTileId,
       $player_id: playerInfo.playerId,
+      $tribe_id: playerInfo.tribeId,
       $now: resolvesAt,
     },
     schema: z.strictObject({ newVillageId: z.number() }),
