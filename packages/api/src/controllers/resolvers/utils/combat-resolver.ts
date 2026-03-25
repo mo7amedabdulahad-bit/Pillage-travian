@@ -232,10 +232,12 @@ const _transferVillageOwnership = (
   newPlayerId: number,
   resolvesAt: number,
 ): void => {
-  // 1. Transfer ownership and reset loyalty
+  // 1. Transfer ownership, reset loyalty, and generate slug if missing
   database.exec({
     sql: `UPDATE villages SET player_id = $player_id, loyalty = 100,
-          loyalty_updated_at = $now WHERE id = $village_id`,
+          loyalty_updated_at = $now,
+          slug = COALESCE(slug, 'v-' || id)
+          WHERE id = $village_id`,
     bind: {
       $player_id: newPlayerId,
       $village_id: villageId,
