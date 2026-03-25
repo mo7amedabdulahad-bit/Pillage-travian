@@ -1705,37 +1705,8 @@ export const resolveTroopMovementCombat = (
     subtractVillageResourcesAt(database, targetId, resolvesAt, lootToApply);
   }
 
-  // 9. Attacker return movement
-  // If the target village was destroyed by catapults, use attacker's own village as return target
-  const villageWasDestroyed = catapultReport?.villageDestroyed ?? false;
-
-  if (result.attackerSurvivors.length > 0) {
-    const sourceTileId = database.selectValue({
-      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
-      bind: { $villageId: villageId },
-      schema: z.number(),
-    })!;
-
-    // When the target village no longer exist, troops return directly home
-    const returnTargetId = villageWasDestroyed ? villageId : targetId;
-
-    createEvents<'troopMovementReturn'>(database, {
-      villageId: returnTargetId,
-      targetId: villageId,
-      startsAt: resolvesAt,
-      troops: result.attackerSurvivors.map((s) => ({
-        unitId: s.unitId,
-        amount: s.amount,
-        tileId: villageWasDestroyed ? sourceTileId : targetVillage.tileId,
-        source: sourceTileId,
-      })),
-      type: 'troopMovementReturn',
-      originalMovementType: isRaid ? 'raid' : 'attack',
-      loot: result.loot,
-    } as GameEvent<'troopMovementReturn'>);
-  }
-
-  // 10. Chief attack: loyalty reduction
+  // 9. Chief attack: loyalty reduction (MUST run before return event to avoid
+  //    conquest cleanup deleting the return event)
   let reportLoyaltyReduction: number | undefined;
   let reportNewLoyalty: number | undefined;
   let reportConquered: boolean | undefined;
@@ -1789,6 +1760,41 @@ export const resolveTroopMovementCombat = (
         // Chief attack failed (e.g., missing DB column) — don't block report
       }
     }
+  }
+
+  // 10. Attacker return movement (AFTER chief logic so conquest cleanup doesn't
+  //    delete the return event, and we know if village was conquered)
+  const villageWasDestroyed = catapultReport?.villageDestroyed ?? false;
+
+  if (result.attackerSurvivors.length > 0) {
+    const sourceTileId = database.selectValue({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.number(),
+    })!;
+
+    // When village was destroyed or conquered, troops go directly home
+    const villageWasConquered = reportConquered ?? false;
+    const returnTargetId =
+      villageWasDestroyed || villageWasConquered ? villageId : targetId;
+
+    createEvents<'troopMovementReturn'>(database, {
+      villageId: returnTargetId,
+      targetId: villageId,
+      startsAt: resolvesAt,
+      troops: result.attackerSurvivors.map((s) => ({
+        unitId: s.unitId,
+        amount: s.amount,
+        tileId:
+          villageWasDestroyed || villageWasConquered
+            ? sourceTileId
+            : targetVillage.tileId,
+        source: sourceTileId,
+      })),
+      type: 'troopMovementReturn',
+      originalMovementType: isRaid ? 'raid' : 'attack',
+      loot: result.loot,
+    } as GameEvent<'troopMovementReturn'>);
   }
 
   // 11. Save report
