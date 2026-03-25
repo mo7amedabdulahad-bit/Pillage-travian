@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type {
   OasisTile,
@@ -204,6 +205,10 @@ const OccupiableTileModal = ({ tile }: OccupiableTileModalProps) => {
   const { villageTroops } = useVillageTroops();
   const { currentVillage } = useCurrentVillage();
 
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const hasOngoingSettleEventOnThisTile = events.some(
     (event) =>
       event.type === 'troopMovementSettle' &&
@@ -230,12 +235,20 @@ const OccupiableTileModal = ({ tile }: OccupiableTileModalProps) => {
     currentVillage.resources.iron >= 750 &&
     currentVillage.resources.wheat >= 750;
 
+  // Calculate travel time using settler speed
+  const distance = calculateDistanceBetweenPoints(
+    currentVillage.coordinates,
+    tile.coordinates,
+  );
+  const settlerSpeed = 5; // settler unit speed
+  const travelTimeHours = distance / settlerSpeed;
+  const travelTimeMinutes = Math.ceil(travelTimeHours * 60);
+
   const { createEvent: createSettleEvent } = useCreateEvent(
     'troopMovementSettle',
   );
 
-  const onSettleNewVillage = () => {
-    // Find the settler unit for this village's tribe
+  const handleConfirm = () => {
     const settlerTroop = villageTroops.find(
       (t) =>
         t.unitId.endsWith('_SETTLER') &&
@@ -244,22 +257,114 @@ const OccupiableTileModal = ({ tile }: OccupiableTileModalProps) => {
     );
 
     if (!settlerTroop) {
+      setError(t('You need 3 settlers trained in a Residence or Palace.'));
       return;
     }
 
-    createSettleEvent({
-      targetTileId: tile.id,
-      troops: [
-        {
-          unitId: settlerTroop.unitId,
-          amount: 3,
-          tileId: currentVillage.tileId,
-          source: currentVillage.tileId,
-        },
-      ],
-      cachesToClearImmediately: [playerTroopsCacheKey],
-    });
+    setIsSettling(true);
+    setError(null);
+
+    try {
+      createSettleEvent({
+        targetTileId: tile.id,
+        troops: [
+          {
+            unitId: settlerTroop.unitId,
+            amount: 3,
+            tileId: currentVillage.tileId,
+            source: currentVillage.tileId,
+          },
+        ],
+        cachesToClearImmediately: [playerTroopsCacheKey],
+      });
+
+      const { x, y } = tile.coordinates;
+      toast.success(t('Settlers dispatched to ({{x}}|{{y}})', { x, y }));
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : t('Failed to dispatch settlers'),
+      );
+    } finally {
+      setIsSettling(false);
+    }
   };
+
+  if (hasOngoingSettleEventOnThisTile) {
+    return (
+      <>
+        <DialogHeader>
+          <DialogTitle>{t('Abandoned valley')}</DialogTitle>
+          <TileModalLocation tile={tile} />
+          <TileModalResources tile={tile} />
+        </DialogHeader>
+        <Text className="text-gray-500">
+          {t('Settlers are already on route to this location')}
+        </Text>
+      </>
+    );
+  }
+
+  if (showConfirm) {
+    return (
+      <>
+        <DialogHeader>
+          <DialogTitle>{t('Settle New Village')}</DialogTitle>
+          <TileModalLocation tile={tile} />
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <div className="rounded-md border bg-muted/30 p-3 flex flex-col gap-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('Destination')}</span>
+              <span>
+                ({tile.coordinates.x}|{tile.coordinates.y})
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('Travel time')}</span>
+              <span>~{travelTimeMinutes} min</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {t('Settlers required')}
+              </span>
+              <span>3</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('Cost')}</span>
+              <span>750 / 750 / 750 / 750</span>
+            </div>
+          </div>
+
+          {!hasEnoughSettlers && (
+            <Text className="text-sm text-destructive">
+              {t('You need 3 settlers trained in a Residence or Palace.')}
+            </Text>
+          )}
+          {hasEnoughSettlers && !hasEnoughResources && (
+            <Text className="text-sm text-destructive">
+              {t('Not enough resources. Founding costs 750 of each resource.')}
+            </Text>
+          )}
+          {error && <Text className="text-sm text-destructive">{error}</Text>}
+
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirm(false)}
+            >
+              {t('Back')}
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={!hasEnoughSettlers || !hasEnoughResources || isSettling}
+            >
+              {isSettling ? t('Dispatching...') : t('Confirm')}
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -275,34 +380,23 @@ const OccupiableTileModal = ({ tile }: OccupiableTileModalProps) => {
       </DialogHeader>
       <div className="flex flex-col gap-2">
         <Text as="h3">{t('Actions')}</Text>
-        {hasOngoingSettleEventOnThisTile && (
-          <span className="text-gray-500">
-            {t('Settlers are already on route to this location')}
-          </span>
+        <Button
+          size="sm"
+          variant="default"
+          disabled={!hasEnoughSettlers || !hasEnoughResources}
+          onClick={() => setShowConfirm(true)}
+        >
+          {t('Settle New Village')}
+        </Button>
+        {!hasEnoughSettlers && (
+          <Text className="text-sm text-muted-foreground">
+            {t('You need at least 3 settlers to found a new village.')}
+          </Text>
         )}
-        {!hasOngoingSettleEventOnThisTile && (
-          <>
-            {!hasEnoughSettlers && (
-              <Text className="text-sm text-muted-foreground">
-                {t('You need at least 3 settlers to found a new village.')}
-              </Text>
-            )}
-            {hasEnoughSettlers && !hasEnoughResources && (
-              <Text className="text-sm text-muted-foreground">
-                {t(
-                  'Not enough resources. Founding costs 750 of each resource.',
-                )}
-              </Text>
-            )}
-            <Button
-              size="fit"
-              variant="link"
-              disabled={!hasEnoughSettlers || !hasEnoughResources}
-              onClick={onSettleNewVillage}
-            >
-              {t('Settle new village')}
-            </Button>
-          </>
+        {hasEnoughSettlers && !hasEnoughResources && (
+          <Text className="text-sm text-muted-foreground">
+            {t('Not enough resources. Founding costs 750 of each resource.')}
+          </Text>
         )}
       </div>
     </>
