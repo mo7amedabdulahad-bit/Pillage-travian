@@ -4,6 +4,7 @@ import {
   calculateTotalCarryCapacity,
   resolveCombat,
 } from '@pillage-first/game-assets/combat/combat-engine';
+import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { unitsMap } from '@pillage-first/game-assets/units';
 import { calculatePopulationDifference } from '@pillage-first/game-assets/utils/buildings';
 import { getUnitDefinition } from '@pillage-first/game-assets/utils/units';
@@ -1785,12 +1786,25 @@ export const resolveTroopMovementCombat = (
             _transferVillageOwnership(
               database,
               targetId,
-              attackerVillage.playerId,
+              PLAYER_ID,
               resolvesAt,
             );
             reportConquered = true;
             console.error(
-              `[Chief] Village ${targetId} CONQUERED by player ${attackerVillage.playerId} (loyalty reduced by ${loyaltyReduction})`,
+              `[Chief] Village ${targetId} CONQUERED — assigned to PLAYER_ID=${PLAYER_ID}`,
+            );
+            // Verify conquest persisted
+            const postConquest = database.selectObject({
+              sql: 'SELECT id, player_id FROM villages WHERE id = $id',
+              bind: { $id: targetId },
+              schema: z.object({
+                id: z.number(),
+                player_id: z.number().nullable(),
+              }),
+            });
+            console.error(
+              '[Chief] Post-conquest village:',
+              JSON.stringify(postConquest),
             );
           } else {
             // Loyalty 0 but building protects — can't conquer
