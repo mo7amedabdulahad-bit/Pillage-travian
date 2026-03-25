@@ -1748,30 +1748,45 @@ export const resolveTroopMovementCombat = (
     );
 
     if (loyaltyReduction > 0) {
-      const newLoyalty = _updateVillageLoyalty(
-        database,
-        targetId,
-        loyaltyReduction,
-        resolvesAt,
-      );
-
-      reportLoyaltyReduction = loyaltyReduction;
-      reportNewLoyalty = newLoyalty;
-
-      // Village conquest: loyalty reached 0 AND no palace/residence protects it
-      const adminBuilding = _hasPalaceOrResidence(database, targetId);
-      if (newLoyalty === 0 && !adminBuilding.exists) {
-        _transferVillageOwnership(
+      try {
+        const newLoyalty = _updateVillageLoyalty(
           database,
           targetId,
-          attackerVillage.playerId,
+          loyaltyReduction,
           resolvesAt,
         );
-        reportConquered = true;
-      } else if (newLoyalty > 0 && adminBuilding.exists) {
-        // Village is protected by admin building
-        reportProtectedBuildingName = adminBuilding.buildingName ?? undefined;
-        reportProtectedBuildingLevel = adminBuilding.level;
+
+        reportLoyaltyReduction = loyaltyReduction;
+        reportNewLoyalty = newLoyalty;
+
+        if (newLoyalty === 0) {
+          // Check if admin building blocks conquest
+          const adminBuilding = _hasPalaceOrResidence(database, targetId);
+          if (!adminBuilding.exists) {
+            _transferVillageOwnership(
+              database,
+              targetId,
+              attackerVillage.playerId,
+              resolvesAt,
+            );
+            reportConquered = true;
+          } else {
+            // Loyalty 0 but building protects — can't conquer
+            reportProtectedBuildingName =
+              adminBuilding.buildingName ?? undefined;
+            reportProtectedBuildingLevel = adminBuilding.level;
+          }
+        } else {
+          // Loyalty > 0 — check if building exists (for informational display)
+          const adminBuilding = _hasPalaceOrResidence(database, targetId);
+          if (adminBuilding.exists) {
+            reportProtectedBuildingName =
+              adminBuilding.buildingName ?? undefined;
+            reportProtectedBuildingLevel = adminBuilding.level;
+          }
+        }
+      } catch (_e) {
+        // Chief attack failed (e.g., missing DB column) — don't block report
       }
     }
   }
