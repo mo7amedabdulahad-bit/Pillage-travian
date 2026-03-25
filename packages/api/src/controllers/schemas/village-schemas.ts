@@ -20,7 +20,7 @@ export const getVillageBySlugSchema = z
     coordinates_x: z.number(),
     coordinates_y: z.number(),
     name: z.string(),
-    slug: z.string(),
+    slug: z.string().nullable(),
     resource_field_composition: resourceFieldCompositionSchema,
     last_updated_at: z.number(),
     wood: z.number(),
@@ -38,7 +38,7 @@ export const getVillageBySlugSchema = z
       tileId: t.tile_id,
       playerId: t.player_id,
       name: t.name,
-      slug: t.slug,
+      slug: t.slug ?? `v-${t.id}`,
       coordinates: {
         x: t.coordinates_x,
         y: t.coordinates_y,
