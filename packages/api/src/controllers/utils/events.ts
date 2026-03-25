@@ -859,21 +859,28 @@ export const getEventDuration = (
 
     // If the target village no longer exists, return 0 duration (instant)
     if (!village) {
+      console.error('[Return Duration] Target village missing, returning 0');
       return 0;
     }
 
     const targetTileId = village.tile_id;
 
     // troops[0].tileId is where troops are currently located (returning FROM)
-    // For oasis returns: troops[0].tileId = oasis tile_id (already handled correctly)
-    // For village returns: troops[0].tileId = enemy village tile_id
     const sourceTileId = troops.length > 0 ? troops[0].tileId : targetTileId;
 
     const sourceCoords = database.selectObject({
       sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
       bind: { $tileId: sourceTileId },
       schema: z.object({ x: z.number(), y: z.number() }),
-    })!;
+    });
+
+    if (!sourceCoords) {
+      console.error(
+        '[Return Duration] Source tile missing for tileId:',
+        sourceTileId,
+      );
+      return 0;
+    }
 
     const targetCoords = database.selectObject({
       sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',

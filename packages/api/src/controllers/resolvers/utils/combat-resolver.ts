@@ -2001,6 +2001,7 @@ export const resolveTroopMovementCombat = (
   // 11. Attacker return movement (wrapped in try/catch — if return event fails,
   //    add troops directly home so they're not stuck in limbo)
   const villageWasDestroyed = catapultReport?.villageDestroyed ?? false;
+  const villageWasConquered = reportConquered ?? false;
 
   if (result.attackerSurvivors.length > 0) {
     try {
@@ -2010,11 +2011,16 @@ export const resolveTroopMovementCombat = (
         schema: z.number(),
       })!;
 
-      const villageWasConquered = reportConquered ?? false;
       const troopsAtTileId =
         villageWasDestroyed || villageWasConquered
           ? sourceTileId
           : targetVillage.tileId;
+
+      console.error('[Return] villageWasDestroyed:', villageWasDestroyed);
+      console.error('[Return] villageWasConquered:', villageWasConquered);
+      console.error('[Return] troopsAtTileId:', troopsAtTileId);
+      console.error('[Return] sourceTileId:', sourceTileId);
+      console.error('[Return] survivorCount:', result.attackerSurvivors.length);
 
       createEvents<'troopMovementReturn'>(database, {
         villageId: villageId,
@@ -2028,11 +2034,15 @@ export const resolveTroopMovementCombat = (
         })),
         type: 'troopMovementReturn',
         originalMovementType: isRaid ? 'raid' : 'attack',
-        loot: result.loot,
+        loot: lootToApply,
       } as GameEvent<'troopMovementReturn'>);
     } catch (e) {
+      console.error(
+        '[Return] createEvents THREW:',
+        String(e),
+        (e as Error)?.stack,
+      );
       // Fallback: add troops directly home if return event creation fails
-      console.error('Return event creation failed, adding troops directly:', e);
       try {
         const homeTileId = database.selectValue({
           sql: 'SELECT tile_id FROM villages WHERE id = $id',
@@ -2049,12 +2059,12 @@ export const resolveTroopMovementCombat = (
               source: homeTileId,
             })),
           );
-          if (result.loot) {
-            addVillageResourcesAt(database, villageId, resolvesAt, result.loot);
+          if (lootToApply.some((v) => v > 0)) {
+            addVillageResourcesAt(database, villageId, resolvesAt, lootToApply);
           }
         }
       } catch (_fallbackErr) {
-        console.error('Return fallback also failed:', _fallbackErr);
+        console.error('[Return] fallback also failed:', _fallbackErr);
       }
     }
   }
