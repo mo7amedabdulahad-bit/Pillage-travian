@@ -851,11 +851,18 @@ export const getEventDuration = (
     }
 
     // targetId is the village ID the troops are returning TO
-    const { tile_id: targetTileId } = database.selectObject({
+    const village = database.selectObject({
       sql: 'SELECT tile_id FROM villages WHERE id = $targetId;',
       bind: { $targetId: targetId },
       schema: z.object({ tile_id: z.number() }),
-    })!;
+    });
+
+    // If the target village no longer exists, return 0 duration (instant)
+    if (!village) {
+      return 0;
+    }
+
+    const targetTileId = village.tile_id;
 
     // troops[0].tileId is where troops are currently located (returning FROM)
     // For oasis returns: troops[0].tileId = oasis tile_id (already handled correctly)

@@ -1819,40 +1819,8 @@ export const resolveTroopMovementCombat = (
     }
   }
 
-  // 10. Attacker return movement (AFTER chief logic so conquest cleanup doesn't
-  //    delete the return event, and we know if village was conquered)
-  const villageWasDestroyed = catapultReport?.villageDestroyed ?? false;
-
-  if (result.attackerSurvivors.length > 0) {
-    const sourceTileId = database.selectValue({
-      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
-      bind: { $villageId: villageId },
-      schema: z.number(),
-    })!;
-
-    const villageWasConquered = reportConquered ?? false;
-    const troopsAtTileId =
-      villageWasDestroyed || villageWasConquered
-        ? sourceTileId
-        : targetVillage.tileId;
-
-    createEvents<'troopMovementReturn'>(database, {
-      villageId: villageId,
-      targetId: villageId,
-      startsAt: resolvesAt,
-      troops: result.attackerSurvivors.map((s) => ({
-        unitId: s.unitId,
-        amount: s.amount,
-        tileId: troopsAtTileId,
-        source: sourceTileId,
-      })),
-      type: 'troopMovementReturn',
-      originalMovementType: isRaid ? 'raid' : 'attack',
-      loot: result.loot,
-    } as GameEvent<'troopMovementReturn'>);
-  }
-
-  // 11. Save report
+  // 10. Save report (BEFORE return event so report is always saved even if
+  //    return event creation fails)
   saveCombatReport(
     database,
     {
@@ -1898,6 +1866,67 @@ export const resolveTroopMovementCombat = (
     attackerVillage.factionId,
     targetVillage.factionId,
   );
+
+  // 11. Attacker return movement (wrapped in try/catch — if return event fails,
+  //    add troops directly home so they're not stuck in limbo)
+  const villageWasDestroyed = catapultReport?.villageDestroyed ?? false;
+
+  if (result.attackerSurvivors.length > 0) {
+    try {
+      const sourceTileId = database.selectValue({
+        sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+        bind: { $villageId: villageId },
+        schema: z.number(),
+      })!;
+
+      const villageWasConquered = reportConquered ?? false;
+      const troopsAtTileId =
+        villageWasDestroyed || villageWasConquered
+          ? sourceTileId
+          : targetVillage.tileId;
+
+      createEvents<'troopMovementReturn'>(database, {
+        villageId: villageId,
+        targetId: villageId,
+        startsAt: resolvesAt,
+        troops: result.attackerSurvivors.map((s) => ({
+          unitId: s.unitId,
+          amount: s.amount,
+          tileId: troopsAtTileId,
+          source: sourceTileId,
+        })),
+        type: 'troopMovementReturn',
+        originalMovementType: isRaid ? 'raid' : 'attack',
+        loot: result.loot,
+      } as GameEvent<'troopMovementReturn'>);
+    } catch (e) {
+      // Fallback: add troops directly home if return event creation fails
+      console.error('Return event creation failed, adding troops directly:', e);
+      try {
+        const homeTileId = database.selectValue({
+          sql: 'SELECT tile_id FROM villages WHERE id = $id',
+          bind: { $id: villageId },
+          schema: z.number(),
+        });
+        if (homeTileId) {
+          addTroops(
+            database,
+            result.attackerSurvivors.map((s) => ({
+              unitId: s.unitId,
+              amount: s.amount,
+              tileId: homeTileId,
+              source: homeTileId,
+            })),
+          );
+          if (result.loot) {
+            addVillageResourcesAt(database, villageId, resolvesAt, result.loot);
+          }
+        }
+      } catch (_fallbackErr) {
+        console.error('Return fallback also failed:', _fallbackErr);
+      }
+    }
+  }
 
   // 12. NPC Retaliation
   handleNpcRetaliation(database, targetId, villageId, resolvesAt);
