@@ -8,6 +8,7 @@ import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { unitsMap } from '@pillage-first/game-assets/units';
 import { calculatePopulationDifference } from '@pillage-first/game-assets/utils/buildings';
 import { getUnitDefinition } from '@pillage-first/game-assets/utils/units';
+import type { Building } from '@pillage-first/types/models/building';
 import type {
   GameEvent,
   ScoutMode,
@@ -775,7 +776,7 @@ const resolveCatapultDamage = (
       const oldLevel = target1Data.level;
       const newLevel = Math.max(0, oldLevel - damage1.levelsDestroyed);
       totalPopulationLost += calculatePopulationDifference(
-        damage1.target as any,
+        damage1.target as Building['id'],
         oldLevel,
         newLevel,
       );
@@ -817,7 +818,7 @@ const resolveCatapultDamage = (
       const oldLevel = target2Data.level;
       const newLevel = Math.max(0, oldLevel - damage2.levelsDestroyed);
       totalPopulationLost += calculatePopulationDifference(
-        damage2.target as any,
+        damage2.target as Building['id'],
         oldLevel,
         newLevel,
       );
