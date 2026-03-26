@@ -17,6 +17,7 @@ export const getVillageBySlug = createController('/villages/:villageSlug')(
         t.y AS coordinates_y,
         v.name,
         v.slug,
+        COALESCE(vt.tribe, pt.tribe) AS tribe,
         rs.updated_at AS last_updated_at,
         rs.wood AS wood,
         rs.clay AS clay,
@@ -42,6 +43,9 @@ export const getVillageBySlug = createController('/villages/:villageSlug')(
         villages v
           JOIN tiles t
                ON t.id = v.tile_id
+          LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+          LEFT JOIN players p ON p.id = v.player_id
+          LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
           LEFT JOIN resource_sites rs
                     ON rs.tile_id = v.tile_id
           LEFT JOIN resource_field_composition_ids rfc

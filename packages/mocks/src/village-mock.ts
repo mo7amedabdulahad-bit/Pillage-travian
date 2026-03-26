@@ -14,6 +14,7 @@ export const villageMock: Village = {
   },
   name: 'player',
   slug: 'v-1',
+  tribe: 'romans',
   buildingFields: [...resourceFields4446Mock, ...newVillageBuildingFieldsMock],
   resourceFieldComposition: '4446',
   playerId,

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { coordinatesSchema } from '@pillage-first/types/models/coordinates';
 import { buildingFieldSchema } from './building-field';
 import { resourceFieldCompositionSchema } from './resource-field-composition';
+import { tribeSchema } from './tribe';
 
 // Used mostly in seeders
 export type VillageSize =
@@ -22,6 +23,7 @@ export const villageSchema = z
     playerId: z.number(),
     name: z.string(),
     slug: z.string(),
+    tribe: tribeSchema,
     loyalty: z.number().optional().default(100),
     coordinates: coordinatesSchema,
     lastUpdatedAt: z.number(),

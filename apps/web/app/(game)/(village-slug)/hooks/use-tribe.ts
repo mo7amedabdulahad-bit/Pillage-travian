@@ -1,7 +1,8 @@
-import { useMe } from 'app/(game)/(village-slug)/hooks/use-me';
+import type { Tribe } from '@pillage-first/types/models/tribe';
+import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 
 export const useTribe = () => {
-  const { player } = useMe();
+  const { currentVillage } = useCurrentVillage();
 
-  return player.tribe;
+  return currentVillage.tribe as Tribe;
 };

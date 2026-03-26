@@ -21,6 +21,7 @@ export const getVillageBySlugSchema = z
     coordinates_y: z.number(),
     name: z.string(),
     slug: z.string().nullable(),
+    tribe: z.string(),
     resource_field_composition: resourceFieldCompositionSchema,
     last_updated_at: z.number(),
     wood: z.number(),
@@ -39,6 +40,7 @@ export const getVillageBySlugSchema = z
       playerId: t.player_id,
       name: t.name,
       slug: t.slug ?? `v-${t.id}`,
+      tribe: t.tribe,
       coordinates: {
         x: t.coordinates_x,
         y: t.coordinates_y,
@@ -65,6 +67,7 @@ export const getVillageBySlugSchema = z
       playerId: z.number(),
       name: z.string(),
       slug: z.string(),
+      tribe: z.string(),
       coordinates: z.strictObject({
         x: z.number(),
         y: z.number(),
