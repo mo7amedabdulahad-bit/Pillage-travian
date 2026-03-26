@@ -582,11 +582,9 @@ const resolveCatapultDamage = (
 
   // 2. Get attacker tribe and catapult smithy upgrade level
   const attackerTribe = database.selectValue({
-    sql: `SELECT COALESCE(vt.tribe, pt.tribe)
-          FROM villages v
-          LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
-          LEFT JOIN players p ON v.player_id = p.id
-          LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
+    sql: `SELECT ti.tribe FROM villages v
+          JOIN players p ON v.player_id = p.id
+          JOIN tribe_ids ti ON p.tribe_id = ti.id
           WHERE v.id = $village_id`,
     bind: { $village_id: villageId },
     schema: z.string(),
@@ -908,11 +906,10 @@ const resolveScoutMovement = (
         p.id as playerId,
         p.name as playerName,
         p.faction_id as factionId,
-        COALESCE(vt.tribe, pt.tribe) as tribe
+        ti.tribe as tribe
       FROM villages v
       JOIN players p ON v.player_id = p.id
-      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
-      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
+      JOIN tribe_ids ti ON p.tribe_id = ti.id
       WHERE v.id = $id
     `,
     bind: { $id: villageId },
@@ -927,11 +924,10 @@ const resolveScoutMovement = (
 
   const defenderVillage = database.selectObject({
     sql: `
-      SELECT v.tile_id AS tileId, v.name AS villageName, p.name AS playerName, p.faction_id AS factionId, COALESCE(vt.tribe, pt.tribe) as tribe
+      SELECT v.tile_id AS tileId, v.name AS villageName, p.name AS playerName, p.faction_id AS factionId, ti.tribe AS tribe
       FROM villages v
       JOIN players p ON p.id = v.player_id
-      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
-      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
+      JOIN tribe_ids ti ON ti.id = p.tribe_id
       WHERE v.id = $targetVillageId
     `,
     bind: { $targetVillageId: targetId },
@@ -1657,11 +1653,10 @@ export const resolveTroopMovementCombat = (
         v.name as name,
         p.name as playerName,
         p.faction_id as factionId,
-        COALESCE(vt.tribe, pt.tribe, 'nature') as tribe
+        ti.tribe as tribe
       FROM villages v
       JOIN players p ON v.player_id = p.id
-      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
-      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
+      JOIN tribe_ids ti ON p.tribe_id = ti.id
       WHERE v.id = $id
     `,
     bind: { $id: targetId },
@@ -1681,11 +1676,10 @@ export const resolveTroopMovementCombat = (
         p.id as playerId,
         p.name as playerName,
         p.faction_id as factionId,
-        COALESCE(vt.tribe, pt.tribe) as tribe
+        ti.tribe as tribe
       FROM villages v
       JOIN players p ON v.player_id = p.id
-      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
-      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
+      JOIN tribe_ids ti ON p.tribe_id = ti.id
       WHERE v.id = $id
     `,
     bind: { $id: villageId },
