@@ -120,7 +120,7 @@ export const getTiles = createController('/tiles')(({ database }) => {
         p.id AS player_id,
         p.slug AS player_slug,
         p.name AS player_name,
-        ti.tribe AS player_tribe,
+        COALESCE(vt.tribe, ti.tribe) AS player_tribe,
         fi.faction AS player_faction,
 
         CASE
@@ -149,6 +149,7 @@ export const getTiles = createController('/tiles')(({ database }) => {
           ) o ON o.tile_id = t.id AND t.type = 'oasis'
           LEFT JOIN villages v_owner ON v_owner.id = o.village_id
           LEFT JOIN players p ON p.id = COALESCE(v.player_id, v_owner.player_id)
+          LEFT JOIN tribe_ids vt ON vt.id = COALESCE(v.tribe_id, v_owner.tribe_id)
           LEFT JOIN tribe_ids ti ON ti.id = p.tribe_id
           LEFT JOIN faction_ids fi ON fi.id = p.faction_id
           LEFT JOIN resource_field_composition_ids rfc ON rfc.id = t.resource_field_composition_id
