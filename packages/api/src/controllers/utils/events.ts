@@ -859,7 +859,6 @@ export const getEventDuration = (
 
     // If the target village no longer exists, return 0 duration (instant)
     if (!village) {
-      console.error('[Return Duration] Target village missing, returning 0');
       return 0;
     }
 
@@ -875,10 +874,6 @@ export const getEventDuration = (
     });
 
     if (!sourceCoords) {
-      console.error(
-        '[Return Duration] Source tile missing for tileId:',
-        sourceTileId,
-      );
       return 0;
     }
 

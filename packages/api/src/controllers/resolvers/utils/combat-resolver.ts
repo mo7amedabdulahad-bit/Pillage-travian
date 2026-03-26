@@ -236,17 +236,6 @@ const _transferVillageOwnership = (
   // 1. Transfer ownership, reset loyalty, and generate slug if missing
   // NOTE: tribe_id is NOT changed — the village keeps its original tribe
 
-  // Debug: check tribe_id before conquest
-  const preConquestTribe = database.selectValue({
-    sql: 'SELECT tribe_id FROM villages WHERE id = $village_id',
-    bind: { $village_id: villageId },
-    schema: z.number().nullable(),
-  });
-  console.error(
-    `[Chief] Pre-conquest tribe_id for village ${villageId}:`,
-    preConquestTribe,
-  );
-
   database.exec({
     sql: `UPDATE villages
           SET player_id = $player_id,
@@ -260,14 +249,6 @@ const _transferVillageOwnership = (
       $now: resolvesAt,
     },
   });
-
-  // Verify the slug was set
-  const newSlug = database.selectValue({
-    sql: 'SELECT slug FROM villages WHERE id = $village_id',
-    bind: { $village_id: villageId },
-    schema: z.string().nullable(),
-  });
-  console.error(`[Chief] Conquered village ${villageId} slug: "${newSlug}"`);
 
   // 2. Delete old NPC reports for this village so they don't appear in player's inbox
   database.exec({
@@ -1915,30 +1896,11 @@ export const resolveTroopMovementCombat = (
               resolvesAt,
             );
             reportConquered = true;
-            console.error(
-              `[Chief] Village ${targetId} CONQUERED — assigned to PLAYER_ID=${PLAYER_ID}`,
-            );
-            // Verify conquest persisted
-            const postConquest = database.selectObject({
-              sql: 'SELECT id, player_id FROM villages WHERE id = $id',
-              bind: { $id: targetId },
-              schema: z.object({
-                id: z.number(),
-                player_id: z.number().nullable(),
-              }),
-            });
-            console.error(
-              '[Chief] Post-conquest village:',
-              JSON.stringify(postConquest),
-            );
           } else {
             // Loyalty 0 but building protects — can't conquer
             reportProtectedBuildingName =
               adminBuilding.buildingName ?? undefined;
             reportProtectedBuildingLevel = adminBuilding.level;
-            console.error(
-              `[Chief] Village ${targetId} loyalty at 0 but protected by ${adminBuilding.buildingName} Lv${adminBuilding.level} — not conquered`,
-            );
           }
         } else {
           // Loyalty > 0 — check if building exists (for informational display)
@@ -1948,9 +1910,6 @@ export const resolveTroopMovementCombat = (
               adminBuilding.buildingName ?? undefined;
             reportProtectedBuildingLevel = adminBuilding.level;
           }
-          console.error(
-            `[Chief] Village ${targetId} loyalty reduced by ${loyaltyReduction} → ${newLoyalty}%`,
-          );
         }
       } catch (_e) {
         console.error('[Chief] Loyalty update failed:', _e);
@@ -2027,12 +1986,6 @@ export const resolveTroopMovementCombat = (
         villageWasDestroyed || villageWasConquered
           ? sourceTileId
           : targetVillage.tileId;
-
-      console.error('[Return] villageWasDestroyed:', villageWasDestroyed);
-      console.error('[Return] villageWasConquered:', villageWasConquered);
-      console.error('[Return] troopsAtTileId:', troopsAtTileId);
-      console.error('[Return] sourceTileId:', sourceTileId);
-      console.error('[Return] survivorCount:', result.attackerSurvivors.length);
 
       createEvents<'troopMovementReturn'>(database, {
         villageId: villageId,
