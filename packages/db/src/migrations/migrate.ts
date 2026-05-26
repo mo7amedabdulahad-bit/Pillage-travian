@@ -14,6 +14,7 @@ import createFactionReputationTable from '../schemas/faction-reputation-schema.s
 import createFarmListTilesTable from '../schemas/farm-list-tiles-schema.sql?raw';
 import createFarmListsTable from '../schemas/farm-lists-schema.sql?raw';
 import createHeroAdventuresTable from '../schemas/hero-adventures-schema.sql?raw';
+import createHeroAppearanceTable from '../schemas/hero-appearance-schema.sql?raw';
 import createHeroEquippedItemsTable from '../schemas/hero-equipped-items-schema.sql?raw';
 import createHeroInventoriesTable from '../schemas/hero-inventories-schema.sql?raw';
 import createHeroSelectableAttributesTable from '../schemas/hero-selectable-attributes-schema.sql?raw';
@@ -56,6 +57,7 @@ import { factionIdsSeeder } from '../seeders/faction-ids-seeder';
 import { factionReputationSeeder } from '../seeders/faction-reputation-seeder';
 import { guaranteedCroppersSeeder } from '../seeders/guaranteed-croppers-seeder';
 import { heroAdventuresSeeder } from '../seeders/hero-adventures-seeder';
+import { heroAppearanceSeeder } from '../seeders/hero-appearance-seeder';
 import { heroSeeder } from '../seeders/hero-seeder';
 import { mapFiltersSeeder } from '../seeders/map-filters-seeder';
 import { npcVillageStateSeeder } from '../seeders/npc-village-state-seeder';
@@ -168,7 +170,9 @@ export const migrateAndSeed = (
     // Heroes
     db.exec({ sql: createHeroesTable });
     db.exec({ sql: createHeroSelectableAttributesTable });
+    db.exec({ sql: createHeroAppearanceTable });
     heroSeeder(db);
+    heroAppearanceSeeder(db);
 
     // Bookmarks
     db.exec({ sql: createBookmarksTable });

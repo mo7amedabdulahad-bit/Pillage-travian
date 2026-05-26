@@ -2,6 +2,7 @@ export const serverCacheKey = 'server';
 export const effectsCacheKey = 'effects';
 export const heroCacheKey = 'hero';
 export const heroLoadoutCacheKey = 'hero-loadout';
+export const heroAppearanceCacheKey = 'hero-appearance';
 export const heroInventoryCacheKey = 'hero-inventory';
 export const playersCacheKey = 'players';
 export const preferencesCacheKey = 'preferences';

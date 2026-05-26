@@ -15,6 +15,7 @@ import {
   farmListSchema,
   farmListTileSchema,
 } from './controllers/schemas/farm-list-schemas';
+import { getHeroAppearanceSchema } from './controllers/schemas/hero-appearance-schemas.ts';
 import {
   getHeroInventorySchema,
   getHeroLoadoutSchema,
@@ -532,6 +533,62 @@ export const paths = {
       responses: {
         '204': {
           description: 'Item used',
+        },
+      },
+    },
+  },
+  '/players/:playerId/hero/appearance': {
+    get: {
+      summary: 'Get hero appearance',
+      requestParams: {
+        path: z.strictObject({
+          playerId: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '200': {
+          description: 'Hero appearance',
+          content: {
+            'application/json': {
+              schema: getHeroAppearanceSchema,
+            },
+          },
+        },
+      },
+    },
+    patch: {
+      summary: 'Update hero appearance',
+      requestParams: {
+        path: z.strictObject({
+          playerId: z.coerce.number(),
+        }),
+      },
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: z.strictObject({
+              gender: z.enum(['male', 'female']),
+              skinColor: z.string(),
+              hairColor: z.string(),
+              eyeColor: z.string(),
+              jawId: z.number(),
+              eyesId: z.number(),
+              browsId: z.number(),
+              noseId: z.number(),
+              mouthId: z.number(),
+              earsId: z.number(),
+              hairId: z.number(),
+              beardId: z.number(),
+              tattooId: z.number(),
+              scarId: z.number(),
+              bodyArmor: z.string(),
+            }),
+          },
+        },
+      },
+      responses: {
+        '204': {
+          description: 'Appearance updated',
         },
       },
     },

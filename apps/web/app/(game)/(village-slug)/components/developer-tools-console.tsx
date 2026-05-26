@@ -1,9 +1,15 @@
 import { type ComponentProps, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VscTerminal } from 'react-icons/vsc';
-import { items } from '@pillage-first/game-assets/items';
+import {
+  categoryDisplayNames,
+  getItemsByCategory,
+  itemCategories,
+  items,
+} from '@pillage-first/game-assets/items';
 import { calculateHeroLevel } from '@pillage-first/game-assets/utils/hero';
 import type { DeveloperSettings } from '@pillage-first/types/models/developer-settings';
+import type { HeroItemCategory } from '@pillage-first/types/models/hero-item';
 import type { Resource } from '@pillage-first/types/models/resource';
 import {
   Section,
@@ -99,12 +105,38 @@ export const DeveloperToolsConsole = ({
   } = useDeveloperSettings();
   const { hero } = useHero();
 
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedTier, setSelectedTier] = useState<string>('1');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [amount, setAmount] = useState(1);
 
   const { level } = useMemo(() => {
     return calculateHeroLevel(hero.stats.experience);
   }, [hero.stats.experience]);
+
+  // Get items filtered by selected category
+  const filteredItems = useMemo(() => {
+    if (!selectedCategory) return [];
+    const categoryItems = getItemsByCategory(
+      selectedCategory as HeroItemCategory,
+    );
+
+    // Check if this category has tiered items
+    const hasTiers = categoryItems.some((item) => item.tier !== undefined);
+    if (hasTiers) {
+      return categoryItems.filter((item) => item.tier === Number(selectedTier));
+    }
+    return categoryItems;
+  }, [selectedCategory, selectedTier]);
+
+  // Check if selected category has tiers
+  const categoryHasTiers = useMemo(() => {
+    if (!selectedCategory) return false;
+    const categoryItems = getItemsByCategory(
+      selectedCategory as HeroItemCategory,
+    );
+    return categoryItems.some((item) => item.tier !== undefined);
+  }, [selectedCategory]);
 
   const handleUpdateResource = (
     resource: Resource,
@@ -130,7 +162,6 @@ export const DeveloperToolsConsole = ({
     if (!selectedItemId) {
       return;
     }
-
     spawnHeroItem({ itemId: Number(selectedItemId), amount });
   };
 
@@ -185,7 +216,7 @@ export const DeveloperToolsConsole = ({
       open={isOpen}
       onOpenChange={onOpenChange}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('Developer tools')}</DialogTitle>
           <DialogDescription>
@@ -367,6 +398,72 @@ export const DeveloperToolsConsole = ({
           <SectionContent>
             <Text as="h3">{t('Hero items')}</Text>
             <div className="flex flex-col gap-4">
+              {/* Category selector */}
+              <div className="flex flex-col gap-2">
+                <Label>{t('Category')}</Label>
+                <Select
+                  value={selectedCategory ?? undefined}
+                  onValueChange={(value) => {
+                    setSelectedCategory(value);
+                    setSelectedItemId(null);
+                    setSelectedTier('1');
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t('Select item category')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {itemCategories.map((cat) => (
+                      <SelectItem
+                        key={cat}
+                        value={cat}
+                      >
+                        {categoryDisplayNames[cat]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tier selector — only shown for tiered categories */}
+              {categoryHasTiers && (
+                <div className="flex flex-col gap-2">
+                  <Label>{t('Tier')}</Label>
+                  <Select
+                    value={selectedTier}
+                    onValueChange={(value) => {
+                      setSelectedTier(value);
+                      setSelectedItemId(null);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-gray-400" />
+                          Tier 1 (Common)
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="2">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-green-500" />
+                          Tier 2 (Uncommon)
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="3">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-500" />
+                          Tier 3 (Rare)
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Item selector with image previews */}
               <div className="flex items-end gap-4">
                 <div className="flex flex-col gap-2 flex-1">
                   <Label>{t('Item')}</Label>
@@ -378,12 +475,26 @@ export const DeveloperToolsConsole = ({
                       <SelectValue placeholder={t('Select an item to spawn')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {items.map((item) => (
+                      {filteredItems.map((item) => (
                         <SelectItem
                           key={item.id}
                           value={String(item.id)}
                         >
-                          {t(`ITEMS.${item.name}.NAME`)}
+                          <span className="flex items-center gap-2">
+                            <img
+                              src={`/hero-assets/items/item${item.imageId}.png`}
+                              alt={item.displayName}
+                              className="w-6 h-6 object-contain"
+                            />
+                            <span className="flex flex-col">
+                              <span className="font-medium">
+                                {item.displayName}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {item.description}
+                              </span>
+                            </span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -400,13 +511,61 @@ export const DeveloperToolsConsole = ({
                   />
                 </div>
               </div>
-              <Button
-                onClick={handleSpawnItem}
-                disabled={!selectedItemId}
-                size="fit"
-              >
-                {t('Spawn item')}
-              </Button>
+
+              {/* Selected item preview */}
+              {selectedItemId &&
+                (() => {
+                  const selectedItem = filteredItems.find(
+                    (i) => String(i.id) === selectedItemId,
+                  );
+                  if (!selectedItem) return null;
+                  return (
+                    <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-md border">
+                      <img
+                        src={`/hero-assets/items/item${selectedItem.imageId}.png`}
+                        alt={selectedItem.displayName}
+                        className="w-12 h-12 object-contain"
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">
+                          {selectedItem.displayName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {selectedItem.description}
+                        </span>
+                        {selectedItem.tribe !== 'any' && (
+                          <span className="text-xs text-amber-600 capitalize">
+                            {selectedItem.tribe} only
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSpawnItem}
+                  disabled={!selectedItemId}
+                  size="fit"
+                >
+                  {t('Spawn item')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="fit"
+                  onClick={() => {
+                    // Spawn one of every equippable item
+                    for (const item of items) {
+                      if (item.category !== 'consumable') {
+                        spawnHeroItem({ itemId: item.id, amount: 1 });
+                      }
+                    }
+                  }}
+                >
+                  {t('Spawn all equipment')}
+                </Button>
+              </div>
             </div>
           </SectionContent>
 

@@ -3,6 +3,7 @@ import { calculateHeroLevel } from '@pillage-first/game-assets/utils/hero';
 import type { Route } from '@react-router/types/app/(game)/(village-slug)/(hero)/+types/page';
 import { Adventures } from 'app/(game)/(village-slug)/(hero)/components/adventures';
 import { Auctions } from 'app/(game)/(village-slug)/(hero)/components/auctions';
+import { HeroAppearancePanel } from 'app/(game)/(village-slug)/(hero)/components/hero-appearance/hero-appearance';
 import { HeroAttributes } from 'app/(game)/(village-slug)/(hero)/components/hero-attributes';
 import { HeroInventory } from 'app/(game)/(village-slug)/(hero)/components/hero-inventory';
 import { useTabParam } from 'app/(game)/(village-slug)/hooks/routes/use-tab-param';
@@ -18,7 +19,7 @@ import {
 } from 'app/components/ui/breadcrumb';
 import { Tab, TabList, TabPanel, Tabs } from 'app/components/ui/tabs';
 
-const tabs = ['default', 'inventory', 'adventures', 'auctions'];
+const tabs = ['default', 'inventory', 'appearance', 'adventures', 'auctions'];
 
 const HeroPage = ({ params }: Route.ComponentProps) => {
   const { serverSlug, villageSlug } = params;
@@ -62,6 +63,7 @@ const HeroPage = ({ params }: Route.ComponentProps) => {
         <TabList>
           <Tab value="default">{t('Attributes')}</Tab>
           <Tab value="inventory">{t('Inventory')}</Tab>
+          <Tab value="appearance">{t('Appearance')}</Tab>
           <Tab value="adventures">{t('Adventures')}</Tab>
           <Tab value="auctions">{t('Auctions')}</Tab>
         </TabList>
@@ -70,6 +72,9 @@ const HeroPage = ({ params }: Route.ComponentProps) => {
         </TabPanel>
         <TabPanel value="inventory">
           <HeroInventory />
+        </TabPanel>
+        <TabPanel value="appearance">
+          <HeroAppearancePanel />
         </TabPanel>
         <TabPanel value="adventures">
           <Adventures />

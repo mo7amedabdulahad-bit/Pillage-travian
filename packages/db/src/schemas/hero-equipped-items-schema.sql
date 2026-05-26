@@ -6,7 +6,7 @@ CREATE TABLE hero_equipped_items
     (
      'head',
      'torso',
-     'legs',
+     'boots',
      'right-hand',
      'left-hand',
      'horse',

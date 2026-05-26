@@ -21,6 +21,9 @@
     "./items": {
       "default": "./src/items.ts"
     },
+    "./hero-asset-mapping": {
+      "default": "./src/hero-asset-mapping.ts"
+    },
     "./quests": {
       "default": "./src/quests.ts"
     },

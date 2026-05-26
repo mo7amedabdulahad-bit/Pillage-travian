@@ -9,21 +9,40 @@ type TreasureIconProps = Omit<ComponentProps<typeof Icon>, 'type'> & {
   itemId: HeroItem['id'];
 };
 
-const itemTypeToIconTypeMap = new Map<
+const categoryToIconTypeMap = new Map<
   HeroItem['category'],
   ComponentProps<typeof Icon>['type']
 >([
   ['artifact', 'treasureTileArtifact'],
-  ['wearable', 'treasureTileItem'],
-  ['currency', 'treasureTileCurrency'],
-  ['resource', 'treasureTileResources'],
+  ['helmet', 'treasureTileItem'],
+  ['armour', 'treasureTileItem'],
+  ['boots', 'treasureTileItem'],
+  ['left-hand', 'treasureTileItem'],
+  ['right-hand', 'treasureTileItem'],
+  ['horse', 'treasureTileItem'],
+  ['consumable', 'treasureTileMiscellaneous'],
 ]);
 
 export const TreasureIcon = ({ itemId, className }: TreasureIconProps) => {
   const item = getItemDefinition(itemId);
 
+  if (!item) {
+    // Item ID not found in our definitions — show generic icon
+    return (
+      <BorderIndicator
+        className={className}
+        variant="blue"
+      >
+        <Icon
+          type="treasureTileMiscellaneous"
+          shouldShowTooltip={false}
+        />
+      </BorderIndicator>
+    );
+  }
+
   const iconType =
-    itemTypeToIconTypeMap.get(item.category) ?? 'treasureTileMiscellaneous';
+    categoryToIconTypeMap.get(item.category) ?? 'treasureTileMiscellaneous';
 
   return (
     <BorderIndicator

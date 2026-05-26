@@ -22,7 +22,10 @@
     "extract-sql-seeder-usage": "node scripts/extract-sql-seeder-usage.ts"
   },
   "dependencies": {
-    "@sqlite.org/sqlite-wasm": "3.51.2-build6"
+    "@napi-rs/canvas": "^0.1.100",
+    "@sqlite.org/sqlite-wasm": "3.51.2-build6",
+    "canvas": "^3.2.3",
+    "puppeteer": "^25.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.6",

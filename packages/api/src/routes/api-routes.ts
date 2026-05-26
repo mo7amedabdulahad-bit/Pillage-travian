@@ -36,9 +36,11 @@ import {
   equipHeroItem,
   getHero,
   getHeroAdventures,
+  getHeroAppearance,
   getHeroInventory,
   getHeroLoadout,
   unequipHeroItem,
+  updateHeroAppearance,
   useHeroItem,
 } from '../controllers/hero-controllers';
 import {
@@ -130,6 +132,8 @@ const apiRoutes: Route[] = [
   createRoute(unequipHeroItem),
   createRoute(changeHeroAttributes),
   createRoute(changeHeroResourceToProduce),
+  createRoute(getHeroAppearance),
+  createRoute(updateHeroAppearance),
 
   // Unit Improvements
   createRoute(getUnitImprovements),

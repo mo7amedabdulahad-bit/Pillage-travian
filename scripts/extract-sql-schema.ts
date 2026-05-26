@@ -18,7 +18,7 @@ await (async (): Promise<void> => {
   await mkdir(dirname(DB_EXPORT_PATH), { recursive: true });
 
   try {
-    await rm(DB_EXPORT_PATH);
+    await rm(DB_EXPORT_PATH, { force: true });
   } catch {
     // ignore if file not found
   }

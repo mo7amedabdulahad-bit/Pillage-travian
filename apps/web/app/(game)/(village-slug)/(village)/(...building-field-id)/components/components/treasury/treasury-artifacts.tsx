@@ -26,12 +26,31 @@ type UnoccupiedArtifactRowProps = {
 const UnoccupiedArtifactRow = ({ item }: UnoccupiedArtifactRowProps) => {
   const { t } = useTranslation();
 
-  const { name } = getItemDefinition(item.id);
+  const itemDef = getItemDefinition(item.id);
+
+  if (!itemDef) {
+    return (
+      <TableRow>
+        <TableCell>{t('Unknown item')}</TableCell>
+        <TableCell>{t('Unknown item')}</TableCell>
+        <TableCell>{item.distance}</TableCell>
+        <TableCell>
+          <Link to={`../map?x=${item.coordinates.x}&y=${item.coordinates.y}`}>
+            ({item.coordinates.x} | {item.coordinates.y})
+          </Link>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  const { name } = itemDef;
 
   return (
     <TableRow>
-      <TableCell>{t(`ITEMS.${name}.NAME`)}</TableCell>
-      <TableCell>{t(`ITEMS.${name}.DESCRIPTION`)}</TableCell>
+      <TableCell>{itemDef.displayName ?? t(`ITEMS.${name}.NAME`)}</TableCell>
+      <TableCell>
+        {itemDef.description ?? t(`ITEMS.${name}.DESCRIPTION`)}
+      </TableCell>
       <TableCell>{item.distance}</TableCell>
       <TableCell>
         <Link to={`../map?x=${item.coordinates.x}&y=${item.coordinates.y}`}>

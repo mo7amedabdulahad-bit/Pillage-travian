@@ -45,6 +45,9 @@
     "./models/hero-adventures": {
       "default": "./src/models/hero-adventures.ts"
     },
+    "./models/hero-appearance": {
+      "default": "./src/models/hero-appearance.ts"
+    },
     "./models/hero-item": {
       "default": "./src/models/hero-item.ts"
     },

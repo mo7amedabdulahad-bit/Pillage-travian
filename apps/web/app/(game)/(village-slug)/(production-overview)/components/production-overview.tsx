@@ -272,7 +272,11 @@ export const ProductionOverview = ({
                 ))}
                 {boostedArtifactBonusEffects.map(
                   ({ value, sourceSpecifier }) => {
-                    const { name } = getItemDefinition(sourceSpecifier!);
+                    const itemDef = getItemDefinition(sourceSpecifier!);
+
+                    if (!itemDef) {
+                      return null;
+                    }
 
                     return (
                       <TableRow key={sourceSpecifier}>
@@ -280,7 +284,10 @@ export const ProductionOverview = ({
                           <Text>{t('Artifact')}</Text>
                         </TableCell>
                         <TableCell>
-                          <Text>{t(`ITEMS.${name}.NAME`)}</Text>
+                          <Text>
+                            {itemDef.displayName ??
+                              t(`ITEMS.${itemDef.name}.NAME`)}
+                          </Text>
                         </TableCell>
                         <TableCell>
                           <Text>{formatBonus(value - 1)}%</Text>
@@ -380,7 +387,11 @@ export const ProductionOverview = ({
                 ))}
                 {baseArtifactsEffectsWithServerModifier.map(
                   ({ value, sourceSpecifier }) => {
-                    const { name } = getItemDefinition(sourceSpecifier!);
+                    const itemDef = getItemDefinition(sourceSpecifier!);
+
+                    if (!itemDef) {
+                      return null;
+                    }
 
                     return (
                       <TableRow key={sourceSpecifier}>
@@ -388,7 +399,10 @@ export const ProductionOverview = ({
                           <Text>{t('Artifact')}</Text>
                         </TableCell>
                         <TableCell>
-                          <Text>{t(`ITEMS.${name}.NAME`)}</Text>
+                          <Text>
+                            {itemDef.displayName ??
+                              t(`ITEMS.${itemDef.name}.NAME`)}
+                          </Text>
                         </TableCell>
                         <TableCell>
                           <Text>{value}</Text>

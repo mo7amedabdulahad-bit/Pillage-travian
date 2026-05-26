@@ -6,6 +6,7 @@ import { heroAdventuresSchema } from '@pillage-first/types/models/hero-adventure
 import type { Resource } from '@pillage-first/types/models/resource';
 import { createController } from '../utils/controller';
 import { updateVillageResourcesAt } from '../utils/village';
+import { getHeroAppearanceSchema } from './schemas/hero-appearance-schemas';
 import {
   getHeroInventorySchema,
   getHeroLoadoutSchema,
@@ -359,7 +360,7 @@ export const equipHeroItem = createController(
         `,
         bind: {
           $hero_id: heroId,
-          $equippedItemId: String(currentlyEquipped.item_id),
+          $equippedItemId: currentlyEquipped.item_id,
           $equippedAmount: currentlyEquipped.amount,
         },
       });
@@ -369,6 +370,19 @@ export const equipHeroItem = createController(
         sql: "DELETE FROM effects WHERE source = 'hero' AND source_specifier = $itemId",
         bind: { $itemId: currentlyEquipped.item_id },
       });
+
+      // Reverse direct stat modifications of replaced item
+      const replacedItemDef = getItemDefinition(currentlyEquipped.item_id);
+      if (replacedItemDef?.heroBonus) {
+        for (const bonus of replacedItemDef.heroBonus) {
+          if (bonus.attribute === 'power') {
+            database.exec({
+              sql: 'UPDATE heroes SET base_attack_power = MAX(0, base_attack_power - $value) WHERE id = $hero_id',
+              bind: { $value: bonus.value, $hero_id: heroId },
+            });
+          }
+        }
+      }
 
       // Remove from equipped
       database.exec({
@@ -417,39 +431,51 @@ export const equipHeroItem = createController(
       bind: { $hero_id: heroId, $slot: slot, $itemId: itemId, $amount: amount },
     });
 
-    // 4. Handle effects of newly equipped item
+    // 4. Handle effects of newly equipped item via heroBonus
     const itemDef = getItemDefinition(itemId);
-    if (itemDef.effects) {
+    if (itemDef?.heroBonus) {
       const villageId = database.selectValue({
         sql: 'SELECT id FROM villages WHERE player_id = $player_id LIMIT 1',
         bind: { $player_id: playerId },
         schema: z.number(),
       });
 
-      for (const effect of itemDef.effects) {
-        database.exec({
-          sql: `
-            INSERT INTO
-              effects (effect_id, value, type, scope, source, village_id, source_specifier)
-            VALUES
-              ((
-                 SELECT id
-                 FROM
-                   effect_ids
-                 WHERE
-                   effect = $effectId
-                 ), $value, $type, $scope, 'hero', $village_id, $itemId)
-          `,
-          bind: {
-            $effectId: effect.id,
-            $value: effect.value,
-            $type: effect.type,
-            $scope: effect.scope,
-            $village_id:
-              effect.scope === 'village' ? (villageId ?? null) : null,
-            $itemId: itemId,
-          },
-        });
+      for (const bonus of itemDef.heroBonus) {
+        // Direct hero stat modifications
+        if (bonus.attribute === 'power') {
+          database.exec({
+            sql: 'UPDATE heroes SET base_attack_power = base_attack_power + $value WHERE id = $hero_id',
+            bind: { $value: bonus.value, $hero_id: heroId },
+          });
+          continue;
+        }
+
+        // Map heroBonus attributes to effect_ids where applicable
+        const bonusToEffectMap: Record<string, string> = {
+          infantryTraining: 'barracksTrainingDuration',
+          cavalryTraining: 'stableTrainingDuration',
+          troopSpeed: 'unitSpeedAfter20Fields',
+        };
+
+        const effectId = bonusToEffectMap[bonus.attribute];
+        if (effectId && villageId) {
+          database.exec({
+            sql: `
+              INSERT INTO
+                effects (effect_id, value, type, scope, source, village_id, source_specifier)
+              VALUES
+                ((
+                  SELECT id FROM effect_ids WHERE effect = $effectId
+                ), $value, 'bonus', 'village', 'hero', $village_id, $itemId)
+            `,
+            bind: {
+              $effectId: effectId,
+              $value: bonus.value,
+              $village_id: villageId,
+              $itemId: itemId,
+            },
+          });
+        }
       }
     }
   })!;
@@ -490,11 +516,24 @@ export const unequipHeroItem = createController(
         },
       });
 
-      // Remove effects
+      // Remove effect rows (handles training speed bonuses etc.)
       database.exec({
         sql: "DELETE FROM effects WHERE source = 'hero' AND source_specifier = $itemId",
         bind: { $itemId: equipped.item_id },
       });
+
+      // Reverse direct hero stat modifications (power bonus)
+      const itemDef = getItemDefinition(equipped.item_id);
+      if (itemDef?.heroBonus) {
+        for (const bonus of itemDef.heroBonus) {
+          if (bonus.attribute === 'power') {
+            database.exec({
+              sql: 'UPDATE heroes SET base_attack_power = MAX(0, base_attack_power - $value) WHERE id = $hero_id',
+              bind: { $value: bonus.value, $hero_id: heroId },
+            });
+          }
+        }
+      }
 
       // Remove from equipped
       database.exec({
@@ -534,7 +573,8 @@ export const useHeroItem = createController(
 
     let itemsToUse = amount;
 
-    if (itemId === 1021) {
+    if (itemId === 106) {
+      // OINTMENT (Heals 1% health per item)
       // HEALING_POTION
       const currentHealth = database.selectObject({
         sql: 'SELECT health FROM heroes WHERE id = $hero_id',
@@ -552,7 +592,8 @@ export const useHeroItem = createController(
         sql: 'UPDATE heroes SET health = health + $healthToAdd WHERE id = $hero_id',
         bind: { $hero_id: heroId, $healthToAdd: itemsToUse },
       });
-    } else if (itemId === 1022) {
+    } else if (itemId === 110) {
+      // BOOK_OF_WISDOM
       // BOOK_OF_WISDOM
       itemsToUse = 1;
 
@@ -631,10 +672,10 @@ export const useHeroItem = createController(
           },
         });
       }
-    } else if (itemId === 1030) {
-      // EXPERIENCE_SCROLL
-      itemsToUse = 1;
-      const experienceToAdd = 10 * amount; // 10 experience per scroll
+    } else if (itemId === 107) {
+      // SCROLL (+10 experience per scroll)
+      itemsToUse = amount;
+      const experienceToAdd = 10 * amount;
 
       database.exec({
         sql: `
@@ -645,6 +686,34 @@ export const useHeroItem = createController(
             id = $hero_id
         `,
         bind: { $hero_id: heroId, $experienceToAdd: experienceToAdd },
+      });
+    } else if (itemId === 108) {
+      // BUCKET (Revives dead hero)
+      itemsToUse = 1;
+      const currentHealth = database.selectObject({
+        sql: 'SELECT health FROM heroes WHERE id = $hero_id',
+        bind: { $hero_id: heroId },
+        schema: z.strictObject({ health: z.number() }),
+      })!.health;
+
+      if (currentHealth > 0) {
+        throw new Error('Hero is not dead');
+      }
+
+      database.exec({
+        sql: 'UPDATE heroes SET health = 100 WHERE id = $hero_id',
+        bind: { $hero_id: heroId },
+      });
+    } else if (itemId === 111) {
+      // ARTWORK
+      // Usually adds CP equal to the production of the village in 24 hours.
+      // For now, we add a flat 500 CP as a placeholder.
+      itemsToUse = amount;
+      const cpToAdd = 500 * amount;
+
+      database.exec({
+        sql: 'UPDATE players SET culture_points = culture_points + $cpToAdd WHERE id = $player_id',
+        bind: { $player_id: playerId, $cpToAdd: cpToAdd },
       });
     } else {
       throw new Error('Item effect not implemented');
@@ -668,3 +737,123 @@ export const useHeroItem = createController(
     }
   })!;
 });
+
+export const getHeroAppearance = createController(
+  '/players/:playerId/hero/appearance',
+)(({ database, path: { playerId } }) => {
+  const appearance = database.selectObject({
+    sql: `
+        SELECT
+          ha.gender,
+          ha.skin_color,
+          ha.hair_color,
+          ha.eye_color,
+          ha.jaw_id,
+          ha.eyes_id,
+          ha.brows_id,
+          ha.nose_id,
+          ha.mouth_id,
+          ha.ears_id,
+          ha.hair_id,
+          ha.beard_id,
+          ha.tattoo_id,
+          ha.scar_id,
+          ha.body_armor
+        FROM hero_appearance ha
+        JOIN heroes h ON ha.hero_id = h.id
+        WHERE h.player_id = $player_id;
+      `,
+    bind: { $player_id: playerId },
+    schema: getHeroAppearanceSchema,
+  })!;
+
+  if (!appearance) {
+    return {
+      gender: 'male',
+      skinColor: 'skin1',
+      hairColor: 'black',
+      eyeColor: 'brown',
+      jawId: 1,
+      eyesId: 1,
+      browsId: 1,
+      noseId: 1,
+      mouthId: 1,
+      earsId: 1,
+      hairId: 1,
+      beardId: 0,
+      tattooId: 0,
+      scarId: 0,
+      bodyArmor: 'teuton',
+    };
+  }
+
+  return appearance;
+});
+
+export const updateHeroAppearance = createController(
+  '/players/:playerId/hero/appearance',
+  'patch',
+)(
+  ({
+    database,
+    path: { playerId },
+    body: {
+      gender,
+      skinColor,
+      hairColor,
+      eyeColor,
+      jawId,
+      eyesId,
+      browsId,
+      noseId,
+      mouthId,
+      earsId,
+      hairId,
+      beardId,
+      tattooId,
+      scarId,
+      bodyArmor,
+    },
+  }) => {
+    database.exec({
+      sql: `
+      UPDATE hero_appearance
+      SET
+        gender = $gender,
+        skin_color = $skinColor,
+        hair_color = $hairColor,
+        eye_color = $eyeColor,
+        jaw_id = $jawId,
+        eyes_id = $eyesId,
+        brows_id = $browsId,
+        nose_id = $noseId,
+        mouth_id = $mouthId,
+        ears_id = $earsId,
+        hair_id = $hairId,
+        beard_id = $beardId,
+        tattoo_id = $tattooId,
+        scar_id = $scarId,
+        body_armor = $bodyArmor
+      WHERE hero_id = (SELECT id FROM heroes WHERE player_id = $player_id)
+    `,
+      bind: {
+        $player_id: playerId,
+        $gender: gender,
+        $skinColor: skinColor,
+        $hairColor: hairColor,
+        $eyeColor: eyeColor,
+        $jawId: jawId,
+        $eyesId: eyesId,
+        $browsId: browsId,
+        $noseId: noseId,
+        $mouthId: mouthId,
+        $earsId: earsId,
+        $hairId: hairId,
+        $beardId: beardId,
+        $tattooId: tattooId,
+        $scarId: scarId,
+        $bodyArmor: bodyArmor,
+      },
+    });
+  },
+);

@@ -95,19 +95,20 @@ type TileTooltipWorldItemProps = {
 const TileTooltipWorldItem = ({ item }: TileTooltipWorldItemProps) => {
   const { t } = useTranslation();
 
-  const { category, name } = getItemDefinition(item.id);
+  const itemDef = getItemDefinition(item.id);
 
-  if (category === 'resource') {
+  if (!itemDef) {
     return (
       <span>
-        {formatNumber(item.amount)}x {t('resources')}
+        {formatNumber(item.amount)}x {t('Unknown item')}
       </span>
     );
   }
 
   return (
     <span>
-      {formatNumber(item.amount)}x {t(`ITEMS.${name}.NAME`)}
+      {formatNumber(item.amount)}x{' '}
+      {itemDef.displayName ?? t(`ITEMS.${itemDef.name}.NAME`)}
     </span>
   );
 };

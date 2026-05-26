@@ -5,13 +5,14 @@ export const heroLoadoutSlotSchema = z
     'head',
     'horse',
     'torso',
-    'legs',
     'boots',
     'right-hand',
     'left-hand',
     'consumable',
   ])
   .meta({ id: 'HeroLoadoutSlot' });
+
+export type HeroLoadoutSlot = z.infer<typeof heroLoadoutSlotSchema>;
 
 export const heroLoadoutSchema = z
   .strictObject({
