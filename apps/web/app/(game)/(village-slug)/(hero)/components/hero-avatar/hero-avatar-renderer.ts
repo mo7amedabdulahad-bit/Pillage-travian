@@ -52,7 +52,7 @@ async function drawCdnOverlay(
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      ctx.drawImage(img, dx, dy, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.drawImage(img, dx, dy);
       resolve(true);
     };
     img.onerror = () => resolve(false);
@@ -75,12 +75,18 @@ function getRightArmState(
 
   const n = itemDef.name.toLowerCase();
   if (
-    n.includes('spear') ||
+    n.includes('sword') ||
     n.includes('lance') ||
+    n.includes('spear') ||
+    n.includes('club') ||
+    n.includes('horn') ||
+    n.includes('axe') ||
+    n.includes('hatchet') ||
     n.includes('pike') ||
     n.includes('staff') ||
-    n.includes('bow') ||
-    n.includes('javelin')
+    n.includes('mace') ||
+    n.includes('hammer') ||
+    n.includes('morning')
   ) {
     return 'armUp';
   }
@@ -117,6 +123,27 @@ function getBackHairSpriteName(
     return `back-hair${hairId}-helmet-${hairColor}`;
   }
   return `back-hair${hairId}-${hairColor}`;
+}
+
+// Front hair IDs that have a helmet variant sprite (from Unity game data).
+// These get swapped to a clipped version that fits under the helmet.
+// IDs NOT in this set (3, 4, 5, 14, 15) have no helmet variant and
+// must be hidden entirely when the hero wears a helmet.
+const FRONT_HAIR_HELMET_IDS = new Set([1, 2, 6, 7, 8, 9, 10, 11, 12, 13]);
+
+function getFrontHairSpriteName(
+  hairId: number,
+  hairColor: string,
+  hasHelmet: boolean,
+): string | null {
+  if (hasHelmet) {
+    if (FRONT_HAIR_HELMET_IDS.has(hairId)) {
+      return `front-hair${hairId}-helmet-${hairColor}`;
+    }
+    // This hair style has no helmet variant → hide it completely
+    return null;
+  }
+  return `front-hair${hairId}-${hairColor}`;
 }
 
 export async function renderHeroAvatar(
@@ -201,7 +228,7 @@ export async function renderHeroAvatar(
           gender,
           spursFilename,
           v2Offsets,
-          200,
+          -200,
         );
       }
     }
@@ -210,7 +237,8 @@ export async function renderHeroAvatar(
       await drawCdnOverlay(
         ctx,
         `/hero-assets/overlays/horse/item${horseLayer.itemId}.png`,
-        200,
+        -200,
+        1185,
       );
     }
   }
@@ -222,7 +250,11 @@ export async function renderHeroAvatar(
       hair,
       hasHelmet,
     );
-    await draw(ctx, backHairName);
+    // Helmet variants exist as V2 overlays, normal hair is in the atlas
+    const drewV2 = await drawV2Sprite(ctx, gender, backHairName, v2Offsets);
+    if (!drewV2) {
+      await draw(ctx, backHairName);
+    }
   }
   await draw(ctx, `base-${skin}`);
 
@@ -309,9 +341,25 @@ export async function renderHeroAvatar(
     await draw(ctx, `scar${appearance.scarId}-${skin}`);
   }
 
-  // 12. FRONT HAIR
+  // 12. FRONT HAIR (uses helmet variant or hides based on game data)
   if (appearance.hairId > 0) {
-    await draw(ctx, `front-hair${appearance.hairId}-${hair}`);
+    const frontHairName = getFrontHairSpriteName(
+      appearance.hairId,
+      hair,
+      hasHelmet,
+    );
+    if (frontHairName) {
+      // Try V2 overlay first (has helmet variants), fall back to atlas
+      const drewV2 = await drawV2Sprite(
+        ctx,
+        gender,
+        frontHairName,
+        v2Offsets,
+      );
+      if (!drewV2) {
+        await draw(ctx, frontHairName);
+      }
+    }
   }
 
   // 13. BEARD
