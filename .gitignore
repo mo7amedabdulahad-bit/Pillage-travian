@@ -33,7 +33,7 @@ Gpack/
 NOT NEEDED/
 scripts/
 .playwright-mcp/
-apps/web/public/graphic-packs/
+
 apps/web/.next/
 packages/*/dist/
 packages/*/build/

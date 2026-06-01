@@ -1,0 +1,162 @@
+[
+  {
+    "typeId": 5,
+    "name": "Their hats Health",
+    "slot": "helmet",
+    "rarity": "uncommon",
+    "bodyPixels": 2009,
+    "headPixels": 0
+  },
+  {
+    "typeId": 6,
+    "name": "Helmet Healing",
+    "slot": "helmet",
+    "rarity": "rare",
+    "bodyPixels": 2538,
+    "headPixels": 0
+  },
+  {
+    "typeId": 9,
+    "name": "Helmet console",
+    "slot": "helmet",
+    "rarity": "rare",
+    "bodyPixels": 3116,
+    "headPixels": 0
+  },
+  {
+    "typeId": 3,
+    "name": "Helmet of Knowledge",
+    "slot": "helmet",
+    "rarity": "rare",
+    "bodyPixels": 2663,
+    "headPixels": 0
+  },
+  {
+    "typeId": 11,
+    "name": "Cavalry helmet",
+    "slot": "helmet",
+    "rarity": "uncommon",
+    "bodyPixels": 2528,
+    "headPixels": 0
+  },
+  {
+    "typeId": 15,
+    "name": "Helmet of the Archon",
+    "slot": "helmet",
+    "rarity": "rare",
+    "bodyPixels": 3183,
+    "headPixels": 0
+  },
+  {
+    "typeId": 93,
+    "name": "Heavy Segmented Armor",
+    "slot": "body",
+    "rarity": "rare",
+    "bodyPixels": 26218,
+    "headPixels": 4537
+  },
+  {
+    "typeId": 90,
+    "name": "Heavy Breast Shield",
+    "slot": "body",
+    "rarity": "rare",
+    "bodyPixels": 26443,
+    "headPixels": 4602
+  },
+  {
+    "typeId": 87,
+    "name": "Heavy Armor",
+    "slot": "body",
+    "rarity": "rare",
+    "bodyPixels": 26561,
+    "headPixels": 4754
+  },
+  {
+    "typeId": 89,
+    "name": "Breast Shield",
+    "slot": "body",
+    "rarity": "uncommon",
+    "bodyPixels": 25975,
+    "headPixels": 4445
+  },
+  {
+    "typeId": 84,
+    "name": "Armor Health B",
+    "slot": "body",
+    "rarity": "rare",
+    "bodyPixels": 27527,
+    "headPixels": 4301
+  },
+  {
+    "typeId": 102,
+    "name": "Big auditor",
+    "slot": "shoes",
+    "rarity": "rare",
+    "bodyPixels": 8039,
+    "headPixels": 0
+  },
+  {
+    "typeId": 99,
+    "name": "Ruler Boots",
+    "slot": "shoes",
+    "rarity": "rare",
+    "bodyPixels": 7731,
+    "headPixels": 0
+  },
+  {
+    "typeId": 103,
+    "name": "Horse",
+    "slot": "horse",
+    "rarity": "common",
+    "bodyPixels": 0,
+    "headPixels": 0
+  },
+  {
+    "typeId": 12,
+    "name": "Senior cavalry helmet",
+    "slot": "helmet",
+    "rarity": "rare",
+    "bodyPixels": 2923,
+    "headPixels": 0
+  },
+  {
+    "typeId": 96,
+    "name": "Repair Boots",
+    "slot": "shoes",
+    "rarity": "rare",
+    "bodyPixels": 6905,
+    "headPixels": 0
+  },
+  {
+    "typeId": 86,
+    "name": "Armor",
+    "slot": "body",
+    "rarity": "uncommon",
+    "bodyPixels": 25977,
+    "headPixels": 4310
+  },
+  {
+    "typeId": 14,
+    "name": "Helmet of the Warrior",
+    "slot": "helmet",
+    "rarity": "uncommon",
+    "bodyPixels": 2348,
+    "headPixels": 0
+  },
+  {
+    "typeId": 98,
+    "name": "Fighter Boots",
+    "slot": "shoes",
+    "rarity": "uncommon",
+    "bodyPixels": 7218,
+    "headPixels": 0
+  },
+  {
+    "typeId": 105,
+    "name": "Fighter Horse",
+    "slot": "horse",
+    "rarity": "rare",
+    "bodyPixels": 0,
+    "headPixels": 0
+  }
+]
