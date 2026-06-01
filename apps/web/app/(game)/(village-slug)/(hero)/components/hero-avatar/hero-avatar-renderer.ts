@@ -171,31 +171,6 @@ export async function renderHeroAvatar(
 
   // ── RENDER LAYERS (back to front) ──
 
-  // 0. HORSE — PNG is 162×340. Position from Travian CSS:
-  //   game container 491.667×500, horse at left=20 top=25
-  //   hero body at left=183.667 top=-5 (278×500)
-  //   canvas hero body: x=220 y=150 w=412 h=1402
-  //   X scale = 412/278 = 1.482, Y scale = 1402/500 = 2.804
-  const horseLayer = overlayLayers.find((l) => l.slot === 'horse');
-  if (horseLayer && mode === 'body') {
-    await new Promise<boolean>((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const xScale = 412 / 278;
-        const yScale = 1402 / 500;
-        const dw = img.naturalWidth * xScale;
-        const dh = img.naturalHeight * yScale;
-        const dx = 220 - 3 - dw;
-        const dy = 150 + 30 * yScale;
-        ctx.drawImage(img, dx, dy, dw, dh);
-        resolve(true);
-      };
-      img.onerror = () => resolve(false);
-      img.src = `/hero-assets/overlays/horse/item${horseLayer.itemId}.png`;
-    });
-  }
-
   // 1. BACK HAIR
   if (appearance.hairId > 0) {
     const backHairName = getBackHairSpriteName(
@@ -207,15 +182,45 @@ export async function renderHeroAvatar(
       await drawEquipmentFromAtlas(ctx, gender, backHairName);
     }
   }
+
+  // 2. BASE SKIN
   await draw(ctx, `base-${skin}`);
 
-  // 3. TRIBAL CLOTHING
+  // 3. TRIBAL CLOTHING + ARMS
   {
     const clothingName = `basic-clothing-${appearance.bodyArmor}`;
     await draw(ctx, clothingName);
   }
   await draw(ctx, `${leftArmState}L-${skin}`);
   await draw(ctx, `${rightArmState}R-${skin}`);
+
+  // 4. HORSE — Game CSS: horse ::after (on top of body, below equipment)
+  //   PNG is 162×340. Position from Travian CSS:
+  //   game container 491.667×500, horse at left=20 top=25
+  //   hero body at left=183.667 top=-5 (278×500)
+  //   canvas hero body: x=220 y=150 w=412 h=1402
+  //   X scale = 412/278 = 1.482, Y scale = 1402/500 = 2.804
+  //   Gap = (183.667 - 182) * 1.482 = 2.47
+  const horseLayer = overlayLayers.find((l) => l.slot === 'horse');
+  if (horseLayer && mode === 'body') {
+    await new Promise<boolean>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const xScale = 412 / 278;
+        const yScale = 1402 / 500;
+        const dw = img.naturalWidth * xScale;
+        const dh = img.naturalHeight * yScale;
+        const gap = (183.667 - 182) * xScale;
+        const dx = 220 - gap - dw;
+        const dy = 150 + (25 - -5) * yScale;
+        ctx.drawImage(img, dx, dy, dw, dh);
+        resolve(true);
+      };
+      img.onerror = () => resolve(false);
+      img.src = `/hero-assets/overlays/horse/item${horseLayer.itemId}.png`;
+    });
+  }
 
   // 5. BOOTS (z=2)
   if (mode === 'body') {
