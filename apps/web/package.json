@@ -24,7 +24,11 @@
     "knip:ci": "knip --max-issues 29",
     "localize": "i18next-cli extract",
     "type-check": "react-router typegen && tsgo",
-    "test": "vitest"
+    "test": "vitest",
+    "cap:sync": "npx cap sync android",
+    "cap:add:android": "npx cap add android",
+    "cap:open:android": "npx cap open android",
+    "cap:build:apk": "npm run build && npm run cap:sync && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@grafana/faro-web-sdk": "2.2.4",
@@ -65,6 +69,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "*",
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@react-router/dev": "7.13.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
