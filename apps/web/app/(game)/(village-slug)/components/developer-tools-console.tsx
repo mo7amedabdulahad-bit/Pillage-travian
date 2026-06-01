@@ -116,7 +116,9 @@ export const DeveloperToolsConsole = ({
 
   // Get items filtered by selected category
   const filteredItems = useMemo(() => {
-    if (!selectedCategory) return [];
+    if (!selectedCategory) {
+      return [];
+    }
     const categoryItems = getItemsByCategory(
       selectedCategory as HeroItemCategory,
     );
@@ -131,7 +133,9 @@ export const DeveloperToolsConsole = ({
 
   // Check if selected category has tiers
   const categoryHasTiers = useMemo(() => {
-    if (!selectedCategory) return false;
+    if (!selectedCategory) {
+      return false;
+    }
     const categoryItems = getItemsByCategory(
       selectedCategory as HeroItemCategory,
     );
@@ -518,7 +522,9 @@ export const DeveloperToolsConsole = ({
                   const selectedItem = filteredItems.find(
                     (i) => String(i.id) === selectedItemId,
                   );
-                  if (!selectedItem) return null;
+                  if (!selectedItem) {
+                    return null;
+                  }
                   return (
                     <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-md border">
                       <img

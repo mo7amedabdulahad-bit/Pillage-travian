@@ -63,7 +63,9 @@ export const HeroItemPopup = ({
   const isConsumable = CONSUMABLE_IDS.includes(item.id);
   const rarity = RARITY_COLORS[item.rarity ?? 'common'] ?? RARITY_COLORS.common;
 
-  if (!anchorRect) return null;
+  if (!anchorRect) {
+    return null;
+  }
 
   // Position popup above the clicked item
   const popupStyle: React.CSSProperties = {
@@ -76,7 +78,8 @@ export const HeroItemPopup = ({
   return (
     <>
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
         className="fixed inset-0 z-[9998]"
         onClick={onClose}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
@@ -151,9 +154,9 @@ export const HeroItemPopup = ({
             <div className="text-[10px] font-bold text-[#8a7d5a] uppercase mb-1">
               Effects
             </div>
-            {item.heroBonus.map((bonus, idx) => (
+            {item.heroBonus.map((bonus) => (
               <div
-                key={`${bonus.attribute}-${idx}`}
+                key={bonus.attribute}
                 className="flex items-center justify-between text-[11px] py-0.5"
               >
                 <span className="text-[#c4b88a]">

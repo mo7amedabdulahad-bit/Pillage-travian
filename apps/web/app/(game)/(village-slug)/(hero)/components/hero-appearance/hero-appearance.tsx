@@ -24,7 +24,6 @@ import {
 import { HeroAvatar } from 'app/(game)/(village-slug)/(hero)/components/hero-avatar/hero-avatar';
 import { getAvailableVariants } from 'app/(game)/(village-slug)/(hero)/components/hero-avatar/hero-avatar-renderer';
 import { useHeroAppearance } from 'app/(game)/(village-slug)/(hero)/components/hooks/use-hero-appearance';
-import { useMe } from 'app/(game)/(village-slug)/hooks/use-me';
 import {
   Select,
   SelectContent,
@@ -106,7 +105,6 @@ function getColorIdForGroup(draft: HeroAppearance, group: ColorGroup): string {
 
 const HeroAppearancePanelInner = () => {
   const { t } = useTranslation();
-  const { player } = useMe();
   const { appearance: savedAppearance, updateAppearance } = useHeroAppearance();
 
   const [draft, setDraft] = useState<HeroAppearance>(savedAppearance);
@@ -142,7 +140,9 @@ const HeroAppearancePanelInner = () => {
 
   const visibleColorGroups = useMemo(() => {
     const groups = new Set<ColorGroup>();
-    CATEGORIES.forEach((c) => groups.add(c.colorGroup));
+    for (const c of CATEGORIES) {
+      groups.add(c.colorGroup);
+    }
     groups.delete('none');
     return Array.from(groups) as ColorGroup[];
   }, []);
@@ -307,7 +307,9 @@ const HeroAppearancePanelInner = () => {
                 id={id}
                 appearance={draft}
                 isSelected={
-                  (draft as any)[activeCategoryConfig.variantKey] === id
+                  (draft as Record<string, unknown>)[
+                    activeCategoryConfig.variantKey
+                  ] === id
                 }
                 onSelect={handleVariantSelect}
                 variantKey={activeCategoryConfig.variantKey}
@@ -368,7 +370,7 @@ const HeroAppearancePanelInner = () => {
             </span>
             <Select
               value={draft.bodyArmor}
-              onValueChange={(val: any) =>
+              onValueChange={(val: string) =>
                 setDraft((prev) => ({ ...prev, bodyArmor: val }))
               }
             >

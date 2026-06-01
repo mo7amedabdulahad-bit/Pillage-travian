@@ -22,24 +22,6 @@ export const HEAD_CROP = {
   h: 334,
 };
 
-async function drawCdnOverlay(
-  ctx: CanvasRenderingContext2D,
-  cdnPath: string,
-  dx = 0,
-  dy = 0,
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      ctx.drawImage(img, dx, dy);
-      resolve(true);
-    };
-    img.onerror = () => resolve(false);
-    img.src = cdnPath;
-  });
-}
-
 type ArmState = 'armBase' | 'armFist' | 'armUp';
 
 function getRightArmState(
@@ -190,20 +172,22 @@ export async function renderHeroAvatar(
   // ── RENDER LAYERS (back to front) ──
 
   // 0. HORSE — PNG is 162×340. Position from Travian CSS:
-  //   game container 491.667×500, horse at left=20 top=25 (natural size)
+  //   game container 491.667×500, horse at left=20 top=25
   //   hero body at left=183.667 top=-5 (278×500)
-  //   Scale by height ratio: canvas hero body h=1402 / game hero body h=500 = 2.804
+  //   canvas hero body: x=220 y=150 w=412 h=1402
+  //   X scale = 412/278 = 1.482, Y scale = 1402/500 = 2.804
   const horseLayer = overlayLayers.find((l) => l.slot === 'horse');
   if (horseLayer && mode === 'body') {
     await new Promise<boolean>((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        const S = 1402 / 500;
-        const dw = img.naturalWidth * S;
-        const dh = img.naturalHeight * S;
+        const xScale = 412 / 278;
+        const yScale = 1402 / 500;
+        const dw = img.naturalWidth * xScale;
+        const dh = img.naturalHeight * yScale;
         const dx = 220 - 3 - dw;
-        const dy = 150 + 30 * S;
+        const dy = 150 + 30 * yScale;
         ctx.drawImage(img, dx, dy, dw, dh);
         resolve(true);
       };

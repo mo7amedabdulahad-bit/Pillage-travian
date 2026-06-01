@@ -191,7 +191,11 @@ export async function loadV2Offsets(
       const ATLAS_H = 1574;
 
       for (const [spriteName, payload] of Object.entries(genderData)) {
-        const p = payload as any;
+        const p = payload as {
+          rect: { x: number; y: number; w: number; h: number };
+          offset?: { x: number; y: number };
+          pivot?: { x: number; y: number };
+        };
         const { x, y, w, h } = p.rect;
         result[spriteName] = {
           x: x,

@@ -5,7 +5,6 @@ import { useUseHeroItem } from 'app/(game)/(village-slug)/(hero)/hooks/use-use-h
 import { useHeroInventory } from 'app/(game)/(village-slug)/hooks/use-hero-inventory';
 import { useHeroLoadout } from 'app/(game)/(village-slug)/hooks/use-hero-loadout';
 import { HeroAvatar } from './hero-avatar/hero-avatar';
-import { HeroItemIcon } from './hero-item-icon';
 import { HeroItemPopup } from './hero-item-popup';
 import { useHeroAppearance } from './hooks/use-hero-appearance';
 
@@ -71,7 +70,7 @@ export const HeroInventory = () => {
   const { appearance } = useHeroAppearance();
   const { loadout, equipItem, unequipItem } = useHeroLoadout();
   const { heroInventory } = useHeroInventory();
-  const { mutate: useHeroItem } = useUseHeroItem();
+  const { mutate: heroItemMutate } = useUseHeroItem();
 
   // Popup state
   const [selectedItem, setSelectedItem] = useState<{
@@ -84,7 +83,9 @@ export const HeroInventory = () => {
 
   const getEquippedItem = (slot: HeroLoadoutSlot) => {
     const equipped = loadout.find((l) => l.slot === slot);
-    if (!equipped) return null;
+    if (!equipped) {
+      return null;
+    }
     return {
       item: getItemDefinition(equipped.itemId),
       amount: equipped.amount,
@@ -116,7 +117,8 @@ export const HeroInventory = () => {
           {EQUIPMENT_SLOTS.map((slotConfig) => {
             const equipped = getEquippedItem(slotConfig.id);
             return (
-              <div
+              <button
+                type="button"
                 key={slotConfig.id}
                 className="flex items-center justify-center border-b border-[#c4b68e] last:border-b-0 cursor-pointer hover:bg-[#d4c9a8] transition-colors"
                 style={{ width: '62px', height: '62px' }}
@@ -144,7 +146,7 @@ export const HeroInventory = () => {
                     className="w-[40px] h-[40px] object-contain opacity-40"
                   />
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -238,7 +240,7 @@ export const HeroInventory = () => {
             if (!bagItem?.itemDef) {
               return (
                 <div
-                  key={`empty-${i}`}
+                  key={`empty-${bagItem?.id ?? `slot-${i}`}`}
                   className="bg-[#2a2517] aspect-square flex items-center justify-center"
                   style={{ minHeight: '52px' }}
                 />
@@ -246,7 +248,8 @@ export const HeroInventory = () => {
             }
 
             return (
-              <div
+              <button
+                type="button"
                 key={`inv-${bagItem.id}`}
                 className="bg-[#2a2517] aspect-square flex items-center justify-center cursor-pointer hover:bg-[#3d351f] transition-colors relative group"
                 style={{ minHeight: '52px' }}
@@ -274,7 +277,7 @@ export const HeroInventory = () => {
                     {bagItem.amount}
                   </span>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -292,7 +295,7 @@ export const HeroInventory = () => {
             closePopup();
           }}
           onUse={(args) => {
-            useHeroItem(args);
+            heroItemMutate(args);
             closePopup();
           }}
         />

@@ -17,15 +17,17 @@ export const HeroItemIcon = memo(
 
     if (!item) {
       let bgUrl = '';
-      if (slotName === 'head')
+      if (slotName === 'head') {
         bgUrl = '/hero-assets/slots/slotHelmet_medium.png';
-      else if (slotName === 'torso')
+      } else if (slotName === 'torso') {
         bgUrl = '/hero-assets/slots/slotBody_medium.png';
-      else if (slotName === 'boots')
+      } else if (slotName === 'boots') {
         bgUrl = '/hero-assets/slots/slotShoes_medium.png';
-      else if (slotName === 'horse')
+      } else if (slotName === 'horse') {
         bgUrl = '/hero-assets/slots/slotHorse_medium.png';
-      else bgUrl = '/hero-assets/slots/slotBag_medium.png';
+      } else {
+        bgUrl = '/hero-assets/slots/slotBag_medium.png';
+      }
 
       return (
         <div
@@ -47,7 +49,8 @@ export const HeroItemIcon = memo(
     }
 
     return (
-      <div
+      <button
+        type="button"
         className={clsx(
           'relative rounded border border-[#806D53] bg-[#E3D4B6] flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-amber-500 transition-all',
           sizeClass,
@@ -81,7 +84,7 @@ export const HeroItemIcon = memo(
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-[#3D3929]" />
           </div>
         )}
-      </div>
+      </button>
     );
   },
 );
