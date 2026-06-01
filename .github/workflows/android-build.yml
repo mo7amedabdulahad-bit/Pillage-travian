@@ -47,8 +47,13 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Inject graphics
+        run: |
+          rm -rf apps/web/public/graphic-packs
+          cp -r node_modules/@pillage-first/graphics/dist/graphic-packs apps/web/public/graphic-packs
+
       - name: Build web app
-        run: npm run inject-graphics && npx turbo run build --filter="@pillage-first/web"
+        run: npx turbo run build --filter="@pillage-first/web"
 
       - name: Sync Capacitor
         working-directory: apps/web
