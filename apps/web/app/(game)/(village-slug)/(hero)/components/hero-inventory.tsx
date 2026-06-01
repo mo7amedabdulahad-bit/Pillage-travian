@@ -182,6 +182,32 @@ export const HeroInventory = () => {
                 transform: 'translateY(-10px)',
               }}
             />
+
+            {/* The Horse (separate element) */}
+            {(() => {
+              const equippedHorse = getEquippedItem('horse');
+              if (equippedHorse?.item) {
+                return (
+                  <img
+                    src={`/hero-assets/overlays/horse/item${equippedHorse.item.id}.png`}
+                    alt="Horse"
+                    className="absolute pointer-events-none drop-shadow-lg"
+                    style={{
+                      // Horse native is 162x340. Scale it to match the hero's 430px canvas height
+                      // The exact visual ratio from Travian:
+                      width: '139.3px',
+                      height: '292.4px',
+                      // Shift left to overlap the empty space in the 875px canvas
+                      left: appearance.gender === 'female' ? '-74px' : '-78px',
+                      top: '30px',
+                      zIndex: 5, // Behind hero but above shadow
+                    }}
+                  />
+                );
+              }
+              return null;
+            })()}
+
             <HeroAvatar
               appearance={appearance}
               tribe={appearance.bodyArmor}

@@ -194,36 +194,8 @@ export async function renderHeroAvatar(
   await draw(ctx, `${leftArmState}L-${skin}`);
   await draw(ctx, `${rightArmState}R-${skin}`);
 
-  // 4. HORSE — Game CSS: horse ::after (on top of body, below equipment)
-  //   Both horse and body are children of the same container (491.667×500).
-  //   horse ::after: position:absolute, left:20px, top:25px, w:162px, h:340px
-  //   body <img>:    position:absolute, left:183.667px, top:-5px, w:278px, h:500px
-  //   The body is actually drawn by the atlas at spriteSourceSize (x, y, w, h)
-  //   which varies by gender. We compute the horse position relative to the body.
-  //   Game coords: horse offset from body = (-163.667, 30), horse size = (162, 340)
-  const horseLayer = overlayLayers.find((l) => l.slot === 'horse');
-  if (horseLayer && mode === 'body') {
-    await new Promise<boolean>((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const bodyX = gender === 'female' ? 225 : 222;
-        const bodyY = gender === 'female' ? 209 : 152;
-        const bodyW = gender === 'female' ? 420 : 407;
-        const bodyH = gender === 'female' ? 1362 : 1397;
-        const xScale = bodyW / 278;
-        const yScale = bodyH / 500;
-        const dw = 162 * xScale;
-        const dh = 340 * yScale;
-        const dx = bodyX + (20 - 183.667) * xScale;
-        const dy = bodyY + (25 - -5) * yScale;
-        ctx.drawImage(img, dx, dy, dw, dh);
-        resolve(true);
-      };
-      img.onerror = () => resolve(false);
-      img.src = `/hero-assets/overlays/horse/item${horseLayer.itemId}.png`;
-    });
-  }
+  // The horse is no longer drawn on the canvas to avoid clipping.
+  // It is rendered as a separate DOM element in hero-inventory.tsx.
 
   // 5. BOOTS (z=2)
   if (mode === 'body') {
