@@ -18,7 +18,14 @@ type AtlasData = {
   };
 };
 
-export type V2Offset = { x: number; y: number; w: number; h: number };
+export type V2Offset = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  offset?: { x: number; y: number };
+  pivot?: { x: number; y: number };
+};
 
 const jsonCache = new Map<string, AtlasData>();
 const imageCache = new Map<string, HTMLImageElement>();
@@ -146,22 +153,35 @@ export async function loadV2SpriteImage(
   if (v2SpriteCache.has(cacheKey)) {
     return v2SpriteCache.get(cacheKey)!;
   }
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      v2SpriteCache.set(cacheKey, img);
-      resolve(img);
-    };
-    img.onerror = () => resolve(null);
-    img.src = `/v2-overlays/${gender}/${spriteName}.png`;
-  });
+  const folder = gender === 'female' ? 'Female' : 'Male';
+  const basePath = `/V3 Hero/${folder}`;
+
+  // Try exact name first, then with _1 suffix (V3 Hero naming)
+  const tryLoad = (url: string): Promise<HTMLImageElement | null> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+
+  let img = await tryLoad(`${basePath}/${spriteName}.png`);
+  if (!img) {
+    img = await tryLoad(`${basePath}/${spriteName}_1.png`);
+  }
+  if (img) {
+    v2SpriteCache.set(cacheKey, img);
+  }
+  return img;
 }
 
 export async function loadV2Offsets(
   gender: string,
 ): Promise<Record<string, V2Offset>> {
-  if (unityOffsetsCache[gender]) return unityOffsetsCache[gender];
+  if (unityOffsetsCache[gender]) {
+    return unityOffsetsCache[gender];
+  }
   try {
     const res = await fetch('/v2-overlays/unity-sprite-map.json');
     if (res.ok) {
@@ -171,12 +191,15 @@ export async function loadV2Offsets(
       const ATLAS_H = 1574;
 
       for (const [spriteName, payload] of Object.entries(genderData)) {
-        const { x, y, w, h } = (payload as any).rect;
+        const p = payload as any;
+        const { x, y, w, h } = p.rect;
         result[spriteName] = {
           x: x,
           y: ATLAS_H - y - h,
           w: w,
           h: h,
+          offset: p.offset,
+          pivot: p.pivot,
         };
       }
 
@@ -298,7 +321,9 @@ export async function createAtlasDrawer(
     { data: tribeAtlas, img: tribeImg },
     { data: tattooAtlas, img: tattooImg },
   ]) {
-    if (!entry.data || !entry.img) continue;
+    if (!entry.data || !entry.img) {
+      continue;
+    }
     for (const [frameName, frame] of Object.entries(entry.data.frames)) {
       const lastSegment = frameName.split('/').pop()!;
       const names = atlasNameToV2(lastSegment);
@@ -317,7 +342,6 @@ export async function createAtlasDrawer(
     const entry = nameMap.get(spriteName);
     if (!entry) {
       if (typeof globalThis !== 'undefined' && 'console' in globalThis) {
-        console.warn(`[atlas-loader] sprite not in atlas: "${spriteName}"`);
       }
       return false;
     }
@@ -361,11 +385,80 @@ export async function createAtlasDrawer(
 /** Convert PascalCase layer name to V2-style kebab-case prefix used in unity-sprite-map.
  *  e.g. frontHair → front-hair, backHair → back-hair, eyesBase → eyes */
 export function layerNameToV2Prefix(layerName: string): string {
-  if (layerName === 'frontHair') return 'front-hair';
-  if (layerName === 'backHair') return 'back-hair';
-  if (layerName === 'eyesBase') return 'eyes';
-  if (layerName === 'browsBase') return 'brows';
+  if (layerName === 'frontHair') {
+    return 'front-hair';
+  }
+  if (layerName === 'backHair') {
+    return 'back-hair';
+  }
+  if (layerName === 'eyesBase') {
+    return 'eyes';
+  }
+  if (layerName === 'browsBase') {
+    return 'brows';
+  }
   return layerName.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 }
 
 export type { AtlasData, AtlasFrame };
+
+// ─── Equipment Sprite Drawing (individual PNGs with pre-computed positions) ───
+// Equipment sprites are individual transparent PNGs in /V3 Hero/{Male|Female}/
+// Canvas positions are pre-computed in /v2-overlays/compact-positions-{gender}.json
+
+const equipPosCache: Record<
+  string,
+  Record<string, { x: number; y: number; w: number; h: number }>
+> = {};
+
+async function loadEquipPositions(
+  gender: string,
+): Promise<Record<string, { x: number; y: number; w: number; h: number }>> {
+  if (equipPosCache[gender]) {
+    return equipPosCache[gender];
+  }
+  try {
+    const file =
+      gender === 'female'
+        ? '/v2-overlays/compact-positions-female.json'
+        : '/v2-overlays/compact-positions-male.json';
+    const res = await fetch(file);
+    if (res.ok) {
+      equipPosCache[gender] = await res.json();
+    }
+  } catch (e) {
+    console.error(
+      `[atlas-loader] Failed to load compact-positions-${gender}.json`,
+      e,
+    );
+  }
+  return equipPosCache[gender] || {};
+}
+
+/**
+ * Draw an equipment sprite from its individual PNG using pre-computed canvas positions.
+ */
+export async function drawEquipmentFromAtlas(
+  ctx: CanvasRenderingContext2D,
+  gender: string,
+  spriteName: string,
+  dx?: number,
+  dy?: number,
+): Promise<boolean> {
+  const positions = await loadEquipPositions(gender);
+  const pos = positions[spriteName] || positions[`${spriteName}_1`];
+  if (!pos) {
+    return false;
+  }
+
+  const img = await loadV2SpriteImage(gender, spriteName);
+  if (!img) {
+    return false;
+  }
+
+  const destX = dx ?? pos.x;
+  const destY = dy ?? pos.y;
+
+  ctx.drawImage(img, destX, destY, pos.w, pos.h);
+  return true;
+}

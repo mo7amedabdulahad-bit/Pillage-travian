@@ -1,16 +1,14 @@
 // Hero avatar canvas compositing engine.
 // Draws Travian hero layers onto a canvas in the correct back-to-front order.
-// Appearance sprites (base, jaw, eyes, hair, etc.) use atlas textures with
-// spriteSourceSize positioning (top-left origin). Equipment overlays use
-// individual V2 PNGs with offsets from unity-sprite-map.json.
+// Appearance sprites are drawn from packed atlas textures.
+// Equipment sprites are drawn from individual V3 Hero PNGs using compact positions.
 
 import type { HeroAppearance } from '@pillage-first/types/models/hero-appearance';
 import {
   createAtlasDrawer,
+  drawEquipmentFromAtlas,
   layerNameToV2Prefix,
   loadV2Offsets,
-  loadV2SpriteImage,
-  type V2Offset,
 } from './atlas-loader';
 import { getItemOverlayMapping, getV2OverlayFilename } from './item-sprite-map';
 
@@ -23,24 +21,6 @@ export const HEAD_CROP = {
   w: 254,
   h: 334,
 };
-
-async function drawV2Sprite(
-  ctx: CanvasRenderingContext2D,
-  gender: string,
-  spriteName: string,
-  offsets: Record<string, V2Offset>,
-  dx = 0,
-  dy = 0,
-): Promise<boolean> {
-  const offset = offsets[spriteName];
-  if (!offset) return false;
-
-  const img = await loadV2SpriteImage(gender, spriteName);
-  if (!img) return false;
-
-  ctx.drawImage(img, offset.x + dx, offset.y + dy, offset.w, offset.h);
-  return true;
-}
 
 async function drawCdnOverlay(
   ctx: CanvasRenderingContext2D,
@@ -60,34 +40,32 @@ async function drawCdnOverlay(
   });
 }
 
-import { itemsMap } from '@pillage-first/game-assets/items';
-
 type ArmState = 'armBase' | 'armFist' | 'armUp';
 
 function getRightArmState(
   loadout: Array<{ itemId: number; slot: string }>,
 ): ArmState {
   const rightHandItem = loadout.find((item) => item.slot === 'right-hand');
-  if (!rightHandItem) return 'armBase';
+  if (!rightHandItem) {
+    return 'armBase';
+  }
 
-  const itemDef = itemsMap.get(rightHandItem.itemId);
-  if (!itemDef) return 'armFist';
+  const sprite = getV2OverlayFilename(rightHandItem.itemId);
+  if (!sprite) {
+    return 'armFist';
+  }
 
-  const n = itemDef.name.toLowerCase();
   if (
-    n.includes('sword') ||
-    n.includes('lance') ||
-    n.includes('spear') ||
-    n.includes('club') ||
-    n.includes('horn') ||
-    n.includes('axe') ||
-    n.includes('hatchet') ||
-    n.includes('pike') ||
-    n.includes('staff') ||
-    n.includes('mace') ||
-    n.includes('hammer') ||
-    n.includes('morning')
+    sprite.startsWith('spear-') ||
+    sprite.startsWith('lance-') ||
+    sprite.startsWith('staff-')
   ) {
+    return 'armUp';
+  }
+  if (sprite.startsWith('bow-')) {
+    if (sprite.endsWith('1') || sprite.endsWith('1_0')) {
+      return 'armFist';
+    }
     return 'armUp';
   }
   return 'armFist';
@@ -97,18 +75,16 @@ function getLeftArmState(
   loadout: Array<{ itemId: number; slot: string }>,
 ): ArmState {
   const leftHandItem = loadout.find((item) => item.slot === 'left-hand');
-  if (!leftHandItem) return 'armBase';
+  if (!leftHandItem) {
+    return 'armBase';
+  }
 
-  const itemDef = itemsMap.get(leftHandItem.itemId);
-  if (!itemDef) return 'armFist';
+  const sprite = getV2OverlayFilename(leftHandItem.itemId);
+  if (!sprite) {
+    return 'armFist';
+  }
 
-  const n = itemDef.name.toLowerCase();
-  if (
-    n.includes('map') ||
-    n.includes('pennant') ||
-    n.includes('standard') ||
-    n.includes('spyglass')
-  ) {
+  if (sprite.startsWith('pennant') || sprite.startsWith('standard')) {
     return 'armUp';
   }
   return 'armFist';
@@ -155,7 +131,9 @@ export async function renderHeroAvatar(
   crop?: { x: number; y: number; w: number; h: number },
 ): Promise<void> {
   const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  if (!ctx) {
+    return;
+  }
 
   const activeCrop =
     mode === 'head'
@@ -191,9 +169,6 @@ export async function renderHeroAvatar(
     appearance.bodyArmor,
   );
 
-  // Load V2 offsets for equipment sprites
-  const v2Offsets = await loadV2Offsets(gender);
-
   const hasHelmet = loadout.some((item) => item.slot === 'head');
   const rightArmState = getRightArmState(loadout);
   const leftArmState = getLeftArmState(loadout);
@@ -214,33 +189,27 @@ export async function renderHeroAvatar(
 
   // ── RENDER LAYERS (back to front) ──
 
-  // 0. HORSE
+  // 0. HORSE — PNG is 162×340. Position from Travian CSS:
+  //   game container 491.667×500, horse at left=20 top=25 (natural size)
+  //   hero body at left=183.667 top=-5 (278×500)
+  //   Scale by height ratio: canvas hero body h=1402 / game hero body h=500 = 2.804
   const horseLayer = overlayLayers.find((l) => l.slot === 'horse');
   if (horseLayer && mode === 'body') {
-    const spursLayer = overlayLayers.find((l) => l.slot === 'shoes');
-    let horseDrawn = false;
-
-    if (spursLayer) {
-      const spursFilename = getV2OverlayFilename(spursLayer.itemId);
-      if (spursFilename && spursFilename.startsWith('boots-speedhorse')) {
-        horseDrawn = await drawV2Sprite(
-          ctx,
-          gender,
-          spursFilename,
-          v2Offsets,
-          -200,
-        );
-      }
-    }
-
-    if (!horseDrawn) {
-      await drawCdnOverlay(
-        ctx,
-        `/hero-assets/overlays/horse/item${horseLayer.itemId}.png`,
-        -200,
-        1185,
-      );
-    }
+    await new Promise<boolean>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const S = 1402 / 500;
+        const dw = img.naturalWidth * S;
+        const dh = img.naturalHeight * S;
+        const dx = 220 - 3 - dw;
+        const dy = 150 + 30 * S;
+        ctx.drawImage(img, dx, dy, dw, dh);
+        resolve(true);
+      };
+      img.onerror = () => resolve(false);
+      img.src = `/hero-assets/overlays/horse/item${horseLayer.itemId}.png`;
+    });
   }
 
   // 1. BACK HAIR
@@ -250,10 +219,8 @@ export async function renderHeroAvatar(
       hair,
       hasHelmet,
     );
-    // Helmet variants exist as V2 overlays, normal hair is in the atlas
-    const drewV2 = await drawV2Sprite(ctx, gender, backHairName, v2Offsets);
-    if (!drewV2) {
-      await draw(ctx, backHairName);
+    if (!(await draw(ctx, backHairName))) {
+      await drawEquipmentFromAtlas(ctx, gender, backHairName);
     }
   }
   await draw(ctx, `base-${skin}`);
@@ -272,11 +239,7 @@ export async function renderHeroAvatar(
     if (bootsLayer) {
       const bootsFilename = getV2OverlayFilename(bootsLayer.itemId);
       if (bootsFilename) {
-        const isSpeedHorse = bootsFilename.startsWith('boots-speedhorse');
-        const hasHorse = !!horseLayer;
-        if (!(isSpeedHorse && hasHorse)) {
-          await drawV2Sprite(ctx, gender, bootsFilename, v2Offsets);
-        }
+        await drawEquipmentFromAtlas(ctx, gender, bootsFilename);
       }
     }
   }
@@ -286,7 +249,9 @@ export async function renderHeroAvatar(
     const armorLayer = overlayLayers.find((l) => l.slot === 'body');
     if (armorLayer) {
       const filename = getV2OverlayFilename(armorLayer.itemId);
-      if (filename) await drawV2Sprite(ctx, gender, filename, v2Offsets);
+      if (filename) {
+        await drawEquipmentFromAtlas(ctx, gender, filename);
+      }
     }
   }
 
@@ -318,7 +283,9 @@ export async function renderHeroAvatar(
     const leftLayer = overlayLayers.find((l) => l.slot === 'leftHand');
     if (leftLayer) {
       const filename = getV2OverlayFilename(leftLayer.itemId);
-      if (filename) await drawV2Sprite(ctx, gender, filename, v2Offsets);
+      if (filename) {
+        await drawEquipmentFromAtlas(ctx, gender, filename);
+      }
     }
   }
 
@@ -327,7 +294,9 @@ export async function renderHeroAvatar(
     const rightLayer = overlayLayers.find((l) => l.slot === 'rightHand');
     if (rightLayer) {
       const filename = getV2OverlayFilename(rightLayer.itemId);
-      if (filename) await drawV2Sprite(ctx, gender, filename, v2Offsets);
+      if (filename) {
+        await drawEquipmentFromAtlas(ctx, gender, filename);
+      }
     }
   }
 
@@ -349,15 +318,8 @@ export async function renderHeroAvatar(
       hasHelmet,
     );
     if (frontHairName) {
-      // Try V2 overlay first (has helmet variants), fall back to atlas
-      const drewV2 = await drawV2Sprite(
-        ctx,
-        gender,
-        frontHairName,
-        v2Offsets,
-      );
-      if (!drewV2) {
-        await draw(ctx, frontHairName);
+      if (!(await draw(ctx, frontHairName))) {
+        await drawEquipmentFromAtlas(ctx, gender, frontHairName);
       }
     }
   }
@@ -372,7 +334,9 @@ export async function renderHeroAvatar(
     const helmetLayer = overlayLayers.find((l) => l.slot === 'helmet');
     if (helmetLayer) {
       const filename = getV2OverlayFilename(helmetLayer.itemId);
-      if (filename) await drawV2Sprite(ctx, gender, filename, v2Offsets);
+      if (filename) {
+        await drawEquipmentFromAtlas(ctx, gender, filename);
+      }
     }
   }
 

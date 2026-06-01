@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import type { HeroAppearance } from '@pillage-first/types/models/hero-appearance';
-import { HEAD_CROP, renderHeroAvatar } from './hero-avatar-renderer';
+import { renderHeroAvatar } from './hero-avatar-renderer';
 
 type HeroAvatarProps = {
   appearance: HeroAppearance;
