@@ -195,25 +195,28 @@ export async function renderHeroAvatar(
   await draw(ctx, `${rightArmState}R-${skin}`);
 
   // 4. HORSE — Game CSS: horse ::after (on top of body, below equipment)
-  //   PNG is 162×340. Position from Travian CSS:
-  //   game container 491.667×500, horse at left=20 top=25
-  //   hero body at left=183.667 top=-5 (278×500)
-  //   canvas hero body: x=220 y=150 w=412 h=1402
-  //   X scale = 412/278 = 1.482, Y scale = 1402/500 = 2.804
-  //   Gap = (183.667 - 182) * 1.482 = 2.47
+  //   Both horse and body are children of the same container (491.667×500).
+  //   horse ::after: position:absolute, left:20px, top:25px, w:162px, h:340px
+  //   body <img>:    position:absolute, left:183.667px, top:-5px, w:278px, h:500px
+  //   The body is actually drawn by the atlas at spriteSourceSize (x, y, w, h)
+  //   which varies by gender. We compute the horse position relative to the body.
+  //   Game coords: horse offset from body = (-163.667, 30), horse size = (162, 340)
   const horseLayer = overlayLayers.find((l) => l.slot === 'horse');
   if (horseLayer && mode === 'body') {
     await new Promise<boolean>((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        const xScale = 412 / 278;
-        const yScale = 1402 / 500;
-        const dw = img.naturalWidth * xScale;
-        const dh = img.naturalHeight * yScale;
-        const gap = (183.667 - 182) * xScale;
-        const dx = 220 - gap - dw;
-        const dy = 150 + (25 - -5) * yScale;
+        const bodyX = gender === 'female' ? 225 : 222;
+        const bodyY = gender === 'female' ? 209 : 152;
+        const bodyW = gender === 'female' ? 420 : 407;
+        const bodyH = gender === 'female' ? 1362 : 1397;
+        const xScale = bodyW / 278;
+        const yScale = bodyH / 500;
+        const dw = 162 * xScale;
+        const dh = 340 * yScale;
+        const dx = bodyX + (20 - 183.667) * xScale;
+        const dy = bodyY + (25 - -5) * yScale;
         ctx.drawImage(img, dx, dy, dw, dh);
         resolve(true);
       };
