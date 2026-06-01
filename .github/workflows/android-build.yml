@@ -55,6 +55,10 @@ jobs:
       - name: Build web app
         run: npx turbo run build --filter="@pillage-first/web"
 
+      - name: Add Android platform
+        working-directory: apps/web
+        run: npx cap add android
+
       - name: Sync Capacitor
         working-directory: apps/web
         run: npx cap sync android
