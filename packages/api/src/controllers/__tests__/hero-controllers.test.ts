@@ -287,7 +287,7 @@ describe('hero-controllers', () => {
       })!;
       const heroId = hero.id;
 
-      const itemId = 1021; // HEALING_POTION
+      const itemId = 106; // OINTMENT (heals 1 health per item)
       const slot = 'consumable';
 
       // Seed inventory
@@ -455,7 +455,7 @@ describe('hero-controllers', () => {
         bind: { $hero_id: heroId },
       });
 
-      const itemId = 1021; // HEALING_POTION
+      const itemId = 106; // OINTMENT (heals 1 health per item)
       const amount = 20;
 
       // Seed inventory
@@ -505,7 +505,7 @@ describe('hero-controllers', () => {
         bind: { $hero_id: heroId },
       });
 
-      const itemId = 1021; // HEALING_POTION
+      const itemId = 106; // OINTMENT (heals 1 health per item)
       const amount = 20;
 
       // Seed inventory
@@ -563,7 +563,7 @@ describe('hero-controllers', () => {
         bind: { $hero_id: heroId },
       });
 
-      const itemId = 1022; // BOOK_OF_WISDOM
+      const itemId = 110; // BOOK_OF_WISDOM
       const amount = 1;
 
       // Seed inventory
@@ -638,7 +638,7 @@ describe('hero-controllers', () => {
     test('should throw error if not enough items in inventory', async () => {
       const database = await prepareTestDatabase();
 
-      const itemId = 1021; // HEALING_POTION
+      const itemId = 106; // OINTMENT (heals 1 health per item)
       const amount = 10;
 
       await expect(async () => {
