@@ -249,8 +249,8 @@ describe('hero-controllers', () => {
       })!;
       const heroId = hero.id;
 
-      const itemId = 1001; // UNCOMMON_ARTIFACT_MILITARY_TROOP_TRAVEL_SPEED (has effects)
-      const slot = 'consumable'; // Using consumable because non-equipable items can't be equipped, but for testing we use a valid slot
+      const itemId = 10; // HELMET_OF_THE_HORSEMAN (cavalryTraining bonus maps to stableTrainingDuration effect)
+      const slot = 'head';
 
       // Seed inventory
       database.exec({
