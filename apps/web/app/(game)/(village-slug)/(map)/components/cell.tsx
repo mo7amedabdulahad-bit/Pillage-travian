@@ -60,6 +60,68 @@ const CellIcons = (props: CellIconsProps) => {
     );
   }
 
+  if (tile.type === 'free' && tile.ownerVillage !== null) {
+    const population = tile.ownerVillage.population;
+    let tier = 0;
+    if (population >= 500) {
+      tier = 3;
+    } else if (population >= 250) {
+      tier = 2;
+    } else if (population >= 100) {
+      tier = 1;
+    }
+
+    const tribeSuffix: Record<string, number> = {
+      romans: 1,
+      teutons: 2,
+      gauls: 3,
+      nature: 4,
+      natars: 5,
+      egyptians: 6,
+      huns: 7,
+      spartans: 8,
+    };
+
+    const tribe = tile.owner?.tribe;
+    const suffix = tribe ? (tribeSuffix[tribe] ?? 0) : 0;
+
+    const showWheat =
+      shouldShowWheatFields &&
+      wheatFields.has(tile.attributes.resourceFieldComposition);
+
+    const showTreasure = shouldShowTreasureIcons && tile.item !== null;
+
+    return (
+      <>
+        <div
+          className={clsx(
+            cellStyles['village-icon'],
+            cellStyles[`village-icon-tier-${tier}`],
+            suffix > 0 && cellStyles[`village-icon-tribe-${suffix}`],
+          )}
+        />
+        {showWheat && (
+          <BorderIndicator
+            className={clsx(classes, 'absolute top-0 right-0')}
+            variant="yellow"
+          >
+            <Icon
+              type="wheat"
+              className="scale-80"
+              shouldShowTooltip={false}
+            />
+          </BorderIndicator>
+        )}
+        {showTreasure && tile.item !== null && (
+          <TreasureIcon
+            className={clsx(classes, 'absolute top-0 right-0')}
+            itemId={tile.item.id}
+          />
+        )}
+      </>
+    );
+  }
+
   if (
     shouldShowWheatFields &&
     tile.type === 'free' &&

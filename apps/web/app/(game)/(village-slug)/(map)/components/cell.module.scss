@@ -36,6 +36,54 @@
   }
 }
 
+// Village icons based on population and tribe
+:global(:root) {
+  $villageBase: '#{$staticAssetsPath}/map/villages';
+  $tribeSuffixes: (1: "1", 2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7", 8: "8");
+
+  .village-icon {
+    position: absolute;
+    inset: 0;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 10;
+    pointer-events: none;
+
+    // Population tiers (default/tribeless)
+    &-tier-0 {
+      background-image: url('#{$villageBase}/dorf0.png?v=#{$graphics-version}');
+    }
+    &-tier-1 {
+      background-image: url('#{$villageBase}/dorf1.png?v=#{$graphics-version}');
+    }
+    &-tier-2 {
+      background-image: url('#{$villageBase}/dorf2.png?v=#{$graphics-version}');
+    }
+    &-tier-3 {
+      background-image: url('#{$villageBase}/dorf3.png?v=#{$graphics-version}');
+    }
+
+    // Tribe-specific overrides
+    @each $tribeId, $suffix in $tribeSuffixes {
+      &-tribe-#{$tribeId} {
+        &.village-icon-tier-0 {
+          background-image: url('#{$villageBase}/dorf0_#{$suffix}.png?v=#{$graphics-version}');
+        }
+        &.village-icon-tier-1 {
+          background-image: url('#{$villageBase}/dorf1_#{$suffix}.png?v=#{$graphics-version}');
+        }
+        &.village-icon-tier-2 {
+          background-image: url('#{$villageBase}/dorf2_#{$suffix}.png?v=#{$graphics-version}');
+        }
+        &.village-icon-tier-3 {
+          background-image: url('#{$villageBase}/dorf3_#{$suffix}.png?v=#{$graphics-version}');
+        }
+      }
+    }
+  }
+}
+
 // Unoccupied occupiable tiles — images at /graphic-packs/default/map/unoccupied-tiles/
 :global(:root) {
   $base: '#{$staticAssetsPath}/map/unoccupied-tiles';
