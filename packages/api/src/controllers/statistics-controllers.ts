@@ -225,6 +225,7 @@ export const getGameWorldOverview = createController('/statistics/overview')(
       egyptians: 0,
       huns: 0,
       spartans: 0,
+      vikings: 0,
       nature: 0,
       natars: 0,
     };
@@ -256,6 +257,7 @@ export const getGameWorldOverview = createController('/statistics/overview')(
       egyptians: 0,
       huns: 0,
       spartans: 0,
+      vikings: 0,
       nature: 0,
       natars: 0,
     };
