@@ -71,6 +71,7 @@ export const buildingIdSchema = z
     'EGYPTIAN_WALL',
     'NATURE_WALL',
     'NATAR_WALL',
+    'VIKING_WALL',
     'TRAPPER',
     'BREWERY',
     'COMMAND_CENTER',

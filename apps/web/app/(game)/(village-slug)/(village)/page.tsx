@@ -89,7 +89,7 @@ const VillagePage = (props: Route.ComponentProps) => {
             'relative scrollbar-hidden w-full max-w-7xl overflow-visible',
             isVillagePageOpen && 'mt-[100px] lg:mt-0',
             isResourcesPageOpen &&
-              'aspect-[16/9] min-w-[460px] overflow-hidden',
+              'aspect-[473/304] min-w-[460px] overflow-hidden',
           )}
         >
           {isResourcesPageOpen && (

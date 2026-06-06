@@ -17,6 +17,7 @@ const getTribeClass = (tribeValue: Tribe): string => {
     egyptians: 'egyptian',
     huns: 'hun',
     spartans: 'spartan',
+    vikings: 'viking',
     nature: 'nature',
     natars: 'natars',
   };
@@ -48,6 +49,10 @@ const getTribeColors = (
       hover: 'rgba(60, 79, 86, 0.23)',
     }, // Defaulting to Roman for now
     spartans: {
+      default: 'rgba(44, 58, 11, 0.57)',
+      hover: 'rgba(85, 96, 39, 0.57)',
+    },
+    vikings: {
       default: 'rgba(44, 58, 11, 0.57)',
       hover: 'rgba(85, 96, 39, 0.57)',
     },

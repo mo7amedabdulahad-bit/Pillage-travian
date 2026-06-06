@@ -9,6 +9,7 @@ export const TRIBE_ID_TO_SLUG: Record<number, Tribe> = {
   6: 'egyptians',
   7: 'huns',
   8: 'spartans',
+  9: 'vikings',
 };
 
 export const TRIBE_UNITS: Record<Tribe, string[]> = {
@@ -90,6 +91,7 @@ export const TRIBE_UNITS: Record<Tribe, string[]> = {
     'SPARTAN_SETTLER',
     'HERO',
   ],
+  vikings: ['HERO'],
   nature: [
     'RAT',
     'SPIDER',

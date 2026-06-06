@@ -20,6 +20,7 @@ export const TRIBE_COLORS: Record<Tribe, string> = {
   huns: '#b9732f',
   egyptians: '#c68600',
   spartans: '#8b0000',
+  vikings: '#4a90d9',
   nature: '#10b981',
   natars: '#1f2937',
 };

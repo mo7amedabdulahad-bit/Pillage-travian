@@ -238,6 +238,7 @@ const tribeToWallBuildingIdMap = new Map<Tribe, Building['id']>([
   ['huns', 'HUN_WALL'],
   ['egyptians', 'EGYPTIAN_WALL'],
   ['spartans', 'SPARTAN_WALL'],
+  ['vikings', 'VIKING_WALL'],
   ['nature', 'NATURE_WALL'],
   ['natars', 'NATAR_WALL'],
 ]);

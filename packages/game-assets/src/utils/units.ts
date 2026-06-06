@@ -43,6 +43,9 @@ export const getUnitsByTribe = (tribe: Tribe): Unit[] => {
     case 'teutons': {
       return teutonUnits;
     }
+    case 'vikings': {
+      return [];
+    }
   }
 };
 

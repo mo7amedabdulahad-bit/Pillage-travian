@@ -19,6 +19,7 @@ export const TRIBE_FOLDER_NAMES: Record<Tribe, string> = {
   egyptians: 'egyptian',
   huns: 'hun',
   spartans: 'spartan',
+  vikings: 'viking',
   natars: 'natar',
   nature: 'nature',
 } as const;
@@ -147,6 +148,8 @@ const NATURE_UNIT_MAP: Record<NatureUnitId, SpriteUnitId> = {
   ELEPHANT: 10,
 };
 
+const VIKING_UNIT_MAP: Record<string, SpriteUnitId> = {};
+
 export const UNIT_ID_TO_SPRITE_MAP: Record<
   Tribe,
   Record<string, SpriteUnitId>
@@ -157,6 +160,7 @@ export const UNIT_ID_TO_SPRITE_MAP: Record<
   egyptians: EGYPTIAN_UNIT_MAP,
   huns: HUN_UNIT_MAP,
   spartans: SPARTAN_UNIT_MAP,
+  vikings: VIKING_UNIT_MAP,
   natars: NATAR_UNIT_MAP,
   nature: NATURE_UNIT_MAP,
 };

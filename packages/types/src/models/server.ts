@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { resourceFieldCompositionSchema } from './resource-field-composition';
 import { playableTribeSchema } from './tribe';
 
 export const mapSizeSchema = z
@@ -27,6 +28,9 @@ export const serverDbSchema = z
     speed: speedSchema,
     player_name: z.string(),
     player_tribe: playableTribeSchema,
+    starting_field_combination: resourceFieldCompositionSchema
+      .nullable()
+      .optional(),
   })
   .transform((t) => {
     return {
@@ -44,6 +48,7 @@ export const serverDbSchema = z
         name: t.player_name,
         tribe: t.player_tribe,
       },
+      startingFieldCombination: t.starting_field_combination ?? undefined,
     };
   })
   .meta({ id: 'ServerDb' });
@@ -64,6 +69,7 @@ export const serverSchema = z
       name: z.string(),
       tribe: playableTribeSchema,
     }),
+    startingFieldCombination: resourceFieldCompositionSchema.optional(),
   })
   .meta({ id: 'Server' });
 

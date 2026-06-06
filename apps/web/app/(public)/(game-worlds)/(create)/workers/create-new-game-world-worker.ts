@@ -16,52 +16,69 @@ export type CreateNewGameWorldWorkerResponse =
   | {
       type: 'result';
       migrationDuration: number;
+    }
+  | {
+      type: 'error';
+      message: string;
+      stack?: string;
     };
 
 globalThis.addEventListener(
   'message',
   async (event: MessageEvent<CreateNewGameWorldWorkerPayload>) => {
-    const { default: sqlite3InitModule } = await import(
-      '@sqlite.org/sqlite-wasm'
-    );
     const { server, port } = event.data;
 
-    const sqlite3 = await sqlite3InitModule();
-    const opfsSahPool = await sqlite3.installOpfsSAHPoolVfs({
-      directory: `/pillage-first-ask-questions-later/${server.slug}`,
-    });
+    try {
+      const { default: sqlite3InitModule } = await import(
+        '@sqlite.org/sqlite-wasm'
+      );
 
-    const database = new opfsSahPool.OpfsSAHPoolDb(`/${server.slug}.sqlite3`);
+      const sqlite3 = await sqlite3InitModule();
+      const opfsSahPool = await sqlite3.installOpfsSAHPoolVfs({
+        directory: `/pillage-first-ask-questions-later/${server.slug}`,
+      });
 
-    const dbFacade = createDbFacade(database, false);
+      const database = new opfsSahPool.OpfsSAHPoolDb(`/${server.slug}.sqlite3`);
 
-    dbFacade.exec({
-      sql: `
-        PRAGMA user_version=${encodeAppVersionToDatabaseUserVersion(env.VERSION)};
-        PRAGMA locking_mode=EXCLUSIVE;
-        PRAGMA foreign_keys=OFF;
-        PRAGMA journal_mode=OFF;
-        PRAGMA synchronous=OFF;
-        PRAGMA temp_store=MEMORY;
-        PRAGMA cache_size=-20000;
-      `,
-    });
+      const dbFacade = createDbFacade(database, false);
 
-    const migrationDuration = migrateAndSeed(dbFacade, server, () => {
+      dbFacade.exec({
+        sql: `
+          PRAGMA user_version=${encodeAppVersionToDatabaseUserVersion(env.VERSION)};
+          PRAGMA locking_mode=EXCLUSIVE;
+          PRAGMA foreign_keys=OFF;
+          PRAGMA journal_mode=OFF;
+          PRAGMA synchronous=OFF;
+          PRAGMA temp_store=MEMORY;
+          PRAGMA cache_size=-20000;
+        `,
+      });
+
+      const migrationDuration = migrateAndSeed(dbFacade, server, () => {
+        port.postMessage({
+          type: 'progress',
+        } satisfies CreateNewGameWorldWorkerResponse);
+      });
+
+      dbFacade.close();
+      database.close();
+      opfsSahPool.pauseVfs();
+
       port.postMessage({
-        type: 'progress',
+        type: 'result',
+        migrationDuration,
       } satisfies CreateNewGameWorldWorkerResponse);
-    });
-
-    dbFacade.close();
-    database.close();
-    opfsSahPool.pauseVfs();
-
-    port.postMessage({
-      type: 'result',
-      migrationDuration,
-    } satisfies CreateNewGameWorldWorkerResponse);
-    port.close();
-    globalThis.close();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      port.postMessage({
+        type: 'error',
+        message,
+        stack,
+      } satisfies CreateNewGameWorldWorkerResponse);
+    } finally {
+      port.close();
+      globalThis.close();
+    }
   },
 );

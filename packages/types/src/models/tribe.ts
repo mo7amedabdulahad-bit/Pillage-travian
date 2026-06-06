@@ -8,7 +8,7 @@ export const PLAYABLE_TRIBES = [
   'huns',
 ] as const;
 
-export const FUTURE_PLAYABLE_TRIBES = ['spartans'] as const;
+export const FUTURE_PLAYABLE_TRIBES = ['spartans', 'vikings'] as const;
 
 export const NPC_ONLY_TRIBES = ['nature', 'natars'] as const;
 

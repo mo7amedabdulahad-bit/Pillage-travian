@@ -8,11 +8,6 @@ import {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
-  isResourceBuilding,
-  RESOURCE_BUILDING_TO_RESOURCE,
-  type ResourceBuildingId,
-} from '@pillage-first/game-assets/building-icons';
-import {
   type CalculatedCumulativeEffect,
   calculateBuildingEffectValues,
   getBuildingDataForLevel,
@@ -33,10 +28,12 @@ import { VillageBuildingLink } from 'app/(game)/(village-slug)/components/villag
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useComputedEffect } from 'app/(game)/(village-slug)/hooks/use-computed-effect';
 import { useEffectServerValue } from 'app/(game)/(village-slug)/hooks/use-effect-server-value';
+import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
+import { BuildingBigImage } from 'app/components/building-icon';
 import { Icon } from 'app/components/icon';
-import { ResourceIcon } from 'app/components/resource-icon';
 import { Text } from 'app/components/text';
 import { Alert } from 'app/components/ui/alert';
+import { CookieContext } from 'app/providers/cookie-provider';
 import { formatTime } from 'app/utils/time';
 
 type BuildingCardContextState = {
@@ -97,58 +94,60 @@ export const BuildingOverview = ({
     buildingId,
     buildingFieldId,
   );
+  const tribe = useTribe();
+  const { timeOfDay } = use(CookieContext);
 
   const { building, isMaxLevel: isActualMaxLevel } = getBuildingDataForLevel(
     buildingId,
     actualLevel,
   );
 
-  const showBuildingImage = isResourceBuilding(buildingId);
-
   return (
-    <section data-testid="building-overview-title-section">
-      {showBuildingImage && (
-        <ResourceIcon
-          resource={
-            RESOURCE_BUILDING_TO_RESOURCE[buildingId as ResourceBuildingId]
-          }
-          size="huge"
-          className="size-24 mb-2"
-        />
-      )}
-      {shouldShowTitle && (
-        <Text
-          as="h2"
-          className="inline-flex"
-        >
-          {t(`BUILDINGS.${building.id}.NAME`)}
-        </Text>
-      )}
-      {!isCompact && (
-        <Text data-testid="building-overview-building-description">
-          {t(`BUILDINGS.${building.id}.DESCRIPTION`)}
-        </Text>
-      )}
-      {actualLevel !== virtualLevel && (
-        <span
-          data-testid="building-overview-currently-upgrading-span"
-          className="inline-flex text-warning mt-2"
-        >
-          {t('Currently upgrading to level {{level}}', {
-            level: virtualLevel,
-          })}
-        </span>
-      )}
-      {isActualMaxLevel && (
-        <span
-          data-testid="building-overview-max-level"
-          className="inline-flex text-green-600 mt-2"
-        >
-          {t('{{building}} is fully upgraded', {
-            building: t(`BUILDINGS.${building.id}.NAME`),
-          })}
-        </span>
-      )}
+    <section
+      data-testid="building-overview-title-section"
+      className="flex gap-3 items-start"
+    >
+      <BuildingBigImage
+        buildingId={buildingId}
+        tribe={tribe}
+        theme={timeOfDay}
+        className="size-20 shrink-0"
+      />
+      <div className="flex flex-col gap-1">
+        {shouldShowTitle && (
+          <Text
+            as="h2"
+            className="inline-flex"
+          >
+            {t(`BUILDINGS.${building.id}.NAME`)}
+          </Text>
+        )}
+        {!isCompact && (
+          <Text data-testid="building-overview-building-description">
+            {t(`BUILDINGS.${building.id}.DESCRIPTION`)}
+          </Text>
+        )}
+        {actualLevel !== virtualLevel && (
+          <span
+            data-testid="building-overview-currently-upgrading-span"
+            className="inline-flex text-warning mt-2"
+          >
+            {t('Currently upgrading to level {{level}}', {
+              level: virtualLevel,
+            })}
+          </span>
+        )}
+        {isActualMaxLevel && (
+          <span
+            data-testid="building-overview-max-level"
+            className="inline-flex text-green-600 mt-2"
+          >
+            {t('{{building}} is fully upgraded', {
+              building: t(`BUILDINGS.${building.id}.NAME`),
+            })}
+          </span>
+        )}
+      </div>
     </section>
   );
 };

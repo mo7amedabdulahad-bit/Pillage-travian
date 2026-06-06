@@ -61,6 +61,23 @@ const createServerFormSchema = z.strictObject({
   }),
   gameplay: z.strictObject({
     areOfflineNpcAttacksEnabled: z.boolean(),
+    startingFieldCombination: z
+      .enum([
+        '4446',
+        '5436',
+        '5346',
+        '4536',
+        '3546',
+        '4356',
+        '3456',
+        '4437',
+        '4347',
+        '3447',
+        '3339',
+        '11115',
+        '00018',
+      ])
+      .optional(),
   }),
 });
 
@@ -120,6 +137,10 @@ export const CreateNewGameWorldForm = () => {
             worker.terminate();
             channel.port1.close();
             resolve(data.migrationDuration);
+          } else if (data.type === 'error') {
+            worker.terminate();
+            channel.port1.close();
+            reject(new Error(data.stack ?? data.message));
           }
         };
 
@@ -162,6 +183,7 @@ export const CreateNewGameWorldForm = () => {
       },
       gameplay: {
         areOfflineNpcAttacksEnabled: true,
+        startingFieldCombination: undefined,
       },
     },
   });
@@ -176,6 +198,7 @@ export const CreateNewGameWorldForm = () => {
       version: env.VERSION,
       createdAt: Date.now(),
       ...values,
+      startingFieldCombination: values.gameplay.startingFieldCombination,
     };
 
     // @ts-expect-error - Not an error, values for speed and mapSize are already cast as numbers
@@ -405,6 +428,74 @@ export const CreateNewGameWorldForm = () => {
                           </FormControl>
                         </div>
                       </div>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="gameplay.startingFieldCombination"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base">
+                        Starting field combination
+                      </FormLabel>
+                      <Text>
+                        Choose the resource field layout for your starting
+                        village. Format is Wood-Clay-Iron-Wheat.
+                      </Text>
+                      <Select
+                        disabled={isPending || isSuccess}
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Random (balanced 4-4-4-6)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="4446">
+                            Balanced (4-4-4-6)
+                          </SelectItem>
+                          <SelectItem value="5436">
+                            Wood Heavy (5-4-3-6)
+                          </SelectItem>
+                          <SelectItem value="5346">
+                            Wood/Iron (5-3-4-6)
+                          </SelectItem>
+                          <SelectItem value="4536">
+                            Clay Heavy (4-5-3-6)
+                          </SelectItem>
+                          <SelectItem value="3546">
+                            Clay/Iron (3-5-4-6)
+                          </SelectItem>
+                          <SelectItem value="4356">
+                            Iron Heavy (4-3-5-6)
+                          </SelectItem>
+                          <SelectItem value="3456">
+                            Iron/Clay (3-4-5-6)
+                          </SelectItem>
+                          <SelectItem value="4437">
+                            Wheat Focus (4-4-3-7)
+                          </SelectItem>
+                          <SelectItem value="4347">
+                            Wheat/Balance (4-3-4-7)
+                          </SelectItem>
+                          <SelectItem value="3447">
+                            Wheat/Clay (3-4-4-7)
+                          </SelectItem>
+                          <SelectItem value="3339">
+                            9 Cropper (3-3-3-9)
+                          </SelectItem>
+                          <SelectItem value="11115">
+                            15 Cropper (1-1-1-15)
+                          </SelectItem>
+                          <SelectItem value="00018">
+                            18 Cropper (0-0-0-18)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

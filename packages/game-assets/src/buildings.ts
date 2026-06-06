@@ -943,6 +943,46 @@ export const buildings: Building[] = [
     buildingDurationReduction: 1875,
   },
   {
+    id: 'VIKING_WALL',
+    category: 'military',
+    populationCoefficient: 0,
+    culturePointsCoefficient: 1,
+    effects: [
+      ...createInfantryAndCavalryDefenceEffects(
+        'bonus',
+        [
+          1, 1.03, 1.06, 1.09, 1.13, 1.16, 1.19, 1.23, 1.27, 1.31, 1.34, 1.38,
+          1.43, 1.47, 1.51, 1.56, 1.6, 1.65, 1.7, 1.75, 1.81,
+        ],
+      ),
+      ...createInfantryAndCavalryDefenceEffects(
+        'base',
+        [
+          0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150,
+          160, 170, 180, 190, 200,
+        ],
+      ),
+    ],
+    buildingRequirements: [
+      {
+        id: 1,
+        type: 'amount',
+        amount: 1,
+      },
+      {
+        id: 2,
+        type: 'tribe',
+        tribe: 'vikings',
+      },
+    ],
+    baseBuildingCost: [70, 90, 170, 70],
+    buildingCostCoefficient: 1.28,
+    maxLevel: 20,
+    buildingDurationBase: 1.16,
+    buildingDurationModifier: 3875,
+    buildingDurationReduction: 1875,
+  },
+  {
     id: 'NATURE_WALL',
     category: 'military',
     populationCoefficient: 0,

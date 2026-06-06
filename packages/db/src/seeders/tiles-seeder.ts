@@ -69,7 +69,7 @@ const generateGrid = (server: Server): MaybeAssignedTileModel[] => {
         x,
         y,
         type: 'free',
-        resource_field_composition: '4446',
+        resource_field_composition: server.startingFieldCombination ?? '4446',
         oasis_graphics: null,
       } satisfies TileModel;
       continue;

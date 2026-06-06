@@ -118,6 +118,7 @@ const TRIBE_FOLDERS: Record<Tribe, string> = {
   egyptians: 'egyptian',
   huns: 'hun',
   spartans: 'spartan',
+  vikings: 'viking',
   natars: 'natar',
   nature: 'nature',
 };

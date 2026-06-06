@@ -7,12 +7,14 @@ import {
   isResourceBuilding,
 } from '@pillage-first/game-assets/building-icons';
 import type { BuildingId } from '@pillage-first/types/models/building';
+import type { TimeOfDay } from '@pillage-first/types/models/preferences';
 import type { Tribe } from '@pillage-first/types/models/tribe';
 
 type BuildingIconProps = {
   buildingId: BuildingId;
   tribe?: Tribe;
   size?: BuildingImageSize;
+  theme?: TimeOfDay;
   className?: string;
   style?: CSSProperties;
 };
@@ -20,6 +22,7 @@ type BuildingIconProps = {
 type BuildingBigImageProps = {
   buildingId: BuildingId;
   tribe?: Tribe;
+  theme?: TimeOfDay;
   className?: string;
   style?: CSSProperties;
 };
@@ -30,10 +33,11 @@ export function BuildingIcon({
   buildingId,
   tribe = DEFAULT_TRIBE,
   size = 'small',
+  theme = 'day',
   className,
   style,
 }: BuildingIconProps) {
-  const imagePath = getBuildingIconPath(tribe, buildingId, size);
+  const imagePath = getBuildingIconPath(tribe, buildingId, size, theme);
   const dimensions = BUILDING_ICON_SIZES[size];
 
   return (
@@ -55,10 +59,11 @@ export function BuildingIcon({
 export function BuildingBigImage({
   buildingId,
   tribe = DEFAULT_TRIBE,
+  theme = 'day',
   className,
   style,
 }: BuildingBigImageProps) {
-  const imagePath = getBuildingBigImagePath(tribe, buildingId);
+  const imagePath = getBuildingBigImagePath(tribe, buildingId, theme);
 
   return (
     <img
@@ -80,6 +85,7 @@ export function ResourceBuildingIcon({
   buildingId,
   tribe = DEFAULT_TRIBE,
   size = 'small',
+  theme = 'day',
   className,
   style,
 }: BuildingIconProps) {
@@ -92,6 +98,7 @@ export function ResourceBuildingIcon({
       buildingId={buildingId}
       tribe={tribe}
       size={size}
+      theme={theme}
       className={className}
       style={style}
     />
