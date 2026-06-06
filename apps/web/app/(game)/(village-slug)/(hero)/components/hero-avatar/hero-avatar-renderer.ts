@@ -24,6 +24,16 @@ export const HEAD_CROP = {
 
 type ArmState = 'armBase' | 'armFist' | 'armUp';
 
+// Spartan spear/lance item IDs (need armUp pose)
+const SPEAR_ITEM_IDS = new Set([
+  // Hoplite spears (149-151)
+  149, 150, 151,
+  // Shieldsman spears (152-154)
+  152, 153, 154,
+  // Corinthian Crusher spears (161-163)
+  161, 162, 163,
+]);
+
 function getRightArmState(
   loadout: Array<{ itemId: number; slot: string }>,
 ): ArmState {
@@ -40,7 +50,8 @@ function getRightArmState(
   if (
     sprite.startsWith('spear-') ||
     sprite.startsWith('lance-') ||
-    sprite.startsWith('staff-')
+    sprite.startsWith('staff-') ||
+    SPEAR_ITEM_IDS.has(rightHandItem.itemId)
   ) {
     return 'armUp';
   }
