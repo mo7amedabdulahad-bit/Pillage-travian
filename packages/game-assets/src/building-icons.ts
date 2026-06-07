@@ -21,8 +21,8 @@ export const WALL_GID_MAP: Record<string, string> = {
   roman: '31',
   teuton: '32',
   gaul: '33',
-  egyptian: '32',
-  hun: '32',
+  egyptian: '42',
+  hun: '43',
   spartan: '47',
   viking: '50',
   natar: '32',
@@ -47,10 +47,10 @@ export const RESOURCE_BUILDING_FIELD_NUMBERS: Record<
   ResourceBuildingId,
   number
 > = {
-  WOODCUTTER: 5,
-  CLAY_PIT: 6,
-  IRON_MINE: 7,
-  WHEAT_FIELD: 8,
+  WOODCUTTER: 1,
+  CLAY_PIT: 2,
+  IRON_MINE: 3,
+  WHEAT_FIELD: 4,
 };
 
 export const RESOURCE_BUILDING_TO_RESOURCE: Record<
@@ -183,11 +183,9 @@ export function getBuildingIconPath(
   size: BuildingImageSize = 'small',
   theme: TimeOfDay = 'day',
 ): string {
-  const tribeFolder = TRIBE_FOLDER_NAMES[tribe];
-
   if (isResourceBuilding(buildingId)) {
     const fieldNumber = RESOURCE_BUILDING_FIELD_NUMBERS[buildingId];
-    return `${BUILDINGS_BASE_PATH}/${theme}/buildings/${tribeFolder}/icon/type${fieldNumber}_${size}.png`;
+    return `${BUILDINGS_BASE_PATH}/${theme}/buildings/default/icon/type${fieldNumber}_${size}.png`;
   }
 
   const typeNumber = BUILDING_ICON_TYPE_MAP[buildingId];
@@ -205,19 +203,17 @@ export function getBuildingIconPath(
 export function getBuildingBigImagePath(
   tribe: Tribe,
   buildingId: BuildingId,
-  theme: TimeOfDay = 'day',
+  _theme: TimeOfDay = 'day',
 ): string {
-  const tribeFolder = TRIBE_FOLDER_NAMES[tribe];
-
   if (isResourceBuilding(buildingId)) {
     const fieldNumber = RESOURCE_BUILDING_FIELD_NUMBERS[buildingId];
-    return `${BUILDINGS_BASE_PATH}/${theme}/buildings/${tribeFolder}/big/g${fieldNumber}.png`;
+    return `${BUILDINGS_BASE_PATH}/day/buildings/default/big/g${fieldNumber}.png`;
   }
 
   const gid = BUILDING_GID_MAP[buildingId] ?? DEFAULT_BUILDING_GID;
   const iconTribe = TRIBE_OVERRIDES_FOR_BUILDING_ICON[buildingId] ?? tribe;
   const imageFolder = TRIBE_FOLDER_NAMES[iconTribe];
-  return `${BUILDINGS_BASE_PATH}/${theme}/buildings/${imageFolder}/big/g${gid}.png`;
+  return `${BUILDINGS_BASE_PATH}/day/buildings/${imageFolder}/big/g${gid}.png`;
 }
 
 export function getBuildingVillageImagePath(

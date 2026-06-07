@@ -218,9 +218,6 @@ const getVillageBuildingImagePath = (
   const tribeFolder = TRIBE_FOLDER_NAMES[tribe] || 'teuton';
 
   if (AVAILABLE_BUILDING_GIDS.includes(gid)) {
-    if (gid === '32') {
-      return `/graphic-packs/${theme}/buildings/${tribeFolder}/g32Top.png`;
-    }
     return `/graphic-packs/${theme}/buildings/${tribeFolder}/g${gid}.png`;
   }
 
@@ -505,7 +502,7 @@ const OccupiedBuildingFieldContent = ({
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
               'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none group-hover:brightness-125',
-              'g32Bottom',
+              `g${getGidFromBuildingId(buildingId)}Bottom`,
               getTribeClass(tribe),
             )}
             style={{
@@ -518,7 +515,7 @@ const OccupiedBuildingFieldContent = ({
             alt={t(`BUILDINGS.${buildingId}.NAME`)}
             className={clsx(
               'absolute inset-0 max-w-none transition-all duration-200 pointer-events-none group-hover:brightness-125',
-              'g32Top',
+              `g${getGidFromBuildingId(buildingId)}Top`,
               getTribeClass(tribe),
             )}
             style={{
@@ -530,13 +527,17 @@ const OccupiedBuildingFieldContent = ({
             width="100%"
             height="100%"
             viewBox="0 0 794 540"
-            className="absolute inset-0 buildingShape g32Bottom pointer-events-none z-[43]"
+            className={`absolute inset-0 buildingShape g${getGidFromBuildingId(buildingId)}Bottom pointer-events-none z-[43]`}
             preserveAspectRatio="xMidYMid meet"
           >
             <title>{t(`BUILDINGS.${buildingId}.NAME`)}</title>
             <g className="hoverShape transition-colors duration-150 fill-transparent pointer-events-auto">
-              <path d={HOVER_PATHS['32_bottom']} />
-              <path d={HOVER_PATHS['32_top']} />
+              <path
+                d={HOVER_PATHS[`${getGidFromBuildingId(buildingId)}_bottom`]}
+              />
+              <path
+                d={HOVER_PATHS[`${getGidFromBuildingId(buildingId)}_top`]}
+              />
             </g>
           </svg>
         </>
