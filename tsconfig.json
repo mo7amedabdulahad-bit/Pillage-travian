@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "assumeChangesOnlyAffectDirectDependencies": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
     "isolatedModules": true,
     "incremental": false,
     "allowImportingTsExtensions": true,
