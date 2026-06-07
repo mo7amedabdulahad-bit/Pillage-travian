@@ -27,7 +27,7 @@ const PlayerPage = ({ params }: Route.ComponentProps) => {
   const { serverSlug, villageSlug, playerSlug } = params;
 
   const { t } = useTranslation();
-  const { player } = usePlayer(playerSlug);
+  const { player } = usePlayer(playerSlug!);
   const { playerVillages } = usePlayerVillages(player.id);
 
   const title = `${t('{{playerName}}', { playerName: player.name })} | Pillage First! - ${serverSlug} - ${villageSlug}`;

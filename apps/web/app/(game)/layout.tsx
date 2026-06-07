@@ -63,7 +63,7 @@ const LayoutFallback = () => {
 const LayoutContent = memo<Route.ComponentProps>(
   ({ params, loaderData }) => {
     const { serverSlug } = params;
-    const { sessionId } = loaderData;
+    const { sessionId } = loaderData as unknown as { sessionId: string };
 
     const { i18n } = useTranslation();
     const { uiColorScheme } = use(CookieContext);
@@ -110,9 +110,9 @@ const LayoutContent = memo<Route.ComponentProps>(
         <body className="bg-background text-foreground transition-colors duration-300">
           <QueryClientProvider client={queryClient}>
             <Suspense fallback={<LayoutFallback />}>
-              <ApiProvider serverSlug={serverSlug}>
+              <ApiProvider serverSlug={serverSlug!}>
                 <Outlet />
-                <Notifier serverSlug={serverSlug} />
+                <Notifier serverSlug={serverSlug!} />
               </ApiProvider>
             </Suspense>
             <Toaster

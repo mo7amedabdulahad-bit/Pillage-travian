@@ -6,7 +6,7 @@ export const gameWorldNotLockedMiddleware: Route.ClientMiddlewareFunction =
   async ({ context, params }) => {
     const { serverSlug } = params;
 
-    const isLocked = await isGameWorldLocked(context, serverSlug);
+    const isLocked = await isGameWorldLocked(context, serverSlug!);
 
     if (!isLocked) {
       throw redirect(`/game/${serverSlug}/v-1/resources`);

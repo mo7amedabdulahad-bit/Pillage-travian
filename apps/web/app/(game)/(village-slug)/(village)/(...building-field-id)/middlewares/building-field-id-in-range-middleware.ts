@@ -5,7 +5,7 @@ export const buildingFieldIdIsInRangeMiddleware: Route.ClientMiddlewareFunction 
   ({ params }) => {
     const { buildingFieldId: buildingFieldIdParam } = params;
 
-    const buildingFieldId = Number.parseInt(buildingFieldIdParam, 10);
+    const buildingFieldId = Number.parseInt(buildingFieldIdParam!, 10);
 
     // Redirect to 404 if user attempts to open a non-existent building-field-id
     if (buildingFieldId < 1 || buildingFieldId > 40) {

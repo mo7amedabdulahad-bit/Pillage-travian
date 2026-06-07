@@ -6,7 +6,7 @@ export const gameWorldNotExistsMiddleware: Route.ClientMiddlewareFunction =
   async ({ params }) => {
     const { serverSlug } = params;
 
-    const gameWorldExists = await doesGameWorldExist(serverSlug);
+    const gameWorldExists = await doesGameWorldExist(serverSlug!);
 
     if (gameWorldExists) {
       throw redirect(`/game/${serverSlug}/v-1/resources`);

@@ -91,7 +91,7 @@ const LayoutContent = ({
 }: {
   loaderData: Route.ComponentProps['loaderData'];
 }) => {
-  const { locale } = loaderData;
+  const { locale } = loaderData as unknown as { locale: string };
   const { uiColorScheme } = use(CookieContext);
 
   const { t } = useTranslation();

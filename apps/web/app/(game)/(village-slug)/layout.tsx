@@ -897,7 +897,7 @@ const GameLayout = memo<Route.ComponentProps>(
 
     return (
       <div className="[-webkit-touch-callout:none]">
-        <VillageSlugProvider villageSlug={villageSlug}>
+        <VillageSlugProvider villageSlug={villageSlug!}>
           <CurrentVillageStateProvider>
             <CurrentVillageBuildingQueueContextProvider>
               <Tooltip id="general-tooltip" />

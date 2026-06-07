@@ -18,7 +18,18 @@
     "noImplicitReturns": true,
     "strictNullChecks": true,
     "erasableSyntaxOnly": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "app/*": ["./apps/web/app/*"],
+      "@react-router/*": ["./apps/web/.react-router/*"],
+      "@pillage-first/types/*": ["./packages/types/src/*"],
+      "@pillage-first/game-assets/*": ["./packages/game-assets/src/*"],
+      "@pillage-first/utils/*": ["./packages/utils/src/*"],
+      "@pillage-first/db/*": ["./packages/db/src/*"],
+      "@pillage-first/api/*": ["./packages/api/src/*"],
+      "@pillage-first/mocks/*": ["./packages/mocks/src/*"]
+    }
   },
-  "include": ["apps/**/*", "packages/**/*", "scripts/**/*"]
+  "include": ["apps/**/*", "packages/**/*", "scripts/**/*"],
+  "exclude": ["**/node_modules", "apps/web/.react-router"]
 }
