@@ -1,8 +1,6 @@
 name: android-build
-
 permissions:
-  contents: write
-
+  contents: read
 on:
   push:
     branches:
@@ -13,18 +11,14 @@ on:
     branches:
       - master
       - develop
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 defaults:
   run:
     shell: bash
-
 env:
   TURBO_CACHE_DIR: .turbo
-
 jobs:
   build-apk:
     name: Build Android APK
@@ -34,30 +28,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Setup environment (node + install)
         uses: ./.github/actions/node-setup
-
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Build web app
         run: npx turbo run build --filter="@pillage-first/web"
-
       - name: Sync Capacitor
         working-directory: apps/web
         run: npx cap sync android
-
       - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > apps/web/android/app/google-services.json
-
+          if [ -n "$GOOGLE_SERVICES" ]; then
+            echo "$GOOGLE_SERVICES" > apps/web/android/app/google-services.json
+          else
+            echo "WARNING: GOOGLE_SERVICES_JSON secret not set, skipping"
+          fi
       - name: Decode keystore
         env:
           KEYSTORE_SECRET: ${{ secrets.KEYSTORE_FILE }}
@@ -68,7 +61,6 @@ jobs:
           else
             echo "KEYSTORE_PATH=" >> $GITHUB_ENV
           fi
-
       - name: Build release APK
         working-directory: apps/web/android
         env:
@@ -77,10 +69,21 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: chmod +x gradlew && ./gradlew assembleRelease
-
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: pillage-first-release-apk
           path: apps/web/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
+      - name: Upload to Firebase App Distribution
+        continue-on-error: true
+        env:
+          FIREBASE_TOKEN_SECRET: ${{ secrets.FIREBASE_TOKEN }}
+        if: env.FIREBASE_TOKEN_SECRET != ''
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          token: ${{ secrets.FIREBASE_TOKEN }}
+          groups: testers
+          file: apps/web/android/app/build/outputs/apk/release/app-release.apk
+          releaseNotes: "Build ${{ github.run_number }} from commit ${{ github.sha }}"
