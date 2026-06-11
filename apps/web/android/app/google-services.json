@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "236599119006",
+    "project_id": "pillage-first",
+    "storage_bucket": "pillage-first.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:236599119006:android:da1f44f39a7e2f2d9fbf8f",
+        "android_client_info": {
+          "package_name": "com.pillagefirst.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5_n8Z4bFs1YiCDfjPLZg1o3pFarRKRkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
