@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -54,14 +54,19 @@ jobs:
         working-directory: apps/web
         run: npx cap sync android
 
+      - name: Write google-services.json
+        run: |
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > apps/web/android/app/google-services.json
+
       - name: Decode keystore
+        if: ${{ secrets.KEYSTORE_FILE != '' }}
         run: |
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > ${{ github.workspace }}/apps/web/android/app/pillage-first.jks
 
       - name: Build release APK
         working-directory: apps/web/android
         env:
-          KEYSTORE_FILE: ${{ github.workspace }}/apps/web/android/app/pillage-first.jks
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE != '' && github.workspace + '/apps/web/android/app/pillage-first.jks' || '' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
