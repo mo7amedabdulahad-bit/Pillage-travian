@@ -248,7 +248,10 @@ textarea {
   user-select: text;
 }
 
-/* Safe area support for notched Android phones */
+/* Safe area support for notched Android phones.
+   Only pad the app-root, NOT the body, so the status bar
+   area is handled by Capacitor StatusBar plugin and not
+   double-padded by CSS. */
 .app-root,
 #root {
   padding-top: env(safe-area-inset-top);
@@ -257,14 +260,23 @@ textarea {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Minimum touch target size for all interactive elements */
-button, a, [role="button"] {
-  position: relative;
+/* Touch targets: use padding instead of ::after pseudo-elements.
+   The ::after approach breaks layouts because absolutely positioned
+   pseudo-elements overflow into sibling elements.
+   Instead, ensure buttons and links have enough padding for a
+   comfortable tap area. This does NOT change visual size for
+   elements that already have their own padding defined. */
+button:not([class]),
+a:not([class]),
+[role="button"]:not([class]) {
+  padding: 0.5rem;
 }
-button::after, a::after, [role="button"]::after {
-  content: '';
-  position: absolute;
-  inset: -8px;
-  min-width: 44px;
-  min-height: 44px;
+
+/* Scrollable tab panels — any element with role=tabpanel or
+   a tab content container should scroll vertically */
+[role="tabpanel"],
+.tab-content {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
