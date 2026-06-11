@@ -58,6 +58,10 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > apps/web/android/app/pillage-first.jks
 
+      - name: Generate Gradle wrapper
+        working-directory: apps/web/android
+        run: gradle wrapper
+
       - name: Build release APK
         working-directory: apps/web/android
         env:
