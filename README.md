@@ -1,13 +1,5 @@
 # Pillage First! (Ask Questions Later)
 
-<p align="center">
-  <img src="/.github/assets/mobile-map-view.jpg" width="30%">
-  &nbsp;
-  <img src="/.github/assets/mobile-main-building-view.jpg" width="30%">
-  &nbsp;
-  <img src="/.github/assets/mobile-resources-view.jpg" width="30%">
-</p>
-
 **Pillage First! (Ask Questions Later)** is an **open-source**, **single-player**, **strategy game** inspired by
 Travian.
 
