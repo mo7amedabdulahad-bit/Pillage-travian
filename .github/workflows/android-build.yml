@@ -58,10 +58,14 @@ jobs:
         working-directory: apps/web
         run: npx cap sync android
 
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > apps/web/android/app/pillage-first.jks
+
       - name: Build release APK
         working-directory: apps/web/android
         env:
-          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+          KEYSTORE_FILE: pillage-first.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -71,5 +75,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pillage-first-release-apk
-          path: apps/web/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: apps/web/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
