@@ -56,16 +56,12 @@ jobs:
 
       - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > apps/web/android/app/pillage-first.jks
-
-      - name: Generate Gradle wrapper
-        working-directory: apps/web/android
-        run: gradle wrapper
+          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > ${{ github.workspace }}/apps/web/android/app/pillage-first.jks
 
       - name: Build release APK
         working-directory: apps/web/android
         env:
-          KEYSTORE_FILE: pillage-first.jks
+          KEYSTORE_FILE: ${{ github.workspace }}/apps/web/android/app/pillage-first.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
