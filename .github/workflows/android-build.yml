@@ -20,6 +20,7 @@ defaults:
     shell: bash
 env:
   TURBO_CACHE_DIR: .turbo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   build-apk:
     name: Build Android APK
