@@ -258,9 +258,13 @@ textarea {
 }
 
 /* Minimum touch target size for all interactive elements */
-button,
-a,
-[role="button"] {
-  min-height: 44px;
+button, a, [role="button"] {
+  position: relative;
+}
+button::after, a::after, [role="button"]::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
   min-width: 44px;
+  min-height: 44px;
 }
