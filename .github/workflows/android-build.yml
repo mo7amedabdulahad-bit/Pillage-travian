@@ -77,3 +77,12 @@ jobs:
           name: pillage-first-release-apk
           path: apps/web/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          token: ${{ secrets.FIREBASE_TOKEN }}
+          groups: testers
+          file: apps/web/android/app/build/outputs/apk/release/app-release.apk
+          releaseNotes: "Build ${{ github.run_number }} from commit ${{ github.sha }}"
