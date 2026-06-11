@@ -78,12 +78,12 @@ jobs:
       - name: Upload to Firebase App Distribution
         continue-on-error: true
         env:
-          FIREBASE_TOKEN_SECRET: ${{ secrets.FIREBASE_TOKEN }}
-        if: env.FIREBASE_TOKEN_SECRET != ''
+          FIREBASE_SA_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        if: env.FIREBASE_SA_SECRET != ''
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
-          token: ${{ secrets.FIREBASE_TOKEN }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           groups: testers
           file: apps/web/android/app/build/outputs/apk/release/app-release.apk
           releaseNotes: "Build ${{ github.run_number }} from commit ${{ github.sha }}"
