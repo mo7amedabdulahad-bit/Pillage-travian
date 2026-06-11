@@ -24,6 +24,7 @@ import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences'
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
 import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';
+import { hapticLight } from 'app/utils/haptics';
 
 type BuildingCardActionsSectionProps = {
   buildingId: Building['id'];
@@ -157,6 +158,8 @@ export const BuildingActions = () => {
 
   const onBuildingConstruction = async () => {
     await navigateBack();
+    await hapticLight();
+
     startTransition(() => {
       constructBuilding();
     });
@@ -166,6 +169,8 @@ export const BuildingActions = () => {
     if (preferences.isAutomaticNavigationAfterBuildingLevelChangeEnabled) {
       await navigateBack();
     }
+
+    await hapticLight();
 
     startTransition(() => {
       upgradeBuilding();

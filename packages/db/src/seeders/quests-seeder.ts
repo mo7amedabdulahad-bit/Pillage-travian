@@ -35,7 +35,7 @@ export const questsSeeder = (database: DbFacade): void => {
     schema: playableTribeSchema,
   })!;
 
-  const questsToSeed = [];
+  const questsToSeed: (string | number | null)[][] = [];
 
   const villageQuests = newVillageQuestsFactory(
     playerStartingVillageId,

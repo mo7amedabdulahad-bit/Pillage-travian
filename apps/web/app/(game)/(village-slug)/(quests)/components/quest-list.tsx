@@ -22,6 +22,7 @@ import { useQuests } from 'app/(game)/(village-slug)/hooks/use-quests';
 import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';
 import { Pagination } from 'app/components/ui/pagination';
+import { hapticHeavy } from 'app/utils/haptics';
 
 type QuestRewardProps = {
   reward: QuestRewardType;
@@ -83,7 +84,10 @@ const QuestListItem = ({ quest, onComplete }: QuestListItemProps) => {
         {isCollectable && (
           <Button
             variant="default"
-            onClick={() => onComplete(quest.id)}
+            onClick={async () => {
+              await hapticHeavy();
+              onComplete(quest.id);
+            }}
             type="button"
             size="fit"
           >

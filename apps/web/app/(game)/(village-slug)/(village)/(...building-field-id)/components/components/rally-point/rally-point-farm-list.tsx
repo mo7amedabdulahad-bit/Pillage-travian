@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HiChevronDown, HiChevronUp } from 'react-icons/hi';
+import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
 import { Bookmark } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/components/bookmark';
 import {
   Section,
@@ -70,7 +70,7 @@ const FarmListModule = ({
         }}
       >
         <div className="flex items-center gap-2">
-          {isOpen ? <HiChevronUp size={16} /> : <HiChevronDown size={16} />}
+          {isOpen ? <LuChevronUp size={16} /> : <LuChevronDown size={16} />}
           <Text className="font-bold">{farmList.name}</Text>
         </div>
         <Button

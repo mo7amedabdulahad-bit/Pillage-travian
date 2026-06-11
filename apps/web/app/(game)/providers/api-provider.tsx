@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { debounce } from 'moderndash';
 import {
@@ -7,6 +9,7 @@ import {
   useMemo,
 } from 'react';
 import type { EventApiNotificationEvent } from '@pillage-first/types/api-events';
+import type { GameEvent } from '@pillage-first/types/models/game-event';
 import type { Server } from '@pillage-first/types/models/server';
 import { eventsCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useApiWorker } from 'app/(game)/hooks/use-api-worker';
@@ -68,12 +71,14 @@ export const ApiProvider = ({
       return debounced;
     };
 
-    const handleMessage = (event: MessageEvent<EventApiNotificationEvent>) => {
+    const handleMessage = async (
+      event: MessageEvent<EventApiNotificationEvent>,
+    ) => {
       if (!isEventResolvedSuccessfullyNotificationMessageEvent(event)) {
         return;
       }
 
-      const gameEvent = event.data;
+      const gameEvent = event.data as GameEvent;
       const { type } = gameEvent;
 
       // @ts-expect-error - We can't provide a generic here, so TS doesn't know which event it's dealing with
@@ -97,6 +102,59 @@ export const ApiProvider = ({
         debouncedInvalidators.get(eventsKeyId) ??
         makeDebouncedInvalidator(eventsKeyId, evResolvedKey);
       evDebounced();
+
+      // Trigger local notifications for completed events
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await LocalNotifications.requestPermissions();
+
+          let title = '';
+          let body = '';
+
+          switch (type) {
+            case 'buildingLevelChange': {
+              const _buildingEvent =
+                gameEvent as GameEvent<'buildingLevelChange'>;
+              title = '🏗️ Construction Complete';
+              body = 'Your building is ready!';
+              break;
+            }
+            case 'troopTraining': {
+              const _trainingEvent = gameEvent as GameEvent<'troopTraining'>;
+              title = '⚔️ Training Complete';
+              body = 'Your troops are ready!';
+              break;
+            }
+            case 'troopMovementReturn': {
+              title = '🏕️ Troops Returned';
+              body = 'Your troops have returned!';
+              break;
+            }
+            case 'adventurePointIncrease': {
+              title = '🗺️ Adventure Ready';
+              body = 'A new adventure is available!';
+              break;
+            }
+          }
+
+          if (title && body) {
+            await LocalNotifications.schedule({
+              notifications: [
+                {
+                  title,
+                  body,
+                  id: Date.now(),
+                  schedule: { at: new Date() },
+                  sound: undefined,
+                  smallIcon: 'ic_launcher',
+                },
+              ],
+            });
+          }
+        } catch (error) {
+          console.error('Failed to schedule notification:', error);
+        }
+      }
     };
 
     apiWorker.addEventListener('message', handleMessage);

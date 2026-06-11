@@ -23,6 +23,7 @@ import { Button } from 'app/components/ui/button';
 import { Input } from 'app/components/ui/input';
 import { Label } from 'app/components/ui/label';
 import { RadioGroup, RadioGroupItem } from 'app/components/ui/radio-group';
+import { hapticMedium } from 'app/utils/haptics';
 
 type Step = 'input' | 'confirm';
 
@@ -307,6 +308,8 @@ export const RallyPointSendTroops = () => {
     // For oasis targets, use the movementType directly (attack = full attack, raid = just loot)
     // For other targets, use the movementType as well
     const eventType: TroopMovementEventType = movementType;
+
+    await hapticMedium();
 
     await sendTroops({
       targetId: targetVillage.id,

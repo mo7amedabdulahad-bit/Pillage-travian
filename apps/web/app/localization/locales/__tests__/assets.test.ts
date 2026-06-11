@@ -96,7 +96,6 @@ describe('localization completeness check for assets.json', () => {
       const effectLocalizations = data.ICONS;
 
       for (const iconKey of Object.keys(icons)) {
-        // @ts-expect-error: Not sure if we care about this one
         const value = effectLocalizations?.[iconKey];
 
         expect(value, `Missing ICONS key: ${iconKey}`).toBeDefined();

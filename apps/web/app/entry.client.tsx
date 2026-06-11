@@ -1,3 +1,7 @@
+import { Capacitor } from '@capacitor/core';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { StrictMode, startTransition } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
@@ -58,6 +62,22 @@ if (typeof window !== 'undefined') {
   await createCookies();
 }
 
+async function initAndroidPlugins() {
+  if (!Capacitor.isNativePlatform()) {
+    return;
+  }
+
+  // Hide status bar for immersive game feel
+  await StatusBar.setStyle({ style: Style.Dark });
+  await StatusBar.setBackgroundColor({ color: '#111111' });
+
+  // Lock to portrait (matches existing PWA manifest orientation setting)
+  await ScreenOrientation.lock({ orientation: 'portrait' });
+
+  // Hide splash screen after app is ready
+  await SplashScreen.hide();
+}
+
 startTransition(() => {
   hydrateRoot(
     document,
@@ -70,3 +90,8 @@ startTransition(() => {
     </StrictMode>,
   );
 });
+
+// Initialize Android plugins after React app has mounted
+if (typeof window !== 'undefined') {
+  initAndroidPlugins();
+}

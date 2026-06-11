@@ -229,3 +229,38 @@ summary::-webkit-details-marker {
 summary::marker {
   content: "";
 }
+
+/* ============================================================
+   ANDROID / MOBILE WEBVIEW OPTIMIZATIONS
+   ============================================================ */
+
+/* Prevent rubber-band overscroll and unwanted touch behaviors */
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Allow text selection only inside inputs */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Safe area support for notched Android phones */
+.app-root,
+#root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Minimum touch target size for all interactive elements */
+button,
+a,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}

@@ -31,6 +31,11 @@
     "cap:build:apk": "npm run build && npm run cap:sync && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/local-notifications": "^8.2.0",
+    "@capacitor/screen-orientation": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@grafana/faro-web-sdk": "2.2.4",
     "@hookform/resolvers": "5.2.2",
     "@mantine/hooks": "8.3.15",
