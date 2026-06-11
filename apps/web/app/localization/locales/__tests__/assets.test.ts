@@ -96,7 +96,8 @@ describe('localization completeness check for assets.json', () => {
       const effectLocalizations = data.ICONS;
 
       for (const iconKey of Object.keys(icons)) {
-        const value = effectLocalizations?.[iconKey];
+        const value =
+          effectLocalizations?.[iconKey as keyof typeof effectLocalizations];
 
         expect(value, `Missing ICONS key: ${iconKey}`).toBeDefined();
         expect(value, `ICONS.${iconKey} is empty`).not.toBe('');
