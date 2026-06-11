@@ -1,6 +1,7 @@
 name: android-build
 permissions:
   contents: read
+  id-token: write
 on:
   push:
     branches:
@@ -75,15 +76,22 @@ jobs:
           name: pillage-first-release-apk
           path: apps/web/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
+      - name: Authenticate to Google Cloud
+        continue-on-error: true
+        env:
+          FIREBASE_SA_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        if: env.FIREBASE_SA_SECRET != ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - name: Upload to Firebase App Distribution
         continue-on-error: true
         env:
           FIREBASE_SA_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         if: env.FIREBASE_SA_SECRET != ''
         run: |
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > /tmp/firebase-sa.json
           npm install -g firebase-tools --silent
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-sa.json firebase appdistribution:distribute \
+          firebase appdistribution:distribute \
             apps/web/android/app/build/outputs/apk/release/app-release.apk \
             --app ${{ secrets.FIREBASE_APP_ID }} \
             --groups testers \
