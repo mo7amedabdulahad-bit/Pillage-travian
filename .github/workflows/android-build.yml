@@ -59,14 +59,20 @@ jobs:
           echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > apps/web/android/app/google-services.json
 
       - name: Decode keystore
-        if: ${{ secrets.KEYSTORE_FILE != '' }}
+        env:
+          KEYSTORE_SECRET: ${{ secrets.KEYSTORE_FILE }}
         run: |
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > ${{ github.workspace }}/apps/web/android/app/pillage-first.jks
+          if [ -n "$KEYSTORE_SECRET" ]; then
+            echo "$KEYSTORE_SECRET" | base64 --decode > ${{ github.workspace }}/apps/web/android/app/pillage-first.jks
+            echo "KEYSTORE_PATH=${{ github.workspace }}/apps/web/android/app/pillage-first.jks" >> $GITHUB_ENV
+          else
+            echo "KEYSTORE_PATH=" >> $GITHUB_ENV
+          fi
 
       - name: Build release APK
         working-directory: apps/web/android
         env:
-          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE != '' && github.workspace + '/apps/web/android/app/pillage-first.jks' || '' }}
+          KEYSTORE_FILE: ${{ env.KEYSTORE_PATH }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
