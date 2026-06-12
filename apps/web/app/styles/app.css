@@ -280,3 +280,19 @@ a:not([class]),
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+
+/* Tab panel scroll container */
+[role="tabpanel"] {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+/* Parent flex containers for tab panels */
+.flex-col:has(> [role="tablist"] + [role="tabpanel"]) {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}

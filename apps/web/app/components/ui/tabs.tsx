@@ -75,6 +75,7 @@ export const TabPanel = ({
       value={value}
       className={clsx(
         'border border-border p-2 rounded-bl-xs rounded-br-xs transition-colors',
+        'overflow-y-auto -webkit-overflow-scrolling-touch overscroll-behavior-contain touch-action-pan-y',
         className,
       )}
       {...props}
