@@ -283,4 +283,5 @@ a:not([class]),
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-y;
+  max-height: 65dvh;
 }
