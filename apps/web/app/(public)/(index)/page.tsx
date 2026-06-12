@@ -1,31 +1,6 @@
 import { Link } from 'react-router';
 import { Button } from 'app/components/ui/button';
 
-const StoneTexture = () => (
-  <svg
-    className="absolute inset-0 w-full h-full opacity-[0.03] pointer-events-none"
-    role="presentation"
-  >
-    <filter id="stone-noise">
-      <feTurbulence
-        type="fractalNoise"
-        baseFrequency="0.65"
-        numOctaves="3"
-        stitchTiles="stitch"
-      />
-      <feColorMatrix
-        type="saturate"
-        values="0"
-      />
-    </filter>
-    <rect
-      width="100%"
-      height="100%"
-      filter="url(#stone-noise)"
-    />
-  </svg>
-);
-
 const SwordIcon = () => (
   <svg
     className="size-5 shrink-0"
@@ -45,261 +20,279 @@ const SwordIcon = () => (
   </svg>
 );
 
-const SectionNumeral = ({ children }: { children: string }) => (
-  <span
-    className="font-[Cinzel] text-[var(--war-gold)] text-sm tracking-[0.2em] uppercase select-none"
-    aria-hidden
-  >
-    {children}
-  </span>
-);
-
-const IconDivider = () => (
-  <div className="w-full max-w-7xl mx-auto px-4 flex items-center justify-center gap-3 py-2">
-    <div className="h-px flex-1 bg-linear-to-r from-transparent to-[var(--stone-700)]" />
-    <img
-      src="/graphic-packs/day/icons/resources/lumber_tiny.png"
-      alt=""
-      loading="lazy"
-      className="size-6 opacity-30"
-      aria-hidden
-    />
-    <img
-      src="/graphic-packs/day/icons/resources/clay_tiny.png"
-      alt=""
-      loading="lazy"
-      className="size-6 opacity-30"
-      aria-hidden
-    />
-    <img
-      src="/graphic-packs/day/icons/resources/iron_tiny.png"
-      alt=""
-      loading="lazy"
-      className="size-6 opacity-30"
-      aria-hidden
-    />
-    <img
-      src="/graphic-packs/day/icons/resources/crop_tiny.png"
-      alt=""
-      loading="lazy"
-      className="size-6 opacity-30"
-      aria-hidden
-    />
-    <div className="h-px flex-1 bg-linear-to-l from-transparent to-[var(--stone-700)]" />
+const GoldFrame = ({ children }: { children: React.ReactNode }) => (
+  <div className="relative p-[3px] bg-linear-to-b from-[#cba467] via-[#efbf7b] to-[#835e35]">
+    <div className="bg-[#272727]">{children}</div>
   </div>
 );
 
-const PillarImage = ({ src, alt }: { src: string; alt: string }) => (
-  <div className="relative group overflow-hidden rounded border border-[var(--stone-700)] bg-[var(--stone-900)] transition-all duration-300 hover:shadow-[0_0_20px_rgba(200,147,58,0.3)]">
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      className="w-full h-40 md:h-48 object-contain p-4 transition-transform duration-500 group-hover:scale-105"
-    />
+const SectionDivider = () => (
+  <div className="flex items-center gap-3 justify-center py-1">
+    <div className="h-px flex-1 max-w-40 bg-linear-to-r from-transparent to-[#cba467]" />
+    <div className="flex gap-1">
+      <img
+        src="/graphic-packs/day/icons/resources/lumber_tiny.png"
+        alt=""
+        loading="lazy"
+        className="size-5 opacity-50"
+        aria-hidden
+      />
+      <img
+        src="/graphic-packs/day/icons/resources/clay_tiny.png"
+        alt=""
+        loading="lazy"
+        className="size-5 opacity-50"
+        aria-hidden
+      />
+      <img
+        src="/graphic-packs/day/icons/resources/iron_tiny.png"
+        alt=""
+        loading="lazy"
+        className="size-5 opacity-50"
+        aria-hidden
+      />
+      <img
+        src="/graphic-packs/day/icons/resources/crop_tiny.png"
+        alt=""
+        loading="lazy"
+        className="size-5 opacity-50"
+        aria-hidden
+      />
+    </div>
+    <div className="h-px flex-1 max-w-40 bg-linear-to-l from-transparent to-[#cba467]" />
   </div>
 );
 
-const Pillar = ({
-  numeral,
-  title,
-  description,
+const PillarCard = ({
   imageSrc,
   imageAlt,
-  align = 'left',
+  title,
+  description,
+  flip = false,
 }: {
-  numeral: string;
-  title: string;
-  description: string;
   imageSrc: string;
   imageAlt: string;
-  align?: 'left' | 'right';
-}) => {
-  const imageOrder = align === 'right' ? 'md:order-2' : 'md:order-1';
-  const textOrder = align === 'right' ? 'md:order-1' : 'md:order-2';
-  const textAlign =
-    align === 'right'
-      ? 'md:items-end md:text-right'
-      : 'md:items-start md:text-left';
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center py-6">
-      <div className={imageOrder}>
-        <PillarImage
-          src={imageSrc}
-          alt={imageAlt}
-        />
-      </div>
-      <div className={`flex flex-col gap-3 ${textOrder} ${textAlign}`}>
-        <SectionNumeral>{numeral}</SectionNumeral>
-        <h3 className="font-[Cinzel] text-[var(--parchment)] text-xl md:text-2xl font-semibold tracking-wide">
-          {title}
-        </h3>
-        <p className="font-[Crimson_Pro] text-[var(--parchment-dim)] text-base md:text-lg leading-relaxed">
-          {description}
-        </p>
-      </div>
+  title: string;
+  description: string;
+  flip?: boolean;
+}) => (
+  <div
+    className={`grid grid-cols-1 md:grid-cols-[200px_1fr] gap-0 overflow-hidden ${flip ? 'md:[direction:rtl]' : ''}`}
+  >
+    <div className="bg-[#1f1f1f] flex items-center justify-center p-6 md:p-8">
+      <img
+        src={imageSrc}
+        alt={imageAlt}
+        loading="lazy"
+        className="w-full max-w-[180px] h-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+      />
     </div>
-  );
-};
+    <div
+      className="p-6 md:p-8 flex flex-col gap-3"
+      style={{ direction: 'ltr' }}
+    >
+      <h3 className="font-[Red_Rose,serif] text-[#261f16] text-xl font-bold tracking-wide">
+        {title}
+      </h3>
+      <p className="font-[Noto_Sans,sans-serif] text-[#5e463a] text-sm leading-relaxed">
+        {description}
+      </p>
+    </div>
+  </div>
+);
 
 const HomePage = () => {
   return (
     <>
       <title>Pillage First! (Ask Questions Later)</title>
       <style>{`
-        .cta-shimmer {
-          background-image: linear-gradient(
-            110deg,
-            var(--war-gold) 0%,
-            var(--war-gold) 40%,
-            #e8b85e 50%,
-            var(--war-gold) 60%,
-            var(--war-gold) 100%
-          );
-          background-size: 200% 100%;
+        .tv-green-btn {
+          background-image: linear-gradient(to bottom, #84b253, #466428);
+          border: 1px solid #4a6e26;
+          box-shadow:
+            inset 0 -4px 0 -2px #344a1d,
+            inset 0 4px 0 -2px #84b253,
+            inset 0 0 0 2px #679f1b;
+          text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+          transition: all 0.15s ease-out;
         }
-        .cta-shimmer:hover {
-          animation: shimmer-sweep 1.5s ease-in-out infinite;
+        .tv-green-btn:hover {
+          background-image: linear-gradient(to bottom, #98c96a, #5a8133);
+          box-shadow:
+            inset 0 -4px 0 -2px #48711e,
+            inset 0 4px 0 -2px #98c96a,
+            inset 0 0 0 2px #75c90d;
+        }
+        .tv-green-btn:active {
+          box-shadow:
+            inset 0 4px 0 -2px #344a1d,
+            inset 0 -4px 0 -2px #84b253,
+            inset 0 0 0 2px #4a6e26;
+          transform: translateY(1px);
+        }
+        .tv-outline-btn {
+          background-image: linear-gradient(to bottom, #f5f5f5, #d9d9d9);
+          border: 1px solid #919191;
+          box-shadow:
+            inset 0 -4px 0 -2px #bcbcbc,
+            inset 0 4px 0 -2px #fcfcfc,
+            inset 0 0 0 2px #e0e0e0;
+          color: #1f1f1f;
+          text-shadow: none;
+          transition: all 0.15s ease-out;
+        }
+        .tv-outline-btn:hover {
+          background-image: linear-gradient(to bottom, #fff, #e6e6e6);
+          box-shadow:
+            inset 0 -4px 0 -2px #d0d0d0,
+            inset 0 4px 0 -2px #fff,
+            inset 0 0 0 2px #e6e6e6;
+        }
+        .tv-outline-btn:active {
+          box-shadow:
+            inset 0 4px 0 -2px #bcbcbc,
+            inset 0 -4px 0 -2px #fcfcfc,
+            inset 0 0 0 2px #d9d9d9;
+          transform: translateY(1px);
+        }
+        .tv-hero-text {
+          text-shadow:
+            1px 0 0 rgba(27,26,26,0.8),
+            1px 1px 0 rgba(27,26,26,0.8),
+            0 1px 0 rgba(27,26,26,0.8),
+            -1px 1px 0 rgba(27,26,26,0.8),
+            -1px 0 0 rgba(27,26,26,0.8),
+            -1px -1px 0 rgba(27,26,26,0.8),
+            0 -1px 0 rgba(27,26,26,0.8),
+            1px -1px 0 rgba(27,26,26,0.8);
+        }
+        .tv-gold-border {
+          border-image: linear-gradient(180deg, #cba467 5%, #f3e2ae 13%, #efbf7b 32%, #aa8050 48%, #835e35 72%, #ad8a54 93%, #d7b672) 1;
         }
       `}</style>
-      <main className="bg-[var(--stone-950)] min-h-screen overflow-x-hidden">
-        {/* ── SECTION 1: Hero ── */}
-        <section className="relative flex flex-col min-h-[100dvh]">
-          {/* Village background image */}
-          <div className="absolute inset-0 overflow-hidden">
+
+      <main
+        className="min-h-screen"
+        style={{
+          background:
+            'linear-gradient(180deg, #c8a36c, #f2dfb9 30px, #fef0ce 200px, #fef0ce calc(100% - 200px), #f5e3bd calc(100% - 30px), #c8a46c)',
+        }}
+      >
+        {/* ── HERO SECTION ── */}
+        <section className="relative overflow-hidden">
+          {/* Background image with dark overlay */}
+          <div className="absolute inset-0">
             <img
               src="/graphic-packs/day/backgrounds/bgBuildings.jpg"
               alt=""
               loading="eager"
-              className="absolute inset-0 w-full h-full object-cover object-center opacity-20"
+              className="w-full h-full object-cover"
               aria-hidden
             />
-            {/* Dark gradient overlay — stronger on left for text readability */}
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(to right, rgba(26,22,17,0.95) 0%, rgba(26,22,17,0.7) 50%, rgba(26,22,17,0.4) 100%)',
-              }}
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(to top, var(--stone-950) 0%, transparent 30%)',
+                  'linear-gradient(180deg, rgba(49,44,44,0.85), rgba(26,30,31,0.85))',
               }}
             />
           </div>
 
-          {/* Atmospheric resource icons — scattered in background */}
-          <img
-            src="/graphic-packs/day/icons/resources/lumber_small.png"
-            alt=""
-            loading="eager"
-            className="absolute top-[15%] right-[8%] size-16 opacity-[0.05] pointer-events-none hidden md:block"
-            aria-hidden
-          />
-          <img
-            src="/graphic-packs/day/icons/resources/clay_small.png"
-            alt=""
-            loading="eager"
-            className="absolute top-[60%] right-[15%] size-14 opacity-[0.04] pointer-events-none hidden md:block"
-            aria-hidden
-          />
-          <img
-            src="/graphic-packs/day/icons/resources/iron_small.png"
-            alt=""
-            loading="eager"
-            className="absolute bottom-[25%] left-[5%] size-12 opacity-[0.05] pointer-events-none hidden md:block"
-            aria-hidden
-          />
-          <img
-            src="/graphic-packs/day/icons/resources/crop_small.png"
-            alt=""
-            loading="eager"
-            className="absolute top-[30%] left-[12%] size-10 opacity-[0.04] pointer-events-none hidden md:block"
-            aria-hidden
-          />
+          {/* Hero content */}
+          <div className="relative z-10 flex flex-col items-center justify-center min-h-[70vh] md:min-h-[80vh] px-4 py-16 text-center">
+            {/* Game logo / title */}
+            <img
+              src="/pillage-first-logo-horizontal.svg"
+              alt="Pillage First!"
+              className="w-64 sm:w-80 md:w-96 h-auto mb-6 drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
+            />
 
-          <StoneTexture />
+            <h1 className="font-[Red_Rose,serif] tv-hero-text text-[#fff9eb] text-3xl sm:text-4xl md:text-5xl font-bold tracking-wide mb-4">
+              Pillage First!
+            </h1>
 
-          {/* Decorative top border */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-transparent via-[var(--war-gold-dim)] to-transparent opacity-60 z-10" />
+            <p className="font-[Red_Rose,serif] tv-hero-text text-[#f5e8c8] text-lg sm:text-xl md:text-2xl mb-2">
+              Build. Raid. Conquer. Repeat.
+            </p>
 
-          {/* Content: text left, building right on desktop */}
-          <div className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center max-w-7xl mx-auto w-full px-4 gap-8 md:gap-12">
-            {/* Left: text content */}
-            <div className="flex flex-col gap-5 md:gap-6 md:flex-1 text-center md:text-left">
-              <h1
-                className="font-[Cinzel] text-[var(--parchment)] text-4xl sm:text-5xl md:text-6xl font-black tracking-wider leading-tight uppercase"
-                style={{ textShadow: '0 2px 30px rgba(0,0,0,0.7)' }}
-              >
-                Pillage First!
-              </h1>
-              <p className="font-[Cinzel] text-[var(--war-gold)] text-base sm:text-lg md:text-xl font-semibold tracking-[0.15em] uppercase">
-                Build. Raid. Conquer. Repeat.
-              </p>
-              <p className="font-[Crimson_Pro] text-[var(--parchment-dim)] text-lg md:text-xl leading-relaxed">
-                Single-player strategy. No waiting for other players.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start mt-2">
-                <Link to="/game-worlds/create">
-                  <Button
-                    size="lg"
-                    className="cta-shimmer font-[Cinzel] text-[var(--stone-950)] text-base md:text-lg px-8 py-6 font-bold tracking-wider uppercase shadow-lg shadow-[var(--war-gold)]/20 transition-all hover:shadow-[var(--war-gold)]/40 cursor-pointer"
-                  >
-                    <SwordIcon />
-                    Begin Your Campaign
-                  </Button>
-                </Link>
-                <Link to="/game-worlds">
-                  <Button
-                    variant="outline"
-                    className="font-[Crimson_Pro] border-[var(--stone-600)] text-[var(--parchment-dim)] hover:bg-[var(--stone-800)] hover:text-[var(--parchment)] cursor-pointer"
-                  >
-                    Existing game worlds
-                  </Button>
-                </Link>
-              </div>
+            <p className="font-[Noto_Sans,sans-serif] tv-hero-text text-[#e6dbc9] text-sm md:text-base mb-8 max-w-md">
+              Single-player strategy inspired by Travian. No waiting for other
+              players. No account needed.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 items-center">
+              <Link to="/game-worlds/create">
+                <button
+                  type="button"
+                  className="tv-green-btn font-[Red_Rose,serif] text-white text-lg font-bold px-10 py-3 cursor-pointer flex items-center gap-2"
+                >
+                  <SwordIcon />
+                  PLAY NOW
+                </button>
+              </Link>
+              <Link to="/game-worlds">
+                <button
+                  type="button"
+                  className="tv-outline-btn font-[Noto_Sans,sans-serif] text-sm font-bold px-6 py-2.5 cursor-pointer"
+                >
+                  Existing game worlds
+                </button>
+              </Link>
             </div>
 
-            {/* Right: Main Building image — emerging from darkness */}
-            <div className="relative md:flex-1 flex justify-center md:justify-end">
-              <div className="relative">
-                {/* Ambient glow behind building */}
-                <div
-                  className="absolute inset-0 blur-3xl opacity-20"
-                  style={{
-                    background:
-                      'radial-gradient(circle, var(--war-gold-dim) 0%, transparent 70%)',
-                  }}
-                  aria-hidden
-                />
-                <img
-                  src="/graphic-packs/day/buildings/roman/g31Top.png"
-                  alt="Roman Main Building — the heart of your village"
-                  loading="eager"
-                  className="relative w-56 sm:w-64 md:w-80 lg:w-96 h-auto drop-shadow-[0_4px_30px_rgba(0,0,0,0.8)]"
-                />
-              </div>
+            {/* Tribe characters — decorative row of unit images */}
+            <div className="mt-12 flex items-end justify-center gap-2 opacity-80">
+              <img
+                src="/graphic-packs/day/icons/units/roman/section/t5.png"
+                alt=""
+                loading="eager"
+                className="w-12 md:w-16 h-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]"
+                aria-hidden
+              />
+              <img
+                src="/graphic-packs/day/icons/units/teuton/section/t3.png"
+                alt=""
+                loading="eager"
+                className="w-14 md:w-20 h-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]"
+                aria-hidden
+              />
+              <img
+                src="/graphic-packs/day/icons/units/gaul/section/t5.png"
+                alt=""
+                loading="eager"
+                className="w-14 md:w-20 h-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]"
+                aria-hidden
+              />
+              <img
+                src="/graphic-packs/day/icons/units/roman/section/t3.png"
+                alt=""
+                loading="eager"
+                className="w-12 md:w-16 h-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]"
+                aria-hidden
+              />
             </div>
           </div>
 
-          {/* Bottom fade */}
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-[var(--stone-950)] to-transparent z-10" />
+          {/* Bottom vignette */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-24"
+            style={{
+              background:
+                'linear-gradient(180deg, transparent, rgba(254,240,206,1))',
+            }}
+          />
         </section>
 
         {/* ── SECTION 2: What is this game ── */}
-        <section className="relative px-4 py-16 md:py-24">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-start">
-              <div className="max-w-2xl">
-                <SectionNumeral>The Game</SectionNumeral>
-                <h2 className="font-[Cinzel] text-[var(--parchment)] text-2xl md:text-3xl font-bold tracking-wide mt-4 mb-6">
+        <section className="px-4 py-12 md:py-16">
+          <div className="max-w-[1100px] mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-8 items-start">
+              <div>
+                <h2 className="font-[Red_Rose,serif] text-[#261f16] text-2xl md:text-3xl font-bold mb-4">
                   A village is only as strong as its last raid.
                 </h2>
-                <div className="font-[Crimson_Pro] text-[var(--parchment-dim)] text-lg md:text-xl leading-relaxed space-y-4">
+                <div className="font-[Noto_Sans,sans-serif] text-[#5e463a] text-sm md:text-base leading-relaxed space-y-3">
                   <p>
                     You start with a handful of settlers and a plot of land.
                     Harvest resources. Raise buildings. Train soldiers from
@@ -316,19 +309,20 @@ const HomePage = () => {
                     world exists for you to conquer at your own pace.
                   </p>
                 </div>
-                <div className="mt-8 flex gap-3">
+                <div className="mt-6 flex gap-3">
                   <Link to="/frequently-asked-questions">
                     <Button
                       variant="ghost"
-                      className="font-[Crimson_Pro] text-[var(--parchment-dim)] hover:bg-[var(--stone-800)] hover:text-[var(--parchment)] cursor-pointer"
+                      className="font-[Noto_Sans,sans-serif] text-[#5a9a0a] hover:text-[#75c90d] text-sm font-bold p-0 h-auto cursor-pointer"
                     >
                       Frequently asked questions
                     </Button>
                   </Link>
+                  <span className="text-[#d2bda1]">|</span>
                   <Link to="/latest-updates">
                     <Button
                       variant="ghost"
-                      className="font-[Crimson_Pro] text-[var(--parchment-dim)] hover:bg-[var(--stone-800)] hover:text-[var(--parchment)] cursor-pointer"
+                      className="font-[Noto_Sans,sans-serif] text-[#5a9a0a] hover:text-[#75c90d] text-sm font-bold p-0 h-auto cursor-pointer"
                     >
                       Latest updates
                     </Button>
@@ -336,118 +330,116 @@ const HomePage = () => {
                 </div>
               </div>
 
-              {/* Village map tile decoration */}
-              <div className="hidden md:flex flex-col gap-2 items-center opacity-40 pt-12">
-                <img
-                  src="/graphic-packs/default/map/villages/dorf3_5.png"
-                  alt=""
-                  loading="lazy"
-                  className="w-24 h-auto"
-                  aria-hidden
-                />
-                <img
-                  src="/graphic-packs/default/map/villages/dorf2_3.png"
-                  alt=""
-                  loading="lazy"
-                  className="w-20 h-auto"
-                  aria-hidden
-                />
-                <img
-                  src="/graphic-packs/default/map/villages/dorf1_1.png"
-                  alt=""
-                  loading="lazy"
-                  className="w-16 h-auto"
-                  aria-hidden
-                />
+              {/* Village preview */}
+              <div className="hidden md:flex flex-col items-center gap-2">
+                <GoldFrame>
+                  <div className="p-4 flex flex-col items-center gap-2">
+                    <img
+                      src="/graphic-packs/default/map/villages/dorf3_5.png"
+                      alt="Village map preview"
+                      loading="lazy"
+                      className="w-32 h-auto"
+                    />
+                    <span className="font-[Noto_Sans,sans-serif] text-[#c3c3c3] text-xs">
+                      Your village on the map
+                    </span>
+                  </div>
+                </GoldFrame>
               </div>
             </div>
           </div>
         </section>
 
-        <IconDivider />
+        <SectionDivider />
 
         {/* ── SECTION 3: Core gameplay pillars ── */}
-        <section className="relative px-4 py-16 md:py-24">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-10">
-              <SectionNumeral>Mechanics</SectionNumeral>
-              <h2 className="font-[Cinzel] text-[var(--parchment)] text-2xl md:text-3xl font-bold tracking-wide mt-4">
-                The pillars of your campaign
-              </h2>
+        <section className="px-4 py-12 md:py-16">
+          <div className="max-w-[1100px] mx-auto">
+            <h2 className="font-[Red_Rose,serif] text-[#261f16] text-2xl md:text-3xl font-bold mb-8 text-center">
+              The pillars of your campaign
+            </h2>
+
+            <div className="flex flex-col gap-0">
+              <GoldFrame>
+                <PillarCard
+                  imageSrc="/graphic-packs/day/buildings/roman/g31Top.png"
+                  imageAlt="Main Building — the heart of your village"
+                  title="Build"
+                  description="Raise a village from dirt roads and timber frames into a fortified settlement. Expand resource fields, construct specialized buildings, and optimize production to fuel your war effort."
+                />
+              </GoldFrame>
+
+              <div className="h-3" />
+
+              <GoldFrame>
+                <PillarCard
+                  imageSrc="/graphic-packs/day/icons/units/roman/section/t5.png"
+                  imageAlt="Roman legionnaire ready for battle"
+                  title="Train"
+                  description="Recruit infantry, cavalry, and siege engines from your barracks and stables. Each unit has strengths and weaknesses — your army composition determines victory or defeat."
+                  flip
+                />
+              </GoldFrame>
+
+              <div className="h-3" />
+
+              <GoldFrame>
+                <PillarCard
+                  imageSrc="/graphic-packs/day/icons/units/teuton/section/t3.png"
+                  imageAlt="Teuton cavalry — the raiding force"
+                  title="Raid"
+                  description="Launch raids against NPC villages to plunder resources. The spoils of war are what keep your empire growing. Strike fast, strike hard, and carry the loot home."
+                />
+              </GoldFrame>
+
+              <div className="h-3" />
+
+              <GoldFrame>
+                <PillarCard
+                  imageSrc="/graphic-packs/default/map/oasis/wheat/2-0-0-0.avif"
+                  imageAlt="A wheat oasis — conquer it for resource bonuses"
+                  title="Conquer Oases"
+                  description="Seize resource oases scattered across the map. Each conquered oasis grants passive bonuses to your production — wood, clay, iron, or wheat. Territory means power."
+                  flip
+                />
+              </GoldFrame>
+
+              <div className="h-3" />
+
+              <GoldFrame>
+                <PillarCard
+                  imageSrc="/hero-assets/backgrounds/heroPageBackground.jpg"
+                  imageAlt="Your hero's domain — equip, customize, and send to battle"
+                  title="Hero Adventures"
+                  description="Send your hero on dangerous adventures to earn experience, equipment, and rare rewards. Level up your champion and equip them with artifacts that tip the scales in battle."
+                />
+              </GoldFrame>
             </div>
 
-            <div className="flex flex-col gap-6">
-              <Pillar
-                numeral="I"
-                title="Build"
-                description="Raise a village from dirt roads and timber frames into a fortified settlement. Expand resource fields, construct specialized buildings, and optimize production to fuel your war effort."
-                imageSrc="/graphic-packs/day/buildings/roman/g17.png"
-                imageAlt="Barracks — where your army begins"
-              />
-              <Pillar
-                numeral="II"
-                title="Train"
-                description="Recruit infantry, cavalry, and siege engines from your barracks and stables. Each unit has strengths and weaknesses — your army composition determines victory or defeat."
-                imageSrc="/graphic-packs/day/icons/units/roman/section/t5.png"
-                imageAlt="Roman legionnaire ready for battle"
-                align="right"
-              />
-              <Pillar
-                numeral="III"
-                title="Raid"
-                description="Launch raids against NPC villages to plunder resources. The spoils of war are what keep your empire growing. Strike fast, strike hard, and carry the loot home."
-                imageSrc="/graphic-packs/day/icons/units/teuton/section/t3.png"
-                imageAlt="Teuton cavalry — the raiding force"
-              />
-              <Pillar
-                numeral="IV"
-                title="Conquer Oases"
-                description="Seize resource oases scattered across the map. Each conquered oasis grants passive bonuses to your production — wood, clay, iron, or wheat. Territory means power."
-                imageSrc="/graphic-packs/default/map/oasis/wheat/2-0-0-0.avif"
-                imageAlt="A wheat oasis on the map — conquer it for resource bonuses"
-                align="right"
-              />
-              <Pillar
-                numeral="V"
-                title="Hero Adventures"
-                description="Send your hero on dangerous adventures to earn experience, equipment, and rare rewards. Level up your champion and equip them with artifacts that tip the scales in battle."
-                imageSrc="/hero-assets/backgrounds/heroPageBackground.jpg"
-                imageAlt="Your hero's domain — equip, customize, and send to battle"
-              />
-            </div>
-
-            <div className="mt-12 flex gap-3">
+            <div className="mt-8 text-center">
               <Link to="/get-involved">
-                <Button
-                  variant="outline"
-                  className="font-[Crimson_Pro] border-[var(--stone-600)] text-[var(--parchment-dim)] hover:bg-[var(--stone-800)] hover:text-[var(--parchment)] cursor-pointer"
+                <button
+                  type="button"
+                  className="tv-outline-btn font-[Noto_Sans,sans-serif] text-sm font-bold px-6 py-2.5 cursor-pointer"
                 >
                   Get involved
-                </Button>
+                </button>
               </Link>
             </div>
           </div>
         </section>
 
-        <IconDivider />
+        <SectionDivider />
 
         {/* ── SECTION 4: Why single player ── */}
-        <section className="relative px-4 py-16 md:py-24">
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'radial-gradient(ellipse 60% 50% at 30% 50%, var(--stone-900) 0%, transparent 70%)',
-            }}
-          />
-          <div className="max-w-7xl mx-auto relative z-10">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-center">
-              <div className="max-w-2xl">
-                <SectionNumeral>Design Philosophy</SectionNumeral>
-                <h2 className="font-[Cinzel] text-[var(--parchment)] text-2xl md:text-3xl font-bold tracking-wide mt-4 mb-6">
+        <section className="px-4 py-12 md:py-16">
+          <div className="max-w-[1100px] mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-8 items-center">
+              <div>
+                <h2 className="font-[Red_Rose,serif] text-[#261f16] text-2xl md:text-3xl font-bold mb-4">
                   No allies. No enemies. No schedule.
                 </h2>
-                <div className="font-[Crimson_Pro] text-[var(--parchment-dim)] text-lg md:text-xl leading-relaxed space-y-4">
+                <div className="font-[Noto_Sans,sans-serif] text-[#5e463a] text-sm md:text-base leading-relaxed space-y-3">
                   <p>
                     This is not a game where you log in to find your village in
                     ashes because someone attacked while you slept. There is no
@@ -462,123 +454,127 @@ const HomePage = () => {
                 </div>
               </div>
 
-              {/* Resource icons as decorative column */}
-              <div className="hidden md:flex flex-col gap-4 items-center opacity-30">
-                <img
-                  src="/graphic-packs/day/icons/resources/resources_medium.png"
-                  alt=""
-                  loading="lazy"
-                  className="w-20 h-auto"
-                  aria-hidden
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <img
-                    src="/graphic-packs/day/icons/resources/lumber_medium.png"
-                    alt=""
-                    loading="lazy"
-                    className="size-10"
-                    aria-hidden
-                  />
-                  <img
-                    src="/graphic-packs/day/icons/resources/clay_medium.png"
-                    alt=""
-                    loading="lazy"
-                    className="size-10"
-                    aria-hidden
-                  />
-                  <img
-                    src="/graphic-packs/day/icons/resources/iron_medium.png"
-                    alt=""
-                    loading="lazy"
-                    className="size-10"
-                    aria-hidden
-                  />
-                  <img
-                    src="/graphic-packs/day/icons/resources/crop_medium.png"
-                    alt=""
-                    loading="lazy"
-                    className="size-10"
-                    aria-hidden
-                  />
-                </div>
+              {/* Resource icons */}
+              <div className="hidden md:flex flex-col items-center gap-3">
+                <GoldFrame>
+                  <div className="p-5 flex flex-col items-center gap-3">
+                    <img
+                      src="/graphic-packs/day/icons/resources/resources_medium.png"
+                      alt="Resource overview"
+                      loading="lazy"
+                      className="w-24 h-auto"
+                    />
+                    <div className="grid grid-cols-4 gap-2">
+                      <img
+                        src="/graphic-packs/day/icons/resources/lumber_small.png"
+                        alt=""
+                        loading="lazy"
+                        className="size-8"
+                        aria-hidden
+                      />
+                      <img
+                        src="/graphic-packs/day/icons/resources/clay_small.png"
+                        alt=""
+                        loading="lazy"
+                        className="size-8"
+                        aria-hidden
+                      />
+                      <img
+                        src="/graphic-packs/day/icons/resources/iron_small.png"
+                        alt=""
+                        loading="lazy"
+                        className="size-8"
+                        aria-hidden
+                      />
+                      <img
+                        src="/graphic-packs/day/icons/resources/crop_small.png"
+                        alt=""
+                        loading="lazy"
+                        className="size-8"
+                        aria-hidden
+                      />
+                    </div>
+                    <span className="font-[Noto_Sans,sans-serif] text-[#c3c3c3] text-xs">
+                      Manage your resources
+                    </span>
+                  </div>
+                </GoldFrame>
               </div>
             </div>
           </div>
         </section>
 
-        <IconDivider />
+        <SectionDivider />
 
         {/* ── SECTION 5: Final CTA ── */}
-        <section className="relative px-4 py-16 md:py-24">
-          <StoneTexture />
-          {/* Faint building silhouettes in background */}
+        <section className="relative overflow-hidden">
+          {/* Dark background with building silhouettes */}
+          <div className="absolute inset-0 bg-[#1f1f1f]" />
           <img
             src="/graphic-packs/day/buildings/roman/g31Top.png"
             alt=""
             loading="lazy"
-            className="absolute bottom-0 right-[5%] w-48 md:w-72 opacity-[0.04] pointer-events-none"
+            className="absolute bottom-0 right-[5%] w-48 md:w-72 opacity-10 pointer-events-none"
             aria-hidden
           />
           <img
             src="/graphic-packs/day/buildings/roman/g17.png"
             alt=""
             loading="lazy"
-            className="absolute bottom-0 left-[10%] w-32 md:w-48 opacity-[0.03] pointer-events-none"
+            className="absolute bottom-0 left-[10%] w-32 md:w-48 opacity-[0.07] pointer-events-none"
             aria-hidden
           />
 
-          <div className="max-w-7xl mx-auto relative z-10 text-center">
-            <h2 className="font-[Cinzel] text-[var(--parchment)] text-2xl md:text-4xl font-bold tracking-wide mb-4">
+          <div className="relative z-10 px-4 py-16 md:py-20 text-center">
+            <h2 className="font-[Red_Rose,serif] tv-hero-text text-[#fff9eb] text-2xl md:text-4xl font-bold mb-3">
               Ready to pillage?
             </h2>
-            <p className="font-[Crimson_Pro] text-[var(--parchment-dim)] text-lg md:text-xl mb-8">
+            <p className="font-[Noto_Sans,sans-serif] text-[#d2bda1] text-sm md:text-base mb-8">
               No account needed. Your progress saves locally.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-10">
               <Link to="/game-worlds/create">
-                <Button
-                  size="lg"
-                  className="cta-shimmer font-[Cinzel] text-[var(--stone-950)] text-base md:text-lg px-8 py-6 font-bold tracking-wider uppercase shadow-lg shadow-[var(--war-gold)]/20 transition-all hover:shadow-[var(--war-gold)]/40 cursor-pointer"
+                <button
+                  type="button"
+                  className="tv-green-btn font-[Red_Rose,serif] text-white text-lg font-bold px-10 py-3 cursor-pointer flex items-center gap-2"
                 >
                   <SwordIcon />
-                  Begin Your Campaign
-                </Button>
+                  PLAY NOW
+                </button>
               </Link>
               <Link to="/game-worlds">
-                <Button
-                  variant="outline"
-                  className="font-[Crimson_Pro] border-[var(--stone-600)] text-[var(--parchment-dim)] hover:bg-[var(--stone-800)] hover:text-[var(--parchment)] cursor-pointer"
+                <button
+                  type="button"
+                  className="tv-outline-btn font-[Noto_Sans,sans-serif] text-sm font-bold px-6 py-2.5 cursor-pointer"
                 >
                   Existing game worlds
-                </Button>
+                </button>
               </Link>
             </div>
-            <div className="mt-10 flex flex-col sm:flex-row gap-2 justify-center">
+
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <a
                 href="https://discord.gg/Ep7NKVXUZA"
                 rel="noopener noreferrer"
                 target="_blank"
-                className="font-[Crimson_Pro] text-[var(--stone-600)] hover:text-[var(--parchment-dim)] text-sm transition-colors"
+                className="font-[Noto_Sans,sans-serif] text-[#919191] hover:text-[#fff9eb] text-xs transition-colors"
               >
                 Discord
               </a>
-              <span className="text-[var(--stone-700)] hidden sm:inline">
-                |
-              </span>
+              <span className="text-[#4a494a] hidden sm:inline">|</span>
               <a
                 href="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
                 rel="noopener noreferrer"
                 target="_blank"
-                className="font-[Crimson_Pro] text-[var(--stone-600)] hover:text-[var(--parchment-dim)] text-sm transition-colors"
+                className="font-[Noto_Sans,sans-serif] text-[#919191] hover:text-[#fff9eb] text-xs transition-colors"
               >
                 GitHub
               </a>
-              <span className="text-[var(--stone-700)] hidden sm:inline">
-                |
-              </span>
+              <span className="text-[#4a494a] hidden sm:inline">|</span>
               <Link
                 to="/get-involved"
-                className="font-[Crimson_Pro] text-[var(--stone-600)] hover:text-[var(--parchment-dim)] text-sm transition-colors"
+                className="font-[Noto_Sans,sans-serif] text-[#919191] hover:text-[#fff9eb] text-xs transition-colors"
               >
                 Get involved
               </Link>

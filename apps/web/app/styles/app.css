@@ -52,6 +52,27 @@
   --parchment-dim: #b8a88e;
   --war-gold: #c8933a;
   --war-gold-dim: #a07530;
+
+  /* Travian-matched design tokens */
+  --tv-parchment: #fef0ce;
+  --tv-parchment-dark: #f5e3bd;
+  --tv-parchment-light: #fff9eb;
+  --tv-gold-light: #f3e2ae;
+  --tv-gold: #cba467;
+  --tv-gold-dark: #835e35;
+  --tv-gold-darker: #553d21;
+  --tv-brown: #34220d;
+  --tv-brown-dark: #261f16;
+  --tv-green-top: #84b253;
+  --tv-green-bottom: #466428;
+  --tv-green-border: #4a6e26;
+  --tv-green-dark: #344a1d;
+  --tv-green-accent: #75c90d;
+  --tv-text-dark: #261f16;
+  --tv-text-body: #5e463a;
+  --tv-text-muted: #7c694b;
+  --tv-overlay-dark: rgba(49,44,44,0.85);
+  --tv-overlay-darker: rgba(26,30,31,0.85);
 }
 
 .dark {
