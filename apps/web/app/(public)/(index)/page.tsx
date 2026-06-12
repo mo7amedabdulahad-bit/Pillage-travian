@@ -113,9 +113,8 @@ const HomePage = () => {
               'linear-gradient(to right, rgba(13,11,8,0.95) 0%, rgba(13,11,8,0.7) 50%, rgba(13,11,8,0.3) 100%), url("/landing/hero-bg.jpg") center/cover no-repeat',
           }}
         >
-          <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* Left: text content */}
-            <div className="lp-fade-up">
+          <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 py-16 flex items-center justify-center min-h-[70dvh]">
+            <div className="lp-fade-up text-center max-w-[640px]">
               <h1
                 style={{
                   fontFamily: "'Cinzel Decorative', serif",
@@ -146,7 +145,7 @@ const HomePage = () => {
                   fontSize: 'clamp(1rem, 1.5vw, 1.2rem)',
                   lineHeight: 1.6,
                   maxWidth: '480px',
-                  marginBottom: '2rem',
+                  margin: '0 auto 2rem',
                 }}
               >
                 Single-player village strategy. Build your empire at your own
@@ -155,46 +154,12 @@ const HomePage = () => {
               <Link to="/game-worlds/create">
                 <button
                   type="button"
-                  className="lp-cta-btn flex items-center gap-2"
+                  className="lp-cta-btn flex items-center gap-2 mx-auto"
                 >
                   <SwordIcon />
                   PLAY NOW
                 </button>
               </Link>
-            </div>
-
-            {/* Right: hero character image (desktop only) */}
-            <div className="hidden lg:flex justify-end">
-              <div
-                className="relative w-full max-w-[560px]"
-                style={{
-                  maskImage:
-                    'linear-gradient(to left, black 60%, transparent 100%)',
-                  WebkitMaskImage:
-                    'linear-gradient(to left, black 60%, transparent 100%)',
-                }}
-              >
-                <img
-                  src="/landing/hero-character.jpg"
-                  alt=""
-                  className="w-full h-auto object-cover rounded-sm"
-                  style={{ maxHeight: '70dvh' }}
-                  loading="eager"
-                  aria-hidden
-                />
-              </div>
-            </div>
-
-            {/* Mobile: hero character as cinematic strip */}
-            <div className="lg:hidden -mx-6 mt-4">
-              <img
-                src="/landing/hero-character.jpg"
-                alt=""
-                className="w-full object-cover"
-                style={{ height: 220 }}
-                loading="eager"
-                aria-hidden
-              />
             </div>
           </div>
         </section>
