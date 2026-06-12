@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tailwindcss-safe-area";
+@import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:ital,wght@0,400;0,600;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap");
 
 @variant standalone (@media (display-mode: standalone));
 @variant browser (@media (display-mode: browser));
@@ -52,6 +53,15 @@
   --parchment-dim: #b8a88e;
   --war-gold: #c8933a;
   --war-gold-dim: #a07530;
+
+  /* Landing page tokens */
+  --lp-bg: #0d0b08;
+  --lp-surface: #1a1510;
+  --lp-border: #3a2e1e;
+  --lp-gold: #c8933a;
+  --lp-gold-light: #e8b96a;
+  --lp-text: #e8dcc8;
+  --lp-text-muted: #8a7a62;
 
   /* Travian-matched design tokens */
   --tv-parchment: #fef0ce;
@@ -157,6 +167,45 @@
     }
     100% {
       background-position: 200% center;
+    }
+  }
+
+  @keyframes lp-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .lp-fade-up {
+    animation: lp-fade-up 0.8s ease forwards;
+  }
+
+  .lp-scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .lp-scroll-reveal.lp-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lp-fade-up {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    .lp-scroll-reveal {
+      transition: none;
+      opacity: 1;
+      transform: none;
     }
   }
 }
