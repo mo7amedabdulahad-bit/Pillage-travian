@@ -197,6 +197,7 @@
 @utility content-visibility-auto {
   content-visibility: auto;
 }
+
 @utility no-spinner {
   &::-webkit-outer-spin-button,
   &::-webkit-inner-spin-button {
@@ -207,12 +208,13 @@
     -moz-appearance: textfield;
   }
 }
+
 .scrollbar-hidden {
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
 }
 
 .scrollbar-hidden::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Edge */
+  display: none;
 }
 
 a,
@@ -234,24 +236,25 @@ summary::marker {
    ANDROID / MOBILE WEBVIEW OPTIMIZATIONS
    ============================================================ */
 
-/* Prevent rubber-band overscroll and unwanted touch behaviors */
 body {
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  /*
+   * DO NOT put touch-action: manipulation on body.
+   * That blocks pan-y gestures on all child elements including
+   * tab panels, making inner scroll containers non-scrollable
+   * on Android WebView. Leave touch-action unset on body so
+   * children can declare their own pan directions.
+   */
 }
 
-/* Allow text selection only inside inputs */
 input,
 textarea {
   -webkit-user-select: text;
   user-select: text;
 }
 
-/* Safe area support for notched Android phones.
-   Only pad the app-root, NOT the body, so the status bar
-   area is handled by Capacitor StatusBar plugin and not
-   double-padded by CSS. */
+/* Safe area for notched Android phones */
 .app-root,
 #root {
   padding-top: env(safe-area-inset-top);
@@ -260,39 +263,24 @@ textarea {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Touch targets: use padding instead of ::after pseudo-elements.
-   The ::after approach breaks layouts because absolutely positioned
-   pseudo-elements overflow into sibling elements.
-   Instead, ensure buttons and links have enough padding for a
-   comfortable tap area. This does NOT change visual size for
-   elements that already have their own padding defined. */
+/* Touch target padding — only for bare unstyled elements */
 button:not([class]),
 a:not([class]),
 [role="button"]:not([class]) {
   padding: 0.5rem;
 }
 
-/* Scrollable tab panels — any element with role=tabpanel or
-   a tab content container should scroll vertically */
-[role="tabpanel"],
-.tab-content {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-
-/* Tab panel scroll container */
+/*
+ * TAB PANEL SCROLLING
+ * These are real CSS properties (not Tailwind class names).
+ * touch-action: pan-y  — lets Android WebView know this element
+ *   scrolls vertically so it does not intercept the gesture.
+ * -webkit-overflow-scrolling: touch — enables momentum scrolling
+ *   on older WebKit/Android.
+ */
 [role="tabpanel"] {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-y;
-}
-
-/* Parent flex containers for tab panels */
-.flex-col:has(> [role="tablist"] + [role="tabpanel"]) {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
 }

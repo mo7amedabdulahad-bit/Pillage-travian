@@ -74,10 +74,17 @@ export const TabPanel = ({
     <TabsPrimitive.Content
       value={value}
       className={clsx(
-        'border border-border p-2 rounded-bl-xs rounded-br-xs transition-colors',
-        'overflow-y-auto -webkit-overflow-scrolling-touch overscroll-behavior-contain touch-action-pan-y',
+        'border border-border p-2 rounded-bl-xs rounded-br-xs transition-colors overflow-y-auto',
         className,
       )}
+      // Real CSS properties applied via style prop because Tailwind does not
+      // have utilities for -webkit-overflow-scrolling or touch-action: pan-y.
+      // These are essential for Android WebView scroll to work inside tabs.
+      style={{
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
+        touchAction: 'pan-y',
+      }}
       {...props}
     >
       {children}
