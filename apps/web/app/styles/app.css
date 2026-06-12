@@ -42,6 +42,16 @@
   --success: oklch(0.7 0.18 145);
   --warning: oklch(0.7 0.18 60);
   --link: oklch(0.6432 0.2313 142.62);
+
+  --stone-950: #1a1611;
+  --stone-900: #231e17;
+  --stone-800: #2e2720;
+  --stone-700: #3d342a;
+  --stone-600: #5c4f42;
+  --parchment: #e8dcc8;
+  --parchment-dim: #b8a88e;
+  --war-gold: #c8933a;
+  --war-gold-dim: #a07530;
 }
 
 .dark {
