@@ -129,6 +129,15 @@
   .animate-scale-pulse {
     animation: scale-pulse 1.2s ease-in-out infinite;
   }
+
+  @keyframes shimmer-sweep {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
 }
 
 @layer base {
