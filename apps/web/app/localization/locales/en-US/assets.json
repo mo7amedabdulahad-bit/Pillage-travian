@@ -896,15 +896,16 @@
     "HATED": "Hated"
   },
   "FACTIONS": {
-    "PLAYER": "/",
-    "NPC1": "NPC faction 1",
-    "NPC2": "NPC faction 2",
-    "NPC3": "NPC faction 3",
-    "NPC4": "NPC faction 4",
-    "NPC5": "NPC faction 5",
-    "NPC6": "NPC faction 6",
-    "NPC7": "NPC faction 7",
-    "NPC8": "NPC faction 8"
+    "PLAYER": "Player",
+    "NPC1": "Iron Brotherhood",
+    "NPC2": "Merchant Guilds",
+    "NPC3": "Shadow Nomads",
+    "NPC4": "Stone Wardens",
+    "NPC5": "River Clans",
+    "NPC6": "Ember Cult",
+    "NPC7": "Verdant Order",
+    "NPC8": "Iron Scholars",
+    "NPC9": "Bone Reavers"
   },
   "RESOURCES": {
     "WOOD": "Wood",
