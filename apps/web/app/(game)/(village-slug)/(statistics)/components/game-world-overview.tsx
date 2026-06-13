@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { FACTION_NAMES } from '@pillage-first/game-assets/faction-names';
 import {
   FACTION_COLORS,
   TRIBE_COLORS,
@@ -38,18 +39,18 @@ export const GameWorldOverview = () => {
   const { gameWorldOverviewStatistics } = useGameWorldOverview();
 
   const playersByFactionData = useMemo(() => {
-    return factionSchema.options.map((name) => ({
-      name,
-      value: gameWorldOverviewStatistics.playersByFaction[name],
-      fill: FACTION_COLORS[name] ?? '#94a3b8',
+    return factionSchema.options.map((key) => ({
+      name: FACTION_NAMES[key] ?? key,
+      value: gameWorldOverviewStatistics.playersByFaction[key],
+      fill: FACTION_COLORS[key] ?? '#94a3b8',
     }));
   }, [gameWorldOverviewStatistics.playersByFaction]);
 
   const villagesByFactionData = useMemo(() => {
-    return factionSchema.options.map((name) => ({
-      name,
-      value: gameWorldOverviewStatistics.villagesByFaction[name],
-      fill: FACTION_COLORS[name] ?? '#94a3b8',
+    return factionSchema.options.map((key) => ({
+      name: FACTION_NAMES[key] ?? key,
+      value: gameWorldOverviewStatistics.villagesByFaction[key],
+      fill: FACTION_COLORS[key] ?? '#94a3b8',
     }));
   }, [gameWorldOverviewStatistics.villagesByFaction]);
 

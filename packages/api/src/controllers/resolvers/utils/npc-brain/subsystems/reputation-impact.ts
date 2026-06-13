@@ -19,6 +19,93 @@ import { resetRestState } from './loot-recovery';
  */
 
 /**
+ * Get or create npc_village_state for a village.
+ * For old game worlds, this ensures the row exists with proper faction data.
+ */
+const ensureNpcVillageState = (
+  db: DbFacade,
+  npcVillageId: number,
+): {
+  factionKey: FactionKey;
+  maxLoot: number;
+  lootAvailable: number;
+  restState: number;
+} | null => {
+  // Try to get existing state
+  try {
+    const state = db.selectObject({
+      sql: `
+        SELECT
+          nvs.faction_key AS factionKey,
+          nvs.max_loot_capacity AS maxLoot,
+          nvs.current_loot_available AS lootAvailable,
+          nvs.rest_state AS restState
+        FROM npc_village_state nvs
+        WHERE nvs.village_id = $villageId;
+      `,
+      bind: { $villageId: npcVillageId },
+      schema: z.object({
+        factionKey: z.string(),
+        maxLoot: z.number(),
+        lootAvailable: z.number(),
+        restState: z.number(),
+      }),
+    });
+
+    if (state?.factionKey?.startsWith('npc')) {
+      return state as {
+        factionKey: FactionKey;
+        maxLoot: number;
+        lootAvailable: number;
+        restState: number;
+      };
+    }
+  } catch (_e) {
+    // Column might not exist yet
+  }
+
+  // Fallback: get faction from players table and create/update the state
+  const villageInfo = db.selectObject({
+    sql: `
+      SELECT v.id, fi.faction
+      FROM villages v
+      JOIN players p ON p.id = v.player_id
+      JOIN faction_ids fi ON fi.id = p.faction_id
+      WHERE v.id = $villageId;
+    `,
+    bind: { $villageId: npcVillageId },
+    schema: z.object({ id: z.number(), faction: z.string() }),
+  });
+
+  if (!villageInfo || villageInfo.faction === 'player') {
+    return null;
+  }
+
+  const factionKey = villageInfo.faction as FactionKey;
+
+  // Try to insert or update the state
+  try {
+    db.exec({
+      sql: `
+        INSERT INTO npc_village_state (village_id, faction_key, last_interacted_at, times_attacked)
+        VALUES ($villageId, $factionKey, 0, 0)
+        ON CONFLICT (village_id) DO UPDATE SET faction_key = $factionKey;
+      `,
+      bind: { $villageId: npcVillageId, $factionKey: factionKey },
+    });
+  } catch (_e) {
+    // Table might not have faction_key column yet
+  }
+
+  return {
+    factionKey,
+    maxLoot: 500,
+    lootAvailable: 1.0,
+    restState: 0,
+  };
+};
+
+/**
  * Apply all consequences of a player raid on an NPC village.
  * This is the main entry point called from the combat resolver.
  */
@@ -35,31 +122,14 @@ export const applyRaidReputationConsequences = (
     attackerLosses: { unitId: string; amount: number }[];
   },
 ): void => {
-  // Get village state
-  const villageState = db.selectObject({
-    sql: `
-      SELECT
-        nvs.faction_key AS factionKey,
-        nvs.max_loot_capacity AS maxLoot,
-        nvs.current_loot_available AS lootAvailable,
-        nvs.rest_state AS restState
-      FROM npc_village_state nvs
-      WHERE nvs.village_id = $villageId;
-    `,
-    bind: { $villageId: npcVillageId },
-    schema: z.object({
-      factionKey: z.string(),
-      maxLoot: z.number(),
-      lootAvailable: z.number(),
-      restState: z.number(),
-    }),
-  });
+  // Get or create village state
+  const villageState = ensureNpcVillageState(db, npcVillageId);
 
   if (!villageState) {
     return;
   }
 
-  const factionKey = villageState.factionKey as FactionKey;
+  const factionKey = villageState.factionKey;
   const profile = getFactionProfile(factionKey);
 
   // Calculate loot stolen as percentage of max capacity
@@ -84,7 +154,6 @@ export const applyRaidReputationConsequences = (
   }
 
   // Apply to existing faction_reputation table (dual system)
-  // Get the faction_id for this NPC faction
   const factionId = db.selectValue({
     sql: `
       SELECT id FROM faction_ids WHERE faction = $factionKey;
@@ -94,7 +163,6 @@ export const applyRaidReputationConsequences = (
   });
 
   if (factionId != null) {
-    // Update reputation (subtract because lower = worse in existing system)
     db.exec({
       sql: `
         UPDATE faction_reputation
@@ -110,26 +178,30 @@ export const applyRaidReputationConsequences = (
   }
 
   // Record raid in npc_raid_history
-  db.exec({
-    sql: `
-      INSERT INTO npc_raid_history
-        (village_id, timestamp, loot_wood, loot_clay, loot_iron, loot_wheat,
-         troops_lost_json, player_troops_lost_json)
-      VALUES
-        ($villageId, $timestamp, $lootWood, $lootClay, $lootIron, $lootWheat,
-         $troopsLostJson, $playerTroopsLostJson);
-    `,
-    bind: {
-      $villageId: npcVillageId,
-      $timestamp: Date.now(),
-      $lootWood: raidResult.lootWood,
-      $lootClay: raidResult.lootClay,
-      $lootIron: raidResult.lootIron,
-      $lootWheat: raidResult.lootWheat,
-      $troopsLostJson: JSON.stringify(raidResult.defenderLosses),
-      $playerTroopsLostJson: JSON.stringify(raidResult.attackerLosses),
-    },
-  });
+  try {
+    db.exec({
+      sql: `
+        INSERT INTO npc_raid_history
+          (village_id, timestamp, loot_wood, loot_clay, loot_iron, loot_wheat,
+           troops_lost_json, player_troops_lost_json)
+        VALUES
+          ($villageId, $timestamp, $lootWood, $lootClay, $lootIron, $lootWheat,
+           $troopsLostJson, $playerTroopsLostJson);
+      `,
+      bind: {
+        $villageId: npcVillageId,
+        $timestamp: Date.now(),
+        $lootWood: raidResult.lootWood,
+        $lootClay: raidResult.lootClay,
+        $lootIron: raidResult.lootIron,
+        $lootWheat: raidResult.lootWheat,
+        $troopsLostJson: JSON.stringify(raidResult.defenderLosses),
+        $playerTroopsLostJson: JSON.stringify(raidResult.attackerLosses),
+      },
+    });
+  } catch (_e) {
+    // Table might not exist yet
+  }
 
   // Update npc_village_state
   const newLootAvailable = Math.max(
@@ -137,27 +209,35 @@ export const applyRaidReputationConsequences = (
     villageState.lootAvailable - lootPercentageStolen,
   );
 
-  db.exec({
-    sql: `
-      UPDATE npc_village_state
-      SET
-        times_attacked = times_attacked + 1,
-        last_raided_ms = $now,
-        last_interacted_at = $now,
-        current_loot_available = $newLoot,
-        rest_state = 0
-      WHERE village_id = $villageId;
-    `,
-    bind: {
-      $now: Date.now(),
-      $newLoot: newLootAvailable,
-      $villageId: npcVillageId,
-    },
-  });
+  try {
+    db.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET
+          times_attacked = times_attacked + 1,
+          last_raided_ms = $now,
+          last_interacted_at = $now,
+          current_loot_available = $newLoot,
+          rest_state = 0
+        WHERE village_id = $villageId;
+      `,
+      bind: {
+        $now: Date.now(),
+        $newLoot: newLootAvailable,
+        $villageId: npcVillageId,
+      },
+    });
+  } catch (_e) {
+    // Columns might not exist yet
+  }
 
   // Reset rest state
-  resetRestState(db, npcVillageId);
+  try {
+    resetRestState(db, npcVillageId);
+  } catch (_e) {}
 
   // Trigger aggression check
-  calculateAggressionResponse(db, npcVillageId, factionKey);
+  try {
+    calculateAggressionResponse(db, npcVillageId, factionKey);
+  } catch (_e) {}
 };

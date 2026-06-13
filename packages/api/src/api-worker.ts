@@ -88,17 +88,15 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
           schema: z.number().nullable(),
         });
 
-        // Old game worlds may have user_version = 0 (no version set).
-        // Allow them to load — upgradeDb will handle schema migration.
-        if (version) {
-          const [dbMajor, _dbMinor] = parseDatabaseUserVersion(version);
-          const [appMajor, _appMinor] = parseAppVersion(env.VERSION);
+        if (!version) {
+          throw new OutdatedDatabaseSchemaError();
+        }
 
-          // Only reject if major version differs (breaking schema changes).
-          // Minor version differences are handled by upgradeDb.
-          if (dbMajor !== appMajor) {
-            throw new OutdatedDatabaseSchemaError();
-          }
+        const [, dbMinor] = parseDatabaseUserVersion(version);
+        const [, appMinor] = parseAppVersion(env.VERSION);
+
+        if (dbMinor !== appMinor) {
+          throw new OutdatedDatabaseSchemaError();
         }
 
         upgradeDb(dbFacade);

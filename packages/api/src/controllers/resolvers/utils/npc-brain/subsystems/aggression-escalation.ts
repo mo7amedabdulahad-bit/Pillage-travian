@@ -65,14 +65,18 @@ export const calculateAggressionResponse = (
   const effectiveTier = Math.max(currentLevel, newTier);
 
   // Update aggression level
-  db.exec({
-    sql: `
-      UPDATE npc_village_state
-      SET aggression_level = $tier
-      WHERE village_id = $villageId;
-    `,
-    bind: { $tier: effectiveTier, $villageId: villageId },
-  });
+  try {
+    db.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET aggression_level = $tier
+        WHERE village_id = $villageId;
+      `,
+      bind: { $tier: effectiveTier, $villageId: villageId },
+    });
+  } catch (_e) {
+    // Column might not exist for old game worlds
+  }
 
   // Schedule retaliation
   scheduleRetaliation(db, villageId, factionKey, effectiveTier);
@@ -162,22 +166,26 @@ const scheduleRetaliation = (
     return;
   }
 
-  db.exec({
-    sql: `
-      INSERT INTO npc_retaliation_queue
-        (village_id, scheduled_at_ms, execute_at_ms, aggression_tier, faction_key, troops_json)
-      VALUES
-        ($villageId, $scheduledAt, $executeAt, $tier, $factionKey, $troopsJson);
-    `,
-    bind: {
-      $villageId: villageId,
-      $scheduledAt: Date.now(),
-      $executeAt: Math.floor(executeAtMs),
-      $tier: tier,
-      $factionKey: factionKey,
-      $troopsJson: JSON.stringify(retaliationTroops),
-    },
-  });
+  try {
+    db.exec({
+      sql: `
+        INSERT INTO npc_retaliation_queue
+          (village_id, scheduled_at_ms, execute_at_ms, aggression_tier, faction_key, troops_json)
+        VALUES
+          ($villageId, $scheduledAt, $executeAt, $tier, $factionKey, $troopsJson);
+      `,
+      bind: {
+        $villageId: villageId,
+        $scheduledAt: Date.now(),
+        $executeAt: Math.floor(executeAtMs),
+        $tier: tier,
+        $factionKey: factionKey,
+        $troopsJson: JSON.stringify(retaliationTroops),
+      },
+    });
+  } catch (_e) {
+    // Table might not exist for old game worlds
+  }
 };
 
 /**

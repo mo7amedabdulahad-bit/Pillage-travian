@@ -51,14 +51,20 @@ export const processMemoryDecay = (
 
 /**
  * Get the current count of remembered raids for a village.
+ * Returns 0 if the table doesn't exist (old game worlds).
  */
 export const getRaidCount = (db: DbFacade, villageId: number): number => {
-  const count = db.selectValue({
-    sql: `
-      SELECT COUNT(*) FROM npc_raid_history WHERE village_id = $villageId;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.number(),
-  });
-  return count ?? 0;
+  try {
+    const count = db.selectValue({
+      sql: `
+        SELECT COUNT(*) FROM npc_raid_history WHERE village_id = $villageId;
+      `,
+      bind: { $villageId: villageId },
+      schema: z.number(),
+    });
+    return count ?? 0;
+  } catch (_e) {
+    // Table might not exist for old game worlds
+    return 0;
+  }
 };
