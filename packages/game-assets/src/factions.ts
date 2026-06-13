@@ -14,6 +14,19 @@ export const FACTION_COLORS: Record<Faction, string> = {
   npc9: '#dc2626',
 };
 
+export const FACTION_NAMES: Record<Faction, string> = {
+  player: 'Player',
+  npc1: 'Iron Brotherhood',
+  npc2: 'Merchant Guilds',
+  npc3: 'Shadow Nomads',
+  npc4: 'Stone Wardens',
+  npc5: 'River Clans',
+  npc6: 'Ember Cult',
+  npc7: 'Verdant Order',
+  npc8: 'Iron Scholars',
+  npc9: 'Bone Reavers',
+};
+
 export const TRIBE_COLORS: Record<Tribe, string> = {
   romans: '#b22222',
   gauls: '#0b6fab',

@@ -11,9 +11,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { FACTION_NAMES } from '@pillage-first/game-assets/faction-names';
 import {
   FACTION_COLORS,
+  FACTION_NAMES,
   TRIBE_COLORS,
 } from '@pillage-first/game-assets/factions';
 import { factionSchema } from '@pillage-first/types/models/faction';
