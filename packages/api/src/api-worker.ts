@@ -19,6 +19,12 @@ import {
   parseAppVersion,
   parseDatabaseUserVersion,
 } from '@pillage-first/utils/version';
+import {
+  getLastSimulationTimestamp,
+  NPC_BRAIN_CONSTANTS,
+  setLastSimulationTimestamp,
+  simulateElapsedTime,
+} from './controllers/resolvers/utils/npc-brain/index.ts';
 import { OutdatedDatabaseSchemaError } from './errors';
 import { matchRoute } from './routes/route-matcher.ts';
 import {
@@ -95,6 +101,23 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         }
 
         upgradeDb(dbFacade);
+
+        // ─── NPC Brain: Run offline simulation ───
+        const lastSimTimestamp = getLastSimulationTimestamp(dbFacade);
+        const elapsedMs = Date.now() - lastSimTimestamp;
+
+        if (elapsedMs > NPC_BRAIN_CONSTANTS.MIN_SIMULATION_ELAPSED_MS) {
+          const simulationSummary = await simulateElapsedTime(
+            dbFacade,
+            elapsedMs,
+          );
+          setLastSimulationTimestamp(dbFacade, Date.now());
+
+          globalThis.postMessage({
+            eventKey: 'event:npc-simulation-complete',
+            summary: simulationSummary,
+          });
+        }
 
         const dataSource = createSchedulerDataSource(dbFacade);
 

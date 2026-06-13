@@ -11,6 +11,7 @@ export const FACTION_COLORS: Record<Faction, string> = {
   npc6: '#14b8a6',
   npc7: '#f97316',
   npc8: '#6366f1',
+  npc9: '#dc2626',
 };
 
 export const TRIBE_COLORS: Record<Tribe, string> = {

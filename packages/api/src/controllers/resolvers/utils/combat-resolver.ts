@@ -31,6 +31,11 @@ import {
 } from './combat';
 import { onHeroDeath } from './hero';
 import { handleNpcRetaliation, regenerateNpcTroops } from './npc';
+import { applyRaidReputationConsequences } from './npc-brain/subsystems/reputation-impact';
+import {
+  calculateWorldThreatLevel,
+  getNpcTroopMultiplier,
+} from './npc-brain/world-threat-level';
 import { saveCombatReport, saveScoutReports } from './reports';
 import { addTroops } from './troops';
 
@@ -1689,8 +1694,23 @@ export const resolveTroopMovementCombat = (
     villageId,
     attackerTroopsRaw,
   );
-  const defenderTroops = fetchDefenderTroops(database, targetVillage.tileId);
+  let defenderTroops = fetchDefenderTroops(database, targetVillage.tileId);
   const modifiers = fetchDefenseModifiers(database, targetId);
+
+  // Apply world threat multiplier to NPC defender troops
+  const isNpcDefender = database.selectValue({
+    sql: 'SELECT EXISTS(SELECT 1 FROM npc_village_state WHERE village_id = $villageId);',
+    bind: { $villageId: targetId },
+    schema: z.number(),
+  });
+  if (isNpcDefender) {
+    const worldThreat = calculateWorldThreatLevel(database);
+    const multiplier = getNpcTroopMultiplier(worldThreat);
+    defenderTroops = defenderTroops.map((t) => ({
+      ...t,
+      amount: Math.floor(t.amount * multiplier),
+    }));
+  }
 
   const { currentWood, currentClay, currentIron, currentWheat } =
     calculateVillageResourcesAt(database, targetId, resolvesAt);
@@ -2036,4 +2056,38 @@ export const resolveTroopMovementCombat = (
 
   // 12. NPC Retaliation
   handleNpcRetaliation(database, targetId, villageId, resolvesAt);
+
+  // 13. NPC Brain: Apply reputation and aggression consequences for raids on NPC villages
+  if (isRaid && attackerVillage.playerId === PLAYER_ID) {
+    const npcState = database.selectObject({
+      sql: `
+        SELECT village_id FROM npc_village_state WHERE village_id = $villageId;
+      `,
+      bind: { $villageId: targetId },
+      schema: z.object({ village_id: z.number() }),
+    });
+
+    if (npcState) {
+      const defenderTroopsRemaining = result.defenderSurvivors.reduce(
+        (sum, t) => sum + t.amount,
+        0,
+      );
+
+      applyRaidReputationConsequences(database, targetId, {
+        lootWood: lootToApply[0],
+        lootClay: lootToApply[1],
+        lootIron: lootToApply[2],
+        lootWheat: lootToApply[3],
+        defenderTroopsRemaining,
+        defenderLosses: result.defenderLosses.map((l) => ({
+          unitId: l.unitId,
+          amount: l.amount,
+        })),
+        attackerLosses: result.attackerLosses.map((l) => ({
+          unitId: l.unitId,
+          amount: l.amount,
+        })),
+      });
+    }
+  }
 };

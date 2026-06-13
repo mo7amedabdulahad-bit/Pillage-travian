@@ -11,12 +11,15 @@ import {
 import type { ToasterProps } from 'sonner';
 import type { Route } from '@react-router/types/app/(game)/+types/layout';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
+import { LoadingSimulation } from 'app/(game)/components/loading-simulation/LoadingSimulation';
 import { Notifier } from 'app/(game)/components/notifier';
+import { WhileYouWereAway } from 'app/(game)/components/while-you-were-away/WhileYouWereAway';
 import { serverExistAndLockMiddleware } from 'app/(game)/middleware/server-already-open-middleware';
 import { ApiProvider } from 'app/(game)/providers/api-provider';
 import { HeadLinks } from 'app/components/head-links.tsx';
 import { Spinner } from 'app/components/ui/spinner';
 import { Toaster } from 'app/components/ui/toaster';
+import { useNPCBrain } from 'app/hooks/use-npc-brain';
 import { loadAppTranslations } from 'app/localization/loaders/app';
 import { CookieContext, CookieProvider } from 'app/providers/cookie-provider';
 
@@ -68,6 +71,7 @@ const LayoutContent = memo<Route.ComponentProps>(
     const { i18n } = useTranslation();
     const { uiColorScheme } = use(CookieContext);
     const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
+    const { isSimulating, offlineSummary, dismissSummary } = useNPCBrain();
 
     const [queryClient] = useState<QueryClient>(
       new QueryClient({
@@ -111,6 +115,17 @@ const LayoutContent = memo<Route.ComponentProps>(
           <QueryClientProvider client={queryClient}>
             <Suspense fallback={<LayoutFallback />}>
               <ApiProvider serverSlug={serverSlug!}>
+                {/* NPC Brain: Show loading screen during simulation */}
+                {isSimulating && <LoadingSimulation />}
+
+                {/* NPC Brain: Show offline summary after simulation */}
+                {offlineSummary && (
+                  <WhileYouWereAway
+                    summary={offlineSummary}
+                    onDismiss={dismissSummary}
+                  />
+                )}
+
                 <Outlet />
                 <Notifier serverSlug={serverSlug!} />
               </ApiProvider>

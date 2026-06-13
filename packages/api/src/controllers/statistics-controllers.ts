@@ -240,6 +240,7 @@ export const getGameWorldOverview = createController('/statistics/overview')(
       npc6: 0,
       npc7: 0,
       npc8: 0,
+      npc9: 0,
     };
 
     for (const row of playersStats) {
@@ -272,6 +273,7 @@ export const getGameWorldOverview = createController('/statistics/overview')(
       npc6: 0,
       npc7: 0,
       npc8: 0,
+      npc9: 0,
     };
 
     for (const row of villagesStats) {

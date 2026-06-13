@@ -1,0 +1,167 @@
+import type { FactionKey, FactionProfile } from './npc-brain-types';
+
+/**
+ * Faction profiles define the personality and behavior of each NPC faction.
+ * These drive all NPC Brain subsystems: memory, growth, aggression, retaliation.
+ *
+ * Game design intent: Each faction should feel distinct. Aggressive factions
+ * hit back immediately and never forget. Pacifist factions absorb many raids
+ * before responding, creating a "ticking time bomb" dynamic for greedy players.
+ */
+export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
+  npc1: {
+    key: 'npc1',
+    name: 'Iron Brotherhood',
+    personality: 'Aggressive raiders',
+    retaliationThreshold: 1,
+    memoryDurationHours: null,
+    isMemoryPermanent: true,
+    repLossPerRaid: 80,
+    aggressionDecayDays: null,
+    isAggressionPermanent: true,
+    growthRateMultiplier: 0.75,
+    troopRegenRateMultiplier: 1.5,
+    restThresholdHours: 48,
+    restStockpileBonus: 0.1,
+    preferredTroopTierWeights: [0.3, 0.3, 0.25, 0.15],
+  },
+  npc2: {
+    key: 'npc2',
+    name: 'Merchant Guilds',
+    personality: 'Peaceful traders',
+    retaliationThreshold: 5,
+    memoryDurationHours: 72,
+    isMemoryPermanent: false,
+    repLossPerRaid: 30,
+    aggressionDecayDays: 7,
+    isAggressionPermanent: false,
+    growthRateMultiplier: 1.5,
+    troopRegenRateMultiplier: 0.5,
+    restThresholdHours: 24,
+    restStockpileBonus: 0.25,
+    preferredTroopTierWeights: [0.5, 0.25, 0.15, 0.1],
+  },
+  npc3: {
+    key: 'npc3',
+    name: 'Shadow Nomads',
+    personality: 'Mysterious scouts',
+    retaliationThreshold: 3,
+    memoryDurationHours: 48,
+    isMemoryPermanent: false,
+    repLossPerRaid: 50,
+    aggressionDecayDays: 5,
+    isAggressionPermanent: false,
+    growthRateMultiplier: 1.0,
+    troopRegenRateMultiplier: 1.0,
+    restThresholdHours: 48,
+    restStockpileBonus: 0.15,
+    preferredTroopTierWeights: [0.2, 0.3, 0.3, 0.2],
+  },
+  npc4: {
+    key: 'npc4',
+    name: 'Stone Wardens',
+    personality: 'Defensive fortress',
+    retaliationThreshold: 2,
+    memoryDurationHours: 168,
+    isMemoryPermanent: false,
+    repLossPerRaid: 60,
+    aggressionDecayDays: null,
+    isAggressionPermanent: true,
+    growthRateMultiplier: 1.0,
+    troopRegenRateMultiplier: 1.0,
+    restThresholdHours: 48,
+    restStockpileBonus: 0.1,
+    preferredTroopTierWeights: [0.4, 0.3, 0.2, 0.1],
+  },
+  npc5: {
+    key: 'npc5',
+    name: 'River Clans',
+    personality: 'Fast cavalry nomads',
+    retaliationThreshold: 2,
+    memoryDurationHours: 24,
+    isMemoryPermanent: false,
+    repLossPerRaid: 40,
+    aggressionDecayDays: 3,
+    isAggressionPermanent: false,
+    growthRateMultiplier: 1.0,
+    troopRegenRateMultiplier: 1.2,
+    restThresholdHours: 48,
+    restStockpileBonus: 0.2,
+    preferredTroopTierWeights: [0.2, 0.2, 0.3, 0.3],
+  },
+  npc6: {
+    key: 'npc6',
+    name: 'Ember Cult',
+    personality: 'Fanatical siege',
+    retaliationThreshold: 1,
+    memoryDurationHours: null,
+    isMemoryPermanent: true,
+    repLossPerRaid: 90,
+    aggressionDecayDays: null,
+    isAggressionPermanent: true,
+    growthRateMultiplier: 0.8,
+    troopRegenRateMultiplier: 1.3,
+    restThresholdHours: 48,
+    restStockpileBonus: 0.05,
+    preferredTroopTierWeights: [0.25, 0.25, 0.25, 0.25],
+  },
+  npc7: {
+    key: 'npc7',
+    name: 'Verdant Order',
+    personality: 'Nature pacifists',
+    retaliationThreshold: 7,
+    memoryDurationHours: 96,
+    isMemoryPermanent: false,
+    repLossPerRaid: 20,
+    aggressionDecayDays: 14,
+    isAggressionPermanent: false,
+    growthRateMultiplier: 2.0,
+    troopRegenRateMultiplier: 0.4,
+    restThresholdHours: 24,
+    restStockpileBonus: 0.3,
+    preferredTroopTierWeights: [0.6, 0.2, 0.1, 0.1],
+  },
+  npc8: {
+    key: 'npc8',
+    name: 'Iron Scholars',
+    personality: 'Tech researchers',
+    retaliationThreshold: 4,
+    memoryDurationHours: 120,
+    isMemoryPermanent: false,
+    repLossPerRaid: 45,
+    aggressionDecayDays: 10,
+    isAggressionPermanent: false,
+    growthRateMultiplier: 1.2,
+    troopRegenRateMultiplier: 0.8,
+    restThresholdHours: 48,
+    restStockpileBonus: 0.15,
+    preferredTroopTierWeights: [0.3, 0.3, 0.25, 0.15],
+  },
+  npc9: {
+    key: 'npc9',
+    name: 'Bone Reavers',
+    personality: 'Death cult',
+    retaliationThreshold: 1,
+    memoryDurationHours: null,
+    isMemoryPermanent: true,
+    repLossPerRaid: 100,
+    aggressionDecayDays: null,
+    isAggressionPermanent: true,
+    growthRateMultiplier: 0.9,
+    troopRegenRateMultiplier: 1.4,
+    restThresholdHours: 48,
+    restStockpileBonus: 0.05,
+    preferredTroopTierWeights: [0.3, 0.25, 0.25, 0.2],
+  },
+};
+
+/**
+ * Get a faction profile by key. Throws if key is invalid.
+ */
+export const getFactionProfile = (factionKey: FactionKey): FactionProfile => {
+  const profile = FACTION_PROFILES[factionKey];
+  if (!profile) {
+    throw new Error(`Unknown faction key: ${factionKey}`);
+  }
+  return profile;
+};

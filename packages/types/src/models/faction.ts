@@ -11,6 +11,7 @@ export const factionSchema = z
     'npc6',
     'npc7',
     'npc8',
+    'npc9',
   ])
   .meta({ id: 'Faction' });
 

@@ -29,6 +29,8 @@ import createUnitDataTable from '../schemas/lookup-tables/unit-data-schema.sql?r
 import createUnitIdsTable from '../schemas/lookup-tables/unit-ids-schema.sql?raw';
 import createMapFiltersTable from '../schemas/map-filters-schema.sql?raw';
 import createMapMarkersTable from '../schemas/map-markers-schema.sql?raw';
+import createNpcRaidHistoryTable from '../schemas/npc-raid-history-schema.sql?raw';
+import createNpcRetaliationQueueTable from '../schemas/npc-retaliation-queue-schema.sql?raw';
 import createNpcVillageStateTable from '../schemas/npc-village-state-schema.sql?raw';
 import createOasisBonusesTable from '../schemas/oasis-schema.sql?raw';
 import createPlayersTable from '../schemas/players-schema.sql?raw';
@@ -239,6 +241,10 @@ export const migrateAndSeed = (
     // NPC village state
     db.exec({ sql: createNpcVillageStateTable });
     npcVillageStateSeeder(db);
+
+    // NPC Brain: raid history and retaliation queue
+    db.exec({ sql: createNpcRaidHistoryTable });
+    db.exec({ sql: createNpcRetaliationQueueTable });
   });
 
   const t1 = performance.now();

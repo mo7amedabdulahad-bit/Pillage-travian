@@ -3,6 +3,9 @@ import type { UnitId } from '@pillage-first/types/models/unit';
 import type { VillageSize } from '@pillage-first/types/models/village';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../utils/create-event';
+import { getFactionProfile } from './npc-brain/faction-profiles';
+import { getPreferredTroopComposition } from './npc-brain/helpers';
+import type { FactionKey } from './npc-brain/npc-brain-types';
 import { addTroops } from './troops';
 
 const tribeToTiers: Record<string, string[]> = {
@@ -39,6 +42,10 @@ const personalityBaseChance: Record<string, number> = {
 
 /**
  * Regenerates NPC troops based on elapsed time since last interaction.
+ *
+ * Hybrid approach: When NPC Brain faction state exists, uses faction-specific
+ * regen rates and troop compositions. Otherwise, falls back to the original
+ * village-size-based regen logic.
  */
 export const regenerateNpcTroops = (
   database: DbFacade,
@@ -47,9 +54,10 @@ export const regenerateNpcTroops = (
 ): void => {
   const state = database.selectObject({
     sql: `
-      SELECT 
+      SELECT
         nvas.village_id,
         nvas.last_interacted_at,
+        nvas.faction_key,
         v.tile_id,
         ti.tribe,
         v.player_id
@@ -63,6 +71,7 @@ export const regenerateNpcTroops = (
     schema: z.object({
       village_id: z.number(),
       last_interacted_at: z.number(),
+      faction_key: z.string(),
       tile_id: z.number(),
       tribe: z.string(),
       player_id: z.number(),
@@ -91,24 +100,112 @@ export const regenerateNpcTroops = (
     return;
   }
 
-  // Get village size based on distance from center (simplified for now as per design doc)
-  // Actually, I should probably store it, but I can re-calculate it.
-  // For now, let's assume a default regen rate if I can't easily get the size.
-  // Actually, I'll fetch the tile's X/Y to determine size.
+  // Check if NPC Brain faction state exists
+  const factionKey = state.faction_key as FactionKey;
+  const hasFactionProfile = factionKey?.startsWith('npc');
+
+  if (hasFactionProfile) {
+    // Use faction-specific regen
+    regenerateWithFactionProfile(database, state, factionKey, elapsedHours);
+  } else {
+    // Fallback to original village-size-based regen
+    regenerateWithVillageSize(database, state, elapsedHours);
+  }
+};
+
+/**
+ * Faction-aware regeneration: uses faction profile for troop composition and regen rate.
+ */
+const regenerateWithFactionProfile = (
+  database: DbFacade,
+  state: { village_id: number; tile_id: number; tribe: string },
+  factionKey: FactionKey,
+  elapsedHours: number,
+): void => {
+  const profile = getFactionProfile(factionKey);
+  const composition = getPreferredTroopComposition(state.tribe, factionKey);
+
+  if (composition.length === 0) {
+    return;
+  }
+
+  // Get village size for base regen rate
   const { x, y } = database.selectObject({
     sql: 'SELECT x, y FROM tiles WHERE id = $tile_id',
     bind: { $tile_id: state.tile_id },
     schema: z.object({ x: z.number(), y: z.number() }),
   })!;
 
-  // I need mapSize to use getVillageSize, but I don't have it here.
-  // I'll take mapSize from servers table.
   const { mapSize } = database.selectObject({
     sql: 'SELECT map_size as mapSize FROM servers LIMIT 1',
     schema: z.object({ mapSize: z.number() }),
   })!;
 
-  // Manually compute size like in village-size.ts
+  const dist = Math.hypot(x, y);
+  const normalizedDist = dist / (mapSize / 2);
+  let size: VillageSize = 'xxs';
+  if (normalizedDist > 0.9) {
+    size = 'xxs';
+  } else if (normalizedDist > 0.8) {
+    size = 'xs';
+  } else if (normalizedDist > 0.7) {
+    size = 'sm';
+  } else if (normalizedDist > 0.6) {
+    size = 'md';
+  } else if (normalizedDist > 0.4) {
+    size = 'lg';
+  } else if (normalizedDist > 0.3) {
+    size = 'xl';
+  } else if (normalizedDist > 0.2) {
+    size = '2xl';
+  } else if (normalizedDist > 0.1) {
+    size = '3xl';
+  } else {
+    size = '4xl';
+  }
+
+  const baseRegenRate = villageSizeToRegenRate[size];
+  const regenRate = baseRegenRate * profile.troopRegenRateMultiplier;
+  const totalRegen = Math.floor(elapsedHours * regenRate);
+
+  if (totalRegen <= 0) {
+    return;
+  }
+
+  const troopsToAdd = composition
+    .map(({ unitId, weight }) => ({
+      unitId: unitId as UnitId,
+      amount: Math.floor(totalRegen * weight),
+      tileId: state.tile_id,
+      source: state.tile_id,
+    }))
+    .filter((t) => t.amount > 0);
+
+  if (troopsToAdd.length > 0) {
+    // biome-ignore lint/suspicious/noExplicitAny: Unit IDs from DB are strings but mathematically match the UnitId union
+    addTroops(database, troopsToAdd as any);
+  }
+};
+
+/**
+ * Original village-size-based regeneration (fallback when no faction profile).
+ */
+const regenerateWithVillageSize = (
+  database: DbFacade,
+  state: { village_id: number; tile_id: number; tribe: string },
+  elapsedHours: number,
+): void => {
+  const { x, y } = database.selectObject({
+    sql: 'SELECT x, y FROM tiles WHERE id = $tile_id',
+    bind: { $tile_id: state.tile_id },
+    schema: z.object({ x: z.number(), y: z.number() }),
+  })!;
+
+  const { mapSize } = database.selectObject({
+    sql: 'SELECT map_size as mapSize FROM servers LIMIT 1',
+    schema: z.object({ mapSize: z.number() }),
+  })!;
+
   const dist = Math.hypot(x, y);
   const normalizedDist = dist / (mapSize / 2);
   let size: VillageSize = 'xxs';
@@ -157,6 +254,10 @@ export const regenerateNpcTroops = (
 
 /**
  * Triggers NPC retaliation if applicable.
+ *
+ * Hybrid approach: When NPC Brain aggression state exists, delegates to the
+ * aggression escalation system. Otherwise, falls back to the original
+ * probability-based retaliation.
  */
 export const handleNpcRetaliation = (
   database: DbFacade,
@@ -167,19 +268,34 @@ export const handleNpcRetaliation = (
   // 1. Increment attack counter and fetch current state
   const state = database.selectObject({
     sql: `
-      UPDATE npc_village_state 
-      SET times_attacked = times_attacked + 1 
+      UPDATE npc_village_state
+      SET times_attacked = times_attacked + 1
       WHERE village_id = $villageId
-      RETURNING times_attacked, village_id;
+      RETURNING times_attacked, village_id, faction_key;
     `,
     bind: { $villageId: villageId },
-    schema: z.object({ times_attacked: z.number(), village_id: z.number() }),
+    schema: z.object({
+      times_attacked: z.number(),
+      village_id: z.number(),
+      faction_key: z.string(),
+    }),
   });
 
   if (!state) {
     return;
   }
 
+  // If NPC Brain faction state exists, the aggression system handles retaliation
+  // via applyRaidReputationConsequences in the combat resolver.
+  // We still run the original logic as a fallback for any edge cases.
+  const factionKey = state.faction_key as FactionKey;
+  if (factionKey?.startsWith('npc')) {
+    // NPC Brain aggression system will handle this via the combat resolver hook.
+    // Skip the old probability-based retaliation to avoid double-retaliation.
+    return;
+  }
+
+  // Fallback: original probability-based retaliation
   const npcInfo = database.selectObject({
     sql: `
       SELECT p.personality, v.tile_id

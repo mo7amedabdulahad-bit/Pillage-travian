@@ -140,4 +140,93 @@ export const upgradeDb = (database: DbFacade): void => {
   } catch (_e) {
     // May fail if tribe_id column doesn't exist yet
   }
+
+  // ─── NPC Brain: New columns on npc_village_state ───
+  const npcBrainColumns = [
+    ['field_growth_accumulator', 'REAL NOT NULL DEFAULT 0'],
+    ['last_growth_tick_ms', 'INTEGER NOT NULL DEFAULT 0'],
+    ['population_growth_rate', 'REAL NOT NULL DEFAULT 2.0'],
+    ['rest_state', 'INTEGER NOT NULL DEFAULT 0'],
+    ['rest_threshold_ms', 'INTEGER NOT NULL DEFAULT 172800000'],
+    ['rest_stockpile_bonus', 'REAL NOT NULL DEFAULT 0.15'],
+    ['last_troop_regen_ms', 'INTEGER NOT NULL DEFAULT 0'],
+    ['current_loot_available', 'REAL NOT NULL DEFAULT 1.0'],
+    ['max_loot_capacity', 'INTEGER NOT NULL DEFAULT 500'],
+    ['loot_recovery_rate', 'REAL NOT NULL DEFAULT 0.08'],
+    ['aggression_level', 'INTEGER NOT NULL DEFAULT 0'],
+    ['aggression_decay_timer', 'INTEGER NOT NULL DEFAULT 0'],
+    ['regional_alert_active', 'INTEGER NOT NULL DEFAULT 0'],
+    ['last_aggression_decay_ms', 'INTEGER NOT NULL DEFAULT 0'],
+    ['last_raided_ms', 'INTEGER NOT NULL DEFAULT 0'],
+    ['faction_key', "TEXT NOT NULL DEFAULT 'npc1'"],
+  ];
+
+  for (const [colName, colDef] of npcBrainColumns) {
+    try {
+      database.exec({
+        sql: `ALTER TABLE npc_village_state ADD COLUMN ${colName} ${colDef};`,
+      });
+    } catch (_e) {
+      // Column might already exist
+    }
+  }
+
+  // ─── NPC Brain: npc_raid_history table ───
+  try {
+    database.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS npc_raid_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          village_id INTEGER NOT NULL,
+          timestamp INTEGER NOT NULL,
+          loot_wood INTEGER NOT NULL DEFAULT 0,
+          loot_clay INTEGER NOT NULL DEFAULT 0,
+          loot_iron INTEGER NOT NULL DEFAULT 0,
+          loot_wheat INTEGER NOT NULL DEFAULT 0,
+          troops_lost_json TEXT NOT NULL DEFAULT '{}',
+          player_troops_lost_json TEXT NOT NULL DEFAULT '{}',
+          FOREIGN KEY (village_id) REFERENCES npc_village_state (village_id) ON DELETE CASCADE
+        ) STRICT;
+      `,
+    });
+    database.exec({
+      sql: 'CREATE INDEX IF NOT EXISTS idx_npc_raid_history_village ON npc_raid_history(village_id);',
+    });
+    database.exec({
+      sql: 'CREATE INDEX IF NOT EXISTS idx_npc_raid_history_timestamp ON npc_raid_history(timestamp);',
+    });
+  } catch (_e) {}
+
+  // ─── NPC Brain: npc_retaliation_queue table ───
+  try {
+    database.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS npc_retaliation_queue (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          village_id INTEGER NOT NULL,
+          scheduled_at_ms INTEGER NOT NULL,
+          execute_at_ms INTEGER NOT NULL,
+          aggression_tier INTEGER NOT NULL,
+          faction_key TEXT NOT NULL,
+          troops_json TEXT NOT NULL,
+          FOREIGN KEY (village_id) REFERENCES npc_village_state (village_id) ON DELETE CASCADE
+        ) STRICT;
+      `,
+    });
+    database.exec({
+      sql: 'CREATE INDEX IF NOT EXISTS idx_npc_retaliation_execute ON npc_retaliation_queue(execute_at_ms);',
+    });
+    database.exec({
+      sql: 'CREATE INDEX IF NOT EXISTS idx_npc_retaliation_village ON npc_retaliation_queue(village_id);',
+    });
+  } catch (_e) {}
+
+  // ─── NPC Brain: Add npc9 to faction_ids ───
+  try {
+    database.exec({
+      sql: `INSERT OR IGNORE INTO faction_ids (faction) VALUES ('npc9');`,
+    });
+  } catch (_e) {
+    // May fail if faction_ids table constraint doesn't include npc9 yet
+  }
 };
