@@ -72,7 +72,7 @@ export const calculateWorldThreatLevel = (db: DbFacade): number => {
           WHEN experience < 50000 THEN 8
           WHEN experience < 75000 THEN 9
           WHEN experience < 110000 THEN 10
-          ELSE LEAST(100, 10 + (experience - 110000) / 10000)
+          ELSE MIN(100, 10 + (experience - 110000) / 10000)
         END, 0)
       FROM heroes
       WHERE player_id = $playerId;

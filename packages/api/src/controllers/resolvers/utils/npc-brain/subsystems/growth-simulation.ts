@@ -106,7 +106,7 @@ export const processGrowth = (
   let populationAdded = 0;
   if (populationToAdd > 0) {
     // Get current population and cap
-    const fieldLevelSum = getFieldLevelSumForTile(db, tileId);
+    const fieldLevelSum = getFieldLevelSumForVillage(db, villageId);
     const populationCap =
       fieldLevelSum * NPC_BRAIN_CONSTANTS.POPULATION_CAP_PER_FIELD_LEVEL;
 
@@ -136,7 +136,7 @@ export const processGrowth = (
   }
 
   // ─── Update Loot Capacity ───
-  const newFieldLevelSum = getFieldLevelSumForTile(db, tileId);
+  const newFieldLevelSum = getFieldLevelSumForVillage(db, villageId);
   const newMaxLootCapacity = calculateMaxLootCapacity(
     newFieldLevelSum,
     villageSize,
@@ -163,25 +163,29 @@ export const processGrowth = (
 };
 
 /**
- * Level up the lowest-level resource field for a village's tile.
+ * Level up the lowest-level resource field for a village.
  * Returns true if a field was leveled, false if all are at max.
  * NPC villages have a max level of 15 (player can reach 20).
  */
 const levelUpLowestField = (
   db: DbFacade,
-  _villageId: number,
-  tileId: number,
+  villageId: number,
+  _tileId: number,
 ): boolean => {
   const field = db.selectObject({
     sql: `
-      SELECT id, level
-      FROM resource_fields
-      WHERE tile_id = $tileId
-      ORDER BY level ASC, id ASC
+      SELECT village_id, field_id, level
+      FROM building_fields
+      WHERE village_id = $villageId AND field_id <= 18
+      ORDER BY level ASC, field_id ASC
       LIMIT 1;
     `,
-    bind: { $tileId: tileId },
-    schema: z.object({ id: z.number(), level: z.number() }),
+    bind: { $villageId: villageId },
+    schema: z.object({
+      village_id: z.number(),
+      field_id: z.number(),
+      level: z.number(),
+    }),
   });
 
   if (!field || field.level >= NPC_BRAIN_CONSTANTS.NPC_MAX_FIELD_LEVEL) {
@@ -190,27 +194,30 @@ const levelUpLowestField = (
 
   db.exec({
     sql: `
-      UPDATE resource_fields
+      UPDATE building_fields
       SET level = level + 1
-      WHERE id = $fieldId;
+      WHERE village_id = $villageId AND field_id = $fieldId;
     `,
-    bind: { $fieldId: field.id },
+    bind: { $villageId: villageId, $fieldId: field.field_id },
   });
 
   return true;
 };
 
 /**
- * Get the total level of all resource fields for a tile.
+ * Get the total level of all resource fields for a village.
  */
-const getFieldLevelSumForTile = (db: DbFacade, tileId: number): number => {
+const getFieldLevelSumForVillage = (
+  db: DbFacade,
+  villageId: number,
+): number => {
   const result = db.selectValue({
     sql: `
       SELECT COALESCE(SUM(level), 0)
-      FROM resource_fields
-      WHERE tile_id = $tileId;
+      FROM building_fields
+      WHERE village_id = $villageId AND field_id <= 18;
     `,
-    bind: { $tileId: tileId },
+    bind: { $villageId: villageId },
     schema: z.number(),
   });
   return result ?? 0;

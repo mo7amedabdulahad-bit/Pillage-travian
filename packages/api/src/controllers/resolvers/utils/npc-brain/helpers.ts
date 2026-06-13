@@ -226,15 +226,15 @@ export const getPlayerVillageCoords = (
 /**
  * Get the total field level sum for a village's resource sites.
  */
-export const getFieldLevelSum = (db: DbFacade, tileId: number): number => {
-  const result = db.selectObject({
+export const getFieldLevelSum = (db: DbFacade, villageId: number): number => {
+  const result = db.selectValue({
     sql: `
       SELECT
         COALESCE(SUM(level), 0) AS totalLevel
-      FROM resource_fields
-      WHERE tile_id = $tileId;
+      FROM building_fields
+      WHERE village_id = $villageId AND field_id <= 18;
     `,
-    bind: { $tileId: tileId },
+    bind: { $villageId: villageId },
     schema: z.object({ totalLevel: z.number() }),
   });
   return result?.totalLevel ?? 0;

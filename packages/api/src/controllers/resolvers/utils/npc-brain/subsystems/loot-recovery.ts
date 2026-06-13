@@ -171,15 +171,14 @@ export const getRestBonus = (db: DbFacade, villageId: number): number => {
 };
 
 /**
- * Get the total field level sum for a village's tile.
+ * Get the total field level sum for a village.
  */
 const getVillageFieldLevelSum = (db: DbFacade, villageId: number): number => {
   const result = db.selectValue({
     sql: `
-      SELECT COALESCE(SUM(rf.level), 0)
-      FROM resource_fields rf
-      JOIN villages v ON v.tile_id = rf.tile_id
-      WHERE v.id = $villageId;
+      SELECT COALESCE(SUM(level), 0)
+      FROM building_fields
+      WHERE village_id = $villageId AND field_id <= 18;
     `,
     bind: { $villageId: villageId },
     schema: z.number(),
