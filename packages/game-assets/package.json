@@ -33,6 +33,9 @@
     "./factions": {
       "default": "./src/factions.ts"
     },
+    "./faction-names": {
+      "default": "./src/faction-names.ts"
+    },
     "./reputation": {
       "default": "./src/reputation.ts"
     },
