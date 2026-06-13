@@ -88,36 +88,39 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
           schema: z.number().nullable(),
         });
 
-        // TODO: This check can be removed in a couple of weeks, since all newly-created game worlds will have user_version
-        if (!version) {
-          throw new OutdatedDatabaseSchemaError();
-        }
+        // Old game worlds may have user_version = 0 (no version set).
+        // Allow them to load — upgradeDb will handle schema migration.
+        if (version) {
+          const [dbMajor, _dbMinor] = parseDatabaseUserVersion(version);
+          const [appMajor, _appMinor] = parseAppVersion(env.VERSION);
 
-        const [, dbMinor] = parseDatabaseUserVersion(version);
-        const [, appMinor] = parseAppVersion(env.VERSION);
-
-        if (dbMinor !== appMinor) {
-          throw new OutdatedDatabaseSchemaError();
+          // Only reject if major version differs (breaking schema changes).
+          // Minor version differences are handled by upgradeDb.
+          if (dbMajor !== appMajor) {
+            throw new OutdatedDatabaseSchemaError();
+          }
         }
 
         upgradeDb(dbFacade);
 
         // ─── NPC Brain: Run offline simulation ───
-        const lastSimTimestamp = getLastSimulationTimestamp(dbFacade);
-        const elapsedMs = Date.now() - lastSimTimestamp;
+        try {
+          const lastSimTimestamp = getLastSimulationTimestamp(dbFacade);
+          const elapsedMs = Date.now() - lastSimTimestamp;
 
-        if (elapsedMs > NPC_BRAIN_CONSTANTS.MIN_SIMULATION_ELAPSED_MS) {
-          const simulationSummary = await simulateElapsedTime(
-            dbFacade,
-            elapsedMs,
-          );
-          setLastSimulationTimestamp(dbFacade, Date.now());
+          if (elapsedMs > NPC_BRAIN_CONSTANTS.MIN_SIMULATION_ELAPSED_MS) {
+            const simulationSummary = await simulateElapsedTime(
+              dbFacade,
+              elapsedMs,
+            );
+            setLastSimulationTimestamp(dbFacade, Date.now());
 
-          globalThis.postMessage({
-            eventKey: 'event:npc-simulation-complete',
-            summary: simulationSummary,
-          });
-        }
+            globalThis.postMessage({
+              eventKey: 'event:npc-simulation-complete',
+              summary: simulationSummary,
+            });
+          }
+        } catch (_simError) {}
 
         const dataSource = createSchedulerDataSource(dbFacade);
 

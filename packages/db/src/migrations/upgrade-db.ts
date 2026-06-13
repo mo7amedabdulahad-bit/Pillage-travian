@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 
 // This function should only contain db upgrades between app's minor version bumps. At that point, these DB changes
@@ -228,5 +229,70 @@ export const upgradeDb = (database: DbFacade): void => {
     });
   } catch (_e) {
     // May fail if faction_ids table constraint doesn't include npc9 yet
+  }
+
+  // ─── NPC Brain: Populate npc_village_state for old game worlds ───
+  // For game worlds created before the NPC Brain system, the table exists
+  // but has no rows. Populate it with faction data from the players table.
+  try {
+    const npcStateCount =
+      database.selectValue({
+        sql: 'SELECT COUNT(*) FROM npc_village_state;',
+        schema: z.number(),
+      }) ?? 0;
+
+    if (npcStateCount === 0) {
+      database.exec({
+        sql: `
+          INSERT INTO npc_village_state (
+            village_id,
+            last_interacted_at,
+            times_attacked,
+            field_growth_accumulator,
+            last_growth_tick_ms,
+            population_growth_rate,
+            rest_state,
+            rest_threshold_ms,
+            rest_stockpile_bonus,
+            last_troop_regen_ms,
+            current_loot_available,
+            max_loot_capacity,
+            loot_recovery_rate,
+            aggression_level,
+            aggression_decay_timer,
+            regional_alert_active,
+            last_aggression_decay_ms,
+            last_raided_ms,
+            faction_key
+          )
+          SELECT
+            v.id,
+            0,
+            0,
+            0,
+            0,
+            2.0,
+            0,
+            172800000,
+            0.15,
+            0,
+            1.0,
+            500,
+            0.08,
+            0,
+            0,
+            0,
+            0,
+            0,
+            COALESCE(fi.faction, 'npc1')
+          FROM villages v
+          JOIN players p ON v.player_id = p.id
+          LEFT JOIN faction_ids fi ON fi.id = p.faction_id
+          WHERE v.player_id != 1;
+        `,
+      });
+    }
+  } catch (_e) {
+    // May fail if table structure is not yet migrated
   }
 };
