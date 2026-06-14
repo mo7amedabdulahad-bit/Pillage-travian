@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { memo, Suspense, use, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -69,8 +73,22 @@ const LayoutFallback = () => {
  */
 const NPCBrainGate = ({ children }: { children: React.ReactNode }) => {
   const { apiWorker } = useContext(ApiContext);
-  const { isSimulating, offlineSummary, dismissSummary } =
-    useNPCBrain(apiWorker);
+  const queryClient = useQueryClient();
+  const {
+    isSimulating,
+    offlineSummary,
+    dismissSummary,
+    lastLiveTickTimestamp,
+  } = useNPCBrain(apiWorker);
+
+  // When the NPC Brain live tick fires, invalidate map/village queries
+  // so the UI re-renders with fresh troop counts, field levels, loot availability
+  useEffect(() => {
+    if (lastLiveTickTimestamp === null) {
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['tiles'] });
+  }, [lastLiveTickTimestamp, queryClient]);
 
   // Block game screen while offline simulation runs
   if (isSimulating) {
