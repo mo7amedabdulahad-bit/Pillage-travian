@@ -1,5 +1,6 @@
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { FACTION_PROFILES } from './faction-profiles';
+import { getMapSize, getVillageSize } from './helpers';
 import type { FactionKey } from './npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from './npc-brain-types';
 import { getTotalTroopCount } from './subsystems/troop-regeneration';
@@ -98,30 +99,11 @@ export const getNpcVillageDebugInfo = (
   const tileId = state.tile_id as number;
   const totalTroops = getTotalTroopCount(db, tileId ?? 0);
 
-  // Get village size (approximate)
+  // Get village size using shared helper
   const x = state.x as number;
   const y = state.y as number;
-  const dist = Math.hypot(x, y);
-  let villageSize = 'unknown';
-  if (dist > 180) {
-    villageSize = 'xxs';
-  } else if (dist > 160) {
-    villageSize = 'xs';
-  } else if (dist > 140) {
-    villageSize = 'sm';
-  } else if (dist > 120) {
-    villageSize = 'md';
-  } else if (dist > 80) {
-    villageSize = 'lg';
-  } else if (dist > 60) {
-    villageSize = 'xl';
-  } else if (dist > 40) {
-    villageSize = '2xl';
-  } else if (dist > 20) {
-    villageSize = '3xl';
-  } else {
-    villageSize = '4xl';
-  }
+  const mapSize = getMapSize(db);
+  const villageSize = getVillageSize(mapSize, x, y);
 
   const defenceFloor =
     NPC_BRAIN_CONSTANTS.DEFENCE_FLOOR_BY_SIZE[villageSize] ?? 50;

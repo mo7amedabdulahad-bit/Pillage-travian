@@ -629,11 +629,17 @@ const NpcBrainSection = () => {
   const [selectedVillageId, setSelectedVillageId] = useState<string | null>(
     null,
   );
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: npcVillages } = useQuery({
-    queryKey: ['npc-villages-list'],
+    queryKey: ['npc-villages-list', searchTerm],
     queryFn: async () => {
-      const { data } = await fetcher('/developer-settings/npc-villages');
+      const params = searchTerm
+        ? `?search=${encodeURIComponent(searchTerm)}`
+        : '';
+      const { data } = await fetcher(
+        `/developer-settings/npc-villages${params}`,
+      );
       return data as {
         villageId: number;
         villageName: string;
@@ -673,6 +679,15 @@ const NpcBrainSection = () => {
         </div>
 
         <div className="flex flex-col gap-2">
+          <Label>{t('Search NPC Villages')}</Label>
+          <Input
+            placeholder="Search by name, faction, or ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
           <Label>{t('Select NPC Village')}</Label>
           <Select
             value={selectedVillageId ?? undefined}
@@ -687,7 +702,7 @@ const NpcBrainSection = () => {
                   key={v.villageId}
                   value={String(v.villageId)}
                 >
-                  {v.villageName} ({v.factionKey}) [{v.x},{v.y}]
+                  [{v.villageId}] {v.villageName} ({v.factionKey}) [{v.x},{v.y}]
                 </SelectItem>
               ))}
             </SelectContent>

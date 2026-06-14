@@ -178,7 +178,73 @@ export const processBuildDecisions = (
 
       const newLevel = currentLevel + 1;
       const fieldId = buildingData?.fieldId;
+
       if (fieldId === undefined) {
+        // Building doesn't exist yet — find an empty slot and assign it
+        const emptySlotRow = db.selectObject({
+          sql: `
+            SELECT bf.field_id AS fieldId
+            FROM building_fields bf
+            WHERE bf.village_id = $villageId
+              AND bf.field_id > 18
+              AND (bf.building_id IS NULL OR bf.building_id = 0)
+              AND bf.level = 0
+            LIMIT 1;
+          `,
+          bind: { $villageId: village.villageId },
+          schema: { parse: (v: unknown) => v } as any,
+        }) as { fieldId: number } | undefined;
+
+        if (!emptySlotRow) {
+          continue; // no empty slot available
+        }
+
+        const numericBuildingId = buildingKeyToId.get(buildingKey);
+        if (numericBuildingId === undefined) {
+          continue;
+        }
+
+        // Assign the building to this slot
+        db.exec({
+          sql: `
+            UPDATE building_fields
+            SET building_id = $buildingId, level = 0
+            WHERE village_id = $villageId AND field_id = $fieldId;
+          `,
+          bind: {
+            $buildingId: numericBuildingId,
+            $villageId: village.villageId,
+            $fieldId: emptySlotRow.fieldId,
+          },
+        });
+
+        // Register in-memory and push the level 1 upgrade
+        villageBuildings.set(buildingKey, {
+          level: 0,
+          fieldId: emptySlotRow.fieldId,
+        });
+        buildUpdates.push({
+          villageId: village.villageId,
+          fieldId: emptySlotRow.fieldId,
+          newLevel: 1,
+        });
+        villageBuildings.set(buildingKey, {
+          level: 1,
+          fieldId: emptySlotRow.fieldId,
+        });
+
+        if (buildingKey === 'WAREHOUSE' || buildingKey === 'GRANARY') {
+          const whLevel = villageBuildings.get('WAREHOUSE')?.level ?? 0;
+          const grLevel = villageBuildings.get('GRANARY')?.level ?? 0;
+          lootCapacityUpdates.push({
+            villageId: village.villageId,
+            newMaxLoot: calculateMaxLootCapacityFromBuildings(whLevel, grLevel),
+          });
+        }
+
+        remainingBudget -= estimatedCost;
+        buildsThisTick++;
+        totalBuilt++;
         continue;
       }
 

@@ -223,7 +223,10 @@ export const killHero = createController(
 
 export const getNpcVillagesList = createController(
   '/developer-settings/npc-villages',
-)(({ database }) => {
+)(({ database, query }) => {
+  const search = (query?.search as string) ?? '';
+  const hasSearch = search.length > 0;
+
   return database.selectObjects({
     sql: `
       SELECT
@@ -240,9 +243,10 @@ export const getNpcVillagesList = createController(
       FROM npc_village_state nvs
       JOIN villages v ON v.id = nvs.village_id
       JOIN tiles t ON t.id = v.tile_id
-      ORDER BY nvs.village_id ASC
-      LIMIT 200;
+      ${hasSearch ? 'WHERE v.name LIKE $search OR nvs.faction_key LIKE $search OR CAST(nvs.village_id AS TEXT) LIKE $search' : ''}
+      ORDER BY nvs.village_id ASC;
     `,
+    bind: hasSearch ? { $search: `%${search}%` } : undefined,
     schema: z.strictObject({
       villageId: z.number(),
       villageName: z.string(),

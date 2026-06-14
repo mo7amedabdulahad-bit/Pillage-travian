@@ -1,6 +1,5 @@
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../../utils/create-event.ts';
-import { getFactionProfile } from './faction-profiles';
 import {
   getGameSpeed,
   getMapSize,
@@ -199,30 +198,26 @@ export const processNPCTick = (
 
   const playerCoords = getPlayerVillageCoords(db);
 
-  const allVillages = allVillagesRaw.filter((v) => {
-    // Tier gating: skip if not yet due
-    if (v.nextSimulationDue > currentTimeMs) {
-      return false;
-    }
-
-    // Recalculate tier based on current conditions
+  // Assign tier FIRST, before filtering
+  for (const v of allVillagesRaw) {
     let tier = 2; // default mid-ring
 
-    // Tier 1: within 30 tiles of player, recently raided, active revenge intent, inner-core 2xl+
     if (playerCoords) {
       const dist = mapDistance({ x: v.x, y: v.y }, playerCoords);
-      if (dist <= 30) {
+      if (dist <= 1) {
+        tier = 1; // directly adjacent — always Tier 1
+      } else if (dist <= 30) {
         tier = 1;
       }
     }
     if (currentTimeMs - v.lastRaidedMs < 3_600_000) {
-      tier = 1; // raided in last hour
+      tier = 1;
     }
     if (v.revengeIntentTarget !== null) {
-      tier = 1; // active revenge intent
+      tier = 1;
     }
     if (v.aggressionLevel >= 3) {
-      tier = 1; // high aggression
+      tier = 1;
     }
     if (v.x * v.x + v.y * v.y < (mapSize * 0.2) ** 2) {
       tier = 1; // inner core (2xl+)
@@ -238,9 +233,14 @@ export const processNPCTick = (
       }
     }
 
-    // Store calculated tier for later update
     (v as any).calculatedTier = tier;
+  }
 
+  // Filter by next_simulation_due (skip if not yet due)
+  const allVillages = allVillagesRaw.filter((v) => {
+    if (v.nextSimulationDue > currentTimeMs) {
+      return false;
+    }
     return true;
   });
 
@@ -344,6 +344,8 @@ export const processNPCTick = (
     db,
     currentTimeMs,
     speed,
+    allTroops,
+    allVillages,
   );
 
   // ─── Update simulation_tier and next_simulation_due ───
@@ -392,7 +394,11 @@ export const processNPCTick = (
     // A village can skip ticks when: full loot, troops ≥ defence floor, aggression = 0, at field cap
     const needsTickClearIds: number[] = [];
     for (const village of allVillages) {
-      if (village.currentLoot >= 1.0 && village.aggressionLevel === 0) {
+      if (
+        village.currentLoot >= 1.0 &&
+        village.aggressionLevel === 0 &&
+        (village as any).revengeIntentTarget === null
+      ) {
         const villageSize = getVillageSize(mapSize, village.x, village.y);
         const defenceFloor =
           NPC_BRAIN_CONSTANTS.DEFENCE_FLOOR_BY_SIZE[villageSize] ?? 50;
@@ -449,6 +455,8 @@ const processRevengeIntentBatch = (
   db: DbFacade,
   currentTimeMs: number,
   speed: number,
+  allTroops: BatchTroopRow[],
+  allVillages: BatchVillageRow[],
 ): RetaliationResolution[] => {
   const resolutions: RetaliationResolution[] = [];
 
@@ -488,39 +496,21 @@ const processRevengeIntentBatch = (
   const clearedVillageIds: number[] = [];
 
   for (const intent of armedIntents) {
-    const _profile = getFactionProfile(intent.factionKey as FactionKey);
-
-    // Check current troop count
-    const homeTroops = db.selectObjects({
-      sql: `
-        SELECT u.unit AS unitId, t.amount
-        FROM troops t
-        JOIN unit_ids u ON u.id = t.unit_id
-        WHERE t.tile_id = $tileId
-          AND t.source_tile_id = $tileId
-          AND t.amount > 0;
-      `,
-      bind: { $tileId: intent.tileId },
-      schema: { parse: (v: unknown) => v } as any,
-    }) as unknown as { unitId: string; amount: number }[];
-
+    // Use pre-fetched troop data instead of re-querying
+    const homeTroops = allTroops.filter((t) => t.tileId === intent.tileId);
     const totalUnits = homeTroops.reduce((sum, t) => sum + t.amount, 0);
 
     if (totalUnits >= NPC_BRAIN_CONSTANTS.MIN_TROOPS_FOR_RETALIATION) {
-      // Enough troops: create attack event
       const troopMap: Record<string, number> = {};
       for (const troop of homeTroops) {
         troopMap[troop.unitId] = troop.amount;
       }
 
-      // Use aggression tier for troop percentage
-      const state = db.selectObject({
-        sql: 'SELECT aggression_level AS level FROM npc_village_state WHERE village_id = $villageId;',
-        bind: { $villageId: intent.villageId },
-        schema: { parse: (v: unknown) => v } as any,
-      }) as { level: number } | undefined;
-
-      const tier = state?.level ?? 1;
+      // Use pre-fetched village state for aggression level
+      const villageState = allVillages.find(
+        (v) => v.villageId === intent.villageId,
+      );
+      const tier = villageState?.aggressionLevel ?? 1;
       const troopPercentage =
         NPC_BRAIN_CONSTANTS.AGGRESSION_TROOP_PERCENTAGES[Math.min(5, tier)];
       const retaliationTroops = scaleTroops(troopMap, troopPercentage);
