@@ -143,27 +143,17 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
 
         // ─── NPC Brain: Start live heartbeat ───
         // Runs every 60 real seconds while the player is in-game
-        const speed = getGameSpeed(dbFacade);
         liveTickInterval = setInterval(() => {
           if (!dbFacade) {
             return;
           }
           try {
-            const tickResult = processNPCTick(
-              dbFacade,
-              LIVE_TICK_INTERVAL_MS,
-              speed,
-            );
+            const speed = getGameSpeed(dbFacade);
+            processNPCTick(dbFacade, LIVE_TICK_INTERVAL_MS, speed);
             setLastSimulationTimestamp(dbFacade, Date.now());
-
             globalThis.postMessage({
-              eventKey: 'event:npc-live-tick-complete',
-              tick: {
-                villagesGrown: tickResult.villagesGrown,
-                troopsRegenerated: tickResult.troopsRegenerated,
-                retaliationCount: tickResult.retaliationsResolved.length,
-                aggressionChanges: tickResult.aggressionChanges,
-              },
+              eventKey: 'event:npc-live-tick',
+              timestamp: Date.now(),
             });
           } catch (_tickError) {}
         }, LIVE_TICK_INTERVAL_MS);

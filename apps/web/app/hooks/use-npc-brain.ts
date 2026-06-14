@@ -27,19 +27,12 @@ interface SimulationSummary {
   offlineSummary: OfflineSummary;
 }
 
-interface LiveTickData {
-  villagesGrown: number;
-  troopsRegenerated: number;
-  retaliationCount: number;
-  aggressionChanges: unknown[];
-}
-
 interface NPCBrainState {
   isSimulating: boolean;
   simulationComplete: boolean;
   offlineSummary: OfflineSummary | null;
   worldThreatLevel: number;
-  lastLiveTick: LiveTickData | null;
+  lastLiveTickTimestamp: number | null;
   dismissSummary: () => void;
 }
 
@@ -62,7 +55,9 @@ export const useNPCBrain = (apiWorker: Worker | null): NPCBrainState => {
     null,
   );
   const [worldThreatLevel, setWorldThreatLevel] = useState(0);
-  const [lastLiveTick, setLastLiveTick] = useState<LiveTickData | null>(null);
+  const [lastLiveTickTimestamp, setLastLiveTick] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!apiWorker) {
@@ -92,8 +87,8 @@ export const useNPCBrain = (apiWorker: Worker | null): NPCBrainState => {
           break;
         }
 
-        case 'event:npc-live-tick-complete': {
-          setLastLiveTick(data.tick as LiveTickData);
+        case 'event:npc-live-tick': {
+          setLastLiveTick(data.timestamp as number);
           break;
         }
 
@@ -120,7 +115,7 @@ export const useNPCBrain = (apiWorker: Worker | null): NPCBrainState => {
     simulationComplete,
     offlineSummary,
     worldThreatLevel,
-    lastLiveTick,
+    lastLiveTickTimestamp,
     dismissSummary,
   };
 };
