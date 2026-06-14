@@ -94,8 +94,9 @@ export const simulateElapsedTime = async (
 
 /**
  * Process a single simulation tick for all NPC villages.
+ * Exported for use by the live heartbeat in api-worker.
  */
-const processNPCTick = (
+export const processNPCTick = (
   db: DbFacade,
   chunkMs: number,
   speed: number,

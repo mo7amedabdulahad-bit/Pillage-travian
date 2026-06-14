@@ -27,65 +27,89 @@ interface SimulationSummary {
   offlineSummary: OfflineSummary;
 }
 
+interface LiveTickData {
+  villagesGrown: number;
+  troopsRegenerated: number;
+  retaliationCount: number;
+  aggressionChanges: unknown[];
+}
+
 interface NPCBrainState {
   isSimulating: boolean;
   simulationComplete: boolean;
   offlineSummary: OfflineSummary | null;
   worldThreatLevel: number;
+  lastLiveTick: LiveTickData | null;
   dismissSummary: () => void;
 }
 
 /**
  * React hook that listens for NPC Brain simulation events from the Web Worker.
- * Provides simulation state, offline summary, and world threat level.
+ * Must be passed the actual apiWorker instance (Worker object) to attach listeners.
  *
  * Usage:
  * ```tsx
- * const { isSimulating, offlineSummary, dismissSummary } = useNPCBrain();
+ * const { apiWorker } = useApiWorker(serverSlug);
+ * const { isSimulating, offlineSummary, dismissSummary } = useNPCBrain(apiWorker);
  * if (isSimulating) return <LoadingSimulation />;
  * if (offlineSummary) return <WhileYouWereAway summary={offlineSummary} onDismiss={dismissSummary} />;
  * ```
  */
-export const useNPCBrain = (): NPCBrainState => {
+export const useNPCBrain = (apiWorker: Worker | null): NPCBrainState => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationComplete, setSimulationComplete] = useState(false);
   const [offlineSummary, setOfflineSummary] = useState<OfflineSummary | null>(
     null,
   );
   const [worldThreatLevel, setWorldThreatLevel] = useState(0);
+  const [lastLiveTick, setLastLiveTick] = useState<LiveTickData | null>(null);
 
   useEffect(() => {
+    if (!apiWorker) {
+      return;
+    }
+
     const handleMessage = (event: MessageEvent) => {
       const { data } = event;
-
-      if (data?.eventKey === 'event:database-initialization-success') {
-        setIsSimulating(true);
+      if (!data?.eventKey) {
+        return;
       }
 
-      if (data?.eventKey === 'event:npc-simulation-complete') {
-        const summary = data.summary as SimulationSummary;
-        setIsSimulating(false);
-        setSimulationComplete(true);
+      switch (data.eventKey) {
+        case 'event:npc-simulation-start': {
+          setIsSimulating(true);
+          break;
+        }
 
-        if (summary.offlineSummary) {
-          setOfflineSummary(summary.offlineSummary);
+        case 'event:npc-simulation-complete': {
+          setIsSimulating(false);
+          setSimulationComplete(true);
+
+          const summary = data.summary as SimulationSummary | null;
+          if (summary?.offlineSummary) {
+            setOfflineSummary(summary.offlineSummary);
+          }
+          break;
+        }
+
+        case 'event:npc-live-tick-complete': {
+          setLastLiveTick(data.tick as LiveTickData);
+          break;
+        }
+
+        case 'event:world-threat-update': {
+          setWorldThreatLevel(data.level ?? 0);
+          break;
         }
       }
-
-      if (data?.eventKey === 'event:world-threat-update') {
-        setWorldThreatLevel(data.level ?? 0);
-      }
     };
 
-    // Listen for simulation events
-    // Note: In production, this would listen on the apiWorker reference
-    // For now, we listen on the global message channel
-    globalThis.addEventListener('message', handleMessage);
+    apiWorker.addEventListener('message', handleMessage);
 
     return () => {
-      globalThis.removeEventListener('message', handleMessage);
+      apiWorker.removeEventListener('message', handleMessage);
     };
-  }, []);
+  }, [apiWorker]);
 
   const dismissSummary = useCallback(() => {
     setOfflineSummary(null);
@@ -96,6 +120,7 @@ export const useNPCBrain = (): NPCBrainState => {
     simulationComplete,
     offlineSummary,
     worldThreatLevel,
+    lastLiveTick,
     dismissSummary,
   };
 };

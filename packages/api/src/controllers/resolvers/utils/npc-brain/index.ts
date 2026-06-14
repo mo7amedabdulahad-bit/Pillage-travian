@@ -1,4 +1,5 @@
 export { FACTION_PROFILES, getFactionProfile } from './faction-profiles';
+export { getGameSpeed } from './helpers';
 export type {
   FactionKey,
   FactionProfile,
@@ -13,6 +14,7 @@ export { NPC_BRAIN_CONSTANTS } from './npc-brain-types';
 export { buildOfflineSummary } from './offline-summary';
 export {
   getLastSimulationTimestamp,
+  processNPCTick,
   setLastSimulationTimestamp,
   simulateElapsedTime,
 } from './simulate-elapsed-time';

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { memo, Suspense, use, useEffect, useState } from 'react';
+import { memo, Suspense, use, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Links,
@@ -15,7 +15,7 @@ import { LoadingSimulation } from 'app/(game)/components/loading-simulation/Load
 import { Notifier } from 'app/(game)/components/notifier';
 import { WhileYouWereAway } from 'app/(game)/components/while-you-were-away/WhileYouWereAway';
 import { serverExistAndLockMiddleware } from 'app/(game)/middleware/server-already-open-middleware';
-import { ApiProvider } from 'app/(game)/providers/api-provider';
+import { ApiContext, ApiProvider } from 'app/(game)/providers/api-provider';
 import { HeadLinks } from 'app/components/head-links.tsx';
 import { Spinner } from 'app/components/ui/spinner';
 import { Toaster } from 'app/components/ui/toaster';
@@ -63,6 +63,34 @@ const LayoutFallback = () => {
   );
 };
 
+/**
+ * NPC Brain Gate — wraps game content, blocks rendering during simulation.
+ * Must be rendered inside ApiProvider so it can access apiWorker via context.
+ */
+const NPCBrainGate = ({ children }: { children: React.ReactNode }) => {
+  const { apiWorker } = useContext(ApiContext);
+  const { isSimulating, offlineSummary, dismissSummary } =
+    useNPCBrain(apiWorker);
+
+  // Block game screen while offline simulation runs
+  if (isSimulating) {
+    return <LoadingSimulation />;
+  }
+
+  return (
+    <>
+      {/* Show offline summary modal if there are events to report */}
+      {offlineSummary && (
+        <WhileYouWereAway
+          summary={offlineSummary}
+          onDismiss={dismissSummary}
+        />
+      )}
+      {children}
+    </>
+  );
+};
+
 const LayoutContent = memo<Route.ComponentProps>(
   ({ params, loaderData }) => {
     const { serverSlug } = params;
@@ -71,7 +99,6 @@ const LayoutContent = memo<Route.ComponentProps>(
     const { i18n } = useTranslation();
     const { uiColorScheme } = use(CookieContext);
     const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
-    const { isSimulating, offlineSummary, dismissSummary } = useNPCBrain();
 
     const [queryClient] = useState<QueryClient>(
       new QueryClient({
@@ -115,19 +142,10 @@ const LayoutContent = memo<Route.ComponentProps>(
           <QueryClientProvider client={queryClient}>
             <Suspense fallback={<LayoutFallback />}>
               <ApiProvider serverSlug={serverSlug!}>
-                {/* NPC Brain: Show loading screen during simulation */}
-                {isSimulating && <LoadingSimulation />}
-
-                {/* NPC Brain: Show offline summary after simulation */}
-                {offlineSummary && (
-                  <WhileYouWereAway
-                    summary={offlineSummary}
-                    onDismiss={dismissSummary}
-                  />
-                )}
-
-                <Outlet />
-                <Notifier serverSlug={serverSlug!} />
+                <NPCBrainGate>
+                  <Outlet />
+                  <Notifier serverSlug={serverSlug!} />
+                </NPCBrainGate>
               </ApiProvider>
             </Suspense>
             <Toaster

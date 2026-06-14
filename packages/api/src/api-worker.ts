@@ -20,8 +20,10 @@ import {
   parseDatabaseUserVersion,
 } from '@pillage-first/utils/version';
 import {
+  getGameSpeed,
   getLastSimulationTimestamp,
   NPC_BRAIN_CONSTANTS,
+  processNPCTick,
   setLastSimulationTimestamp,
   simulateElapsedTime,
 } from './controllers/resolvers/utils/npc-brain/index.ts';
@@ -38,6 +40,9 @@ let sqlite3: Sqlite3Static | null = null;
 let opfsSahPool: SAHPoolUtil | null = null;
 let database: OpfsSAHPoolDatabase | null = null;
 let dbFacade: DbFacade | null = null;
+let liveTickInterval: ReturnType<typeof setInterval> | null = null;
+
+const LIVE_TICK_INTERVAL_MS = 60_000;
 
 globalThis.addEventListener('message', async (event: MessageEvent) => {
   const { data } = event;
@@ -101,7 +106,12 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
 
         upgradeDb(dbFacade);
 
-        // ─── NPC Brain: Run offline simulation ───
+        // ─── NPC Brain: Offline catch-up simulation ───
+        // Fire start event so the UI can show the loading screen
+        globalThis.postMessage({
+          eventKey: 'event:npc-simulation-start',
+        });
+
         try {
           const lastSimTimestamp = getLastSimulationTimestamp(dbFacade);
           const elapsedMs = Date.now() - lastSimTimestamp;
@@ -117,8 +127,46 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
               eventKey: 'event:npc-simulation-complete',
               summary: simulationSummary,
             });
+          } else {
+            // No simulation needed — still fire complete so UI unblocks
+            globalThis.postMessage({
+              eventKey: 'event:npc-simulation-complete',
+              summary: null,
+            });
           }
-        } catch (_simError) {}
+        } catch (_simError) {
+          globalThis.postMessage({
+            eventKey: 'event:npc-simulation-complete',
+            summary: null,
+          });
+        }
+
+        // ─── NPC Brain: Start live heartbeat ───
+        // Runs every 60 real seconds while the player is in-game
+        const speed = getGameSpeed(dbFacade);
+        liveTickInterval = setInterval(() => {
+          if (!dbFacade) {
+            return;
+          }
+          try {
+            const tickResult = processNPCTick(
+              dbFacade,
+              LIVE_TICK_INTERVAL_MS,
+              speed,
+            );
+            setLastSimulationTimestamp(dbFacade, Date.now());
+
+            globalThis.postMessage({
+              eventKey: 'event:npc-live-tick-complete',
+              tick: {
+                villagesGrown: tickResult.villagesGrown,
+                troopsRegenerated: tickResult.troopsRegenerated,
+                retaliationCount: tickResult.retaliationsResolved.length,
+                aggressionChanges: tickResult.aggressionChanges,
+              },
+            });
+          } catch (_tickError) {}
+        }, LIVE_TICK_INTERVAL_MS);
 
         const dataSource = createSchedulerDataSource(dbFacade);
 
@@ -167,6 +215,12 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
       }
     }
     case 'WORKER_CLOSE': {
+      // Stop the live heartbeat
+      if (liveTickInterval !== null) {
+        clearInterval(liveTickInterval);
+        liveTickInterval = null;
+      }
+
       cancelScheduling();
 
       dbFacade!.close();
