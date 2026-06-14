@@ -89,17 +89,17 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
   });
   const speed = serverRow?.speed ?? 1;
 
-  // Get all NPC villages with their faction, tile coordinates, and building levels
+  // Get all NPC villages with their faction, tile coordinates
   const villages = database.selectObjects({
     sql: `
       SELECT
         v.id AS village_id,
-        fi.faction AS faction_key,
+        COALESCE(fi.faction, 'npc1') AS faction_key,
         t.x,
         t.y
       FROM villages v
       JOIN players p ON v.player_id = p.id
-      JOIN faction_ids fi ON fi.id = p.faction_id
+      LEFT JOIN faction_ids fi ON fi.id = p.faction_id
       JOIN tiles t ON t.id = v.tile_id
       WHERE v.player_id != $player_id;
     `,
@@ -110,16 +110,6 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
       x: z.number(),
       y: z.number(),
     }),
-  });
-
-  // Get warehouse and granary building IDs
-  const _warehouseId = database.selectValue({
-    sql: "SELECT id FROM building_ids WHERE building = 'warehouse';",
-    schema: z.number(),
-  });
-  const _granaryId = database.selectValue({
-    sql: "SELECT id FROM building_ids WHERE building = 'granary';",
-    schema: z.number(),
   });
 
   // Get building levels for all NPC villages (for max_loot_capacity calculation)

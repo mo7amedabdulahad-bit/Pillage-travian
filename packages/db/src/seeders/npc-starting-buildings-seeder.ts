@@ -141,11 +141,11 @@ export const npcStartingBuildingsSeeder = (
         v.id AS village_id,
         t.x,
         t.y,
-        fi.faction AS faction_key
+        COALESCE(fi.faction, 'npc1') AS faction_key
       FROM villages v
       JOIN tiles t ON v.tile_id = t.id
       JOIN players p ON v.player_id = p.id
-      JOIN faction_ids fi ON fi.id = p.faction_id
+      LEFT JOIN faction_ids fi ON fi.id = p.faction_id
       WHERE v.player_id != $player_id;
     `,
     bind: { $player_id: PLAYER_ID },
