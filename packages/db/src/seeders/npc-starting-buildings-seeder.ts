@@ -220,7 +220,7 @@ export const npcStartingBuildingsSeeder = (
     return;
   }
 
-  // Group by village for efficient CASE construction
+  // Group by village for efficient processing
   const updatesByVillage = new Map<
     number,
     { buildingId: number; level: number }[]
@@ -234,6 +234,49 @@ export const npcStartingBuildingsSeeder = (
     arr.push({ buildingId: u.buildingId, level: u.level });
   }
 
+  // Step 1: Assign building_id to empty slots for buildings that don't exist yet
+  // NPC village building slots (field_id > 18) start with building_id = NULL.
+  // We must assign building_id BEFORE we can set levels via CASE UPDATE.
+  for (const [villageId, buildingUpdates] of updatesByVillage) {
+    for (const { buildingId } of buildingUpdates) {
+      // Check if this building already has a slot assigned
+      const existing = database.selectObject({
+        sql: `
+          SELECT field_id FROM building_fields
+          WHERE village_id = $villageId AND building_id = $buildingId
+          LIMIT 1;
+        `,
+        bind: { $villageId: villageId, $buildingId: buildingId },
+        schema: z.strictObject({ field_id: z.number() }),
+      });
+
+      if (!existing) {
+        // Assign building_id to the first empty slot
+        database.exec({
+          sql: `
+            UPDATE building_fields
+            SET building_id = $buildingId
+            WHERE village_id = $villageId
+              AND field_id > 18
+              AND (building_id IS NULL OR building_id = 0)
+              AND level = 0
+              AND field_id = (
+                SELECT field_id FROM building_fields
+                WHERE village_id = $villageId
+                  AND field_id > 18
+                  AND (building_id IS NULL OR building_id = 0)
+                  AND level = 0
+                ORDER BY field_id ASC
+                LIMIT 1
+              );
+          `,
+          bind: { $villageId: villageId, $buildingId: buildingId },
+        });
+      }
+    }
+  }
+
+  // Step 2: Set levels using CASE expression (now building_id is assigned)
   const caseClauses: string[] = [];
   const bind: Record<string, number> = {};
   let idx = 0;
@@ -270,5 +313,30 @@ export const npcStartingBuildingsSeeder = (
       WHERE village_id IN (${villageIdPlaceholders});
     `,
     bind: { ...bind, ...villageIdBinds },
+  });
+
+  // Step 3: Recalculate max_loot_capacity from actual warehouse/granary levels
+  database.exec({
+    sql: `
+      UPDATE npc_village_state
+      SET max_loot_capacity = (
+        SELECT
+          COALESCE(SUM(
+            CASE
+              WHEN bf.level <= 0 THEN 0
+              ELSE 800 + (bf.level - 1) * 750
+            END
+          ), 0)
+        FROM building_fields bf
+        JOIN building_ids bi ON bi.id = bf.building_id
+        WHERE bf.village_id = npc_village_state.village_id
+          AND bi.building IN ('WAREHOUSE', 'GRANARY')
+      )
+      WHERE village_id IN (
+        SELECT v.id FROM villages v
+        JOIN players p ON p.id = v.player_id
+        WHERE p.id != 1
+      );
+    `,
   });
 };

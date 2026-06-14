@@ -53,8 +53,8 @@ export const processBuildDecisions = (
   const buildingKeyToId = new Map<string, number>();
   const buildingIdToKey = new Map<number, string>();
   for (const row of buildingIdRows) {
-    buildingKeyToId.set(row.building, row.id);
-    buildingIdToKey.set(row.id, row.building);
+    buildingKeyToId.set(row.building.toUpperCase(), row.id);
+    buildingIdToKey.set(row.id, row.building.toUpperCase());
   }
 
   // Fetch actual building levels for all NPC villages (non-resource-field buildings)
@@ -90,7 +90,10 @@ export const processBuildDecisions = (
       villageMap = new Map();
       buildingIndex.set(bl.villageId, villageMap);
     }
-    villageMap.set(bl.buildingKey, { level: bl.level, fieldId: bl.fieldId });
+    villageMap.set(bl.buildingKey.toUpperCase(), {
+      level: bl.level,
+      fieldId: bl.fieldId,
+    });
   }
 
   // Index resource field sums
