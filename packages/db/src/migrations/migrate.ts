@@ -205,7 +205,11 @@ export const migrateAndSeed = (
     // NPC starting buildings (must run after buildingFieldsSeeder — updates existing rows)
     npcStartingBuildingsSeeder(db, server);
 
-    // Troops
+    // NPC village state (must run after npcStartingBuildingsSeeder — reads building levels for max_loot)
+    db.exec({ sql: createNpcVillageStateTable });
+    npcVillageStateSeeder(db);
+
+    // Troops (must run after npcVillageStateSeeder — uses max_loot_capacity)
     db.exec({ sql: createTroopsTable });
     troopSeeder(db, server);
     db.exec({ sql: createTroopsIndexes });
@@ -241,10 +245,6 @@ export const migrateAndSeed = (
 
     // Reports
     db.exec({ sql: createReportsTable });
-
-    // NPC village state
-    db.exec({ sql: createNpcVillageStateTable });
-    npcVillageStateSeeder(db);
 
     // NPC Brain: raid history and retaliation queue
     db.exec({ sql: createNpcRaidHistoryTable });

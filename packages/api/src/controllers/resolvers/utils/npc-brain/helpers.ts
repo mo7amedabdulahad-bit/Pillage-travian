@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { VillageSize } from '@pillage-first/types/models/village';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { getFactionProfile } from './faction-profiles';
@@ -214,12 +215,21 @@ export const getPlayerVillageCoords = (
       SELECT t.x, t.y
       FROM villages v
       JOIN tiles t ON t.id = v.tile_id
-      JOIN players p ON p.id = v.player_id
-      WHERE p.id = 1
+      WHERE v.player_id = $playerId
+      ORDER BY v.id ASC
       LIMIT 1;
     `,
+    bind: { $playerId: PLAYER_ID },
     schema: z.object({ x: z.number(), y: z.number() }),
   });
+  if (!result) {
+    console.error(
+      '[NPC Brain] getPlayerVillageCoords returned null — ' +
+        'PLAYER_ID=' +
+        PLAYER_ID +
+        ' has no village. Tier 1 proximity will not work.',
+    );
+  }
   return result ?? null;
 };
 
