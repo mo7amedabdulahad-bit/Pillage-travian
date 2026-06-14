@@ -32,6 +32,17 @@ export const simulateElapsedTime = async (
   db: DbFacade,
   elapsedMs: number,
 ): Promise<SimulationResult> => {
+  // On first run, seed timestamps to "now" so elapsed time is 0, not 56 years
+  const now = Date.now();
+  db.exec({
+    sql: `
+      UPDATE npc_village_state SET last_growth_tick_ms = $now WHERE last_growth_tick_ms = 0;
+      UPDATE npc_village_state SET last_troop_regen_ms = $now WHERE last_troop_regen_ms = 0;
+      UPDATE npc_village_state SET last_aggression_decay_ms = $now WHERE last_aggression_decay_ms = 0;
+    `,
+    bind: { $now: now },
+  });
+
   const speed = getGameSpeed(db);
   const chunkMs = NPC_BRAIN_CONSTANTS.SIMULATION_CHUNK_MS / speed;
   const totalChunks = Math.floor(elapsedMs / chunkMs);

@@ -81,13 +81,15 @@ const NPCBrainGate = ({ children }: { children: React.ReactNode }) => {
     lastLiveTickTimestamp,
   } = useNPCBrain(apiWorker);
 
-  // When the NPC Brain live tick fires, invalidate map/village queries
+  // When the NPC Brain live tick fires, invalidate map/village/troop queries
   // so the UI re-renders with fresh troop counts, field levels, loot availability
   useEffect(() => {
     if (lastLiveTickTimestamp === null) {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['tiles'] });
+    queryClient.invalidateQueries({ queryKey: ['player-units'] });
+    queryClient.invalidateQueries({ queryKey: ['player-villages'] });
   }, [lastLiveTickTimestamp, queryClient]);
 
   // Block game screen while offline simulation runs
