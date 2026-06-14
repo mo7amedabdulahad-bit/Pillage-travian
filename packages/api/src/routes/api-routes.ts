@@ -5,6 +5,8 @@ import {
 } from '../controllers/bookmark-controllers';
 import {
   getDeveloperSettings,
+  getNpcVillageDebug,
+  getNpcVillagesList,
   incrementHeroAdventurePoints,
   killHero,
   levelUpHero,
@@ -118,6 +120,10 @@ const apiRoutes: Route[] = [
   createRoute(levelUpHero),
   createRoute(incrementHeroAdventurePoints),
   createRoute(killHero),
+
+  // NPC Brain Debug
+  createRoute(getNpcVillagesList),
+  createRoute(getNpcVillageDebug),
 
   // Auctions
   // createRoute(getAuctions),

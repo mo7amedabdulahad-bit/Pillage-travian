@@ -728,6 +728,31 @@ export const paths = {
       },
     },
   },
+  '/developer-settings/npc-villages': {
+    get: {
+      summary: 'Get list of all NPC villages for debug',
+      responses: {
+        '200': {
+          description: 'List of NPC villages',
+        },
+      },
+    },
+  },
+  '/developer-settings/npc-villages/:villageId': {
+    get: {
+      summary: 'Get NPC village debug info',
+      requestParams: {
+        path: z.strictObject({
+          villageId: z.coerce.number(),
+        }),
+      },
+      responses: {
+        '200': {
+          description: 'NPC village debug info',
+        },
+      },
+    },
+  },
   '/players/:playerId/farm-lists': {
     get: {
       summary: 'Get farm lists',

@@ -1,6 +1,7 @@
 import { snakeCase } from 'moderndash';
 import { z } from 'zod';
 import { calculateHeroLevel } from '@pillage-first/game-assets/utils/hero';
+import { getNpcVillageDebugInfo } from '../controllers/resolvers/utils/npc-brain/developer-tools';
 import { triggerKick } from '../scheduler/scheduler-signal';
 import { createController } from '../utils/controller';
 import {
@@ -218,4 +219,51 @@ export const killHero = createController(
       $hero_id: heroId,
     },
   });
+});
+
+export const getNpcVillagesList = createController(
+  '/developer-settings/npc-villages',
+)(({ database }) => {
+  return database.selectObjects({
+    sql: `
+      SELECT
+        nvs.village_id AS villageId,
+        v.name AS villageName,
+        nvs.faction_key AS factionKey,
+        t.x,
+        t.y,
+        nvs.aggression_level AS aggressionLevel,
+        nvs.current_loot_available AS currentLoot,
+        nvs.max_loot_capacity AS maxLoot,
+        nvs.simulation_tier AS simulationTier,
+        nvs.needs_tick AS needsTick
+      FROM npc_village_state nvs
+      JOIN villages v ON v.id = nvs.village_id
+      JOIN tiles t ON t.id = v.tile_id
+      ORDER BY nvs.village_id ASC
+      LIMIT 200;
+    `,
+    schema: z.strictObject({
+      villageId: z.number(),
+      villageName: z.string(),
+      factionKey: z.string(),
+      x: z.number(),
+      y: z.number(),
+      aggressionLevel: z.number(),
+      currentLoot: z.number(),
+      maxLoot: z.number(),
+      simulationTier: z.number(),
+      needsTick: z.number(),
+    }),
+  });
+});
+
+export const getNpcVillageDebug = createController(
+  '/developer-settings/npc-villages/:villageId',
+)(({ database, path: { villageId } }) => {
+  const info = getNpcVillageDebugInfo(database, Number(villageId));
+  if (!info) {
+    return { error: 'Village not found or not an NPC village' };
+  }
+  return info;
 });
