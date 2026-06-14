@@ -314,29 +314,4 @@ export const npcStartingBuildingsSeeder = (
     `,
     bind: { ...bind, ...villageIdBinds },
   });
-
-  // Step 3: Recalculate max_loot_capacity from actual warehouse/granary levels
-  database.exec({
-    sql: `
-      UPDATE npc_village_state
-      SET max_loot_capacity = (
-        SELECT
-          COALESCE(SUM(
-            CASE
-              WHEN bf.level <= 0 THEN 0
-              ELSE 800 + (bf.level - 1) * 750
-            END
-          ), 0)
-        FROM building_fields bf
-        JOIN building_ids bi ON bi.id = bf.building_id
-        WHERE bf.village_id = npc_village_state.village_id
-          AND bi.building IN ('WAREHOUSE', 'GRANARY')
-      )
-      WHERE village_id IN (
-        SELECT v.id FROM villages v
-        JOIN players p ON p.id = v.player_id
-        WHERE p.id != 1
-      );
-    `,
-  });
 };
