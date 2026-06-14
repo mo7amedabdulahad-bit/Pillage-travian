@@ -29,12 +29,12 @@ export const mapDistance = (
 
 /**
  * Get village size based on distance from map center.
- * Mirrors the existing logic in npc.ts.
+ * Mirrors the existing logic in village-size.ts (mapSize, x, y).
  */
 export const getVillageSize = (
+  mapSize: number,
   x: number,
   y: number,
-  mapSize: number,
 ): VillageSize => {
   const dist = Math.hypot(x, y);
   const normalizedDist = dist / (mapSize / 2);
@@ -252,6 +252,32 @@ export const calculateMaxLootCapacity = (
     NPC_BRAIN_CONSTANTS.VILLAGE_SIZE_MULTIPLIER[villageSize] ?? 1.0;
   return Math.floor(
     fieldLevelSum * NPC_BRAIN_CONSTANTS.LOOT_PER_FIELD_LEVEL * sizeMultiplier,
+  );
+};
+
+/**
+ * Calculate max loot capacity for a village.
+ * Uses the same formula as the player's storage buildings.
+ * warehouse/granary capacity = 800 + (level - 1) * 750
+ */
+export const calculateStorageCapacity = (level: number): number => {
+  if (level <= 0) {
+    return 0;
+  }
+  return 800 + (level - 1) * 750;
+};
+
+/**
+ * Calculate max loot capacity for a village from building levels.
+ * maxLootCapacity = warehouseCapacity + granaryCapacity
+ */
+export const calculateMaxLootCapacityFromBuildings = (
+  warehouseLevel: number,
+  granaryLevel: number,
+): number => {
+  return (
+    calculateStorageCapacity(warehouseLevel) +
+    calculateStorageCapacity(granaryLevel)
   );
 };
 

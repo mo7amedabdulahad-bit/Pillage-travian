@@ -218,7 +218,8 @@ export const applyRaidReputationConsequences = (
           last_raided_ms = $now,
           last_interacted_at = $now,
           current_loot_available = $newLoot,
-          rest_state = 0
+          rest_state = 0,
+          needs_tick = 1
         WHERE village_id = $villageId;
       `,
       bind: {

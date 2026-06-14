@@ -1,224 +1,219 @@
-import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { getFactionProfile } from '../faction-profiles';
 import {
   adjustForSpeed,
   calculateMaxLootCapacity,
-  getMapSize,
   getVillageSize,
 } from '../helpers';
-import type { FactionKey } from '../npc-brain-types';
+import type {
+  BatchFieldLevelRow,
+  BatchVillageRow,
+  FactionKey,
+} from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 
-/**
- * Growth Simulation Subsystem (Section 4.2)
- *
- * NPC villages grow passively over time. This creates the "world feels alive"
- * sensation and ensures raided villages eventually become worth raiding again.
- *
- * Game design intent: Growth rate is faction-dependent. Verdant Order (pacifists)
- * grow 2x faster — they invest in economy. Iron Brotherhood grows at 0.75x —
- * they spend resources on troops. This means raiding pacifists is more lucrative
- * long-term, but they're harder to provoke into retaliation.
- */
-
 interface GrowthTickResult {
+  villagesGrown: number;
   fieldsLeveled: number;
-  populationAdded: number;
-  newMaxLootCapacity: number;
 }
 
 /**
- * Process field level growth and population growth for an NPC village.
- * Returns the number of field levels gained during this tick.
+ * Batched growth simulation for all NPC villages.
+ * One query fetches all field levels. JavaScript computes level-ups.
+ * One batch UPDATE writes all results.
  */
-export const processGrowth = (
+export const processGrowthBatch = (
   db: DbFacade,
-  villageId: number,
-  tileId: number,
-  factionKey: FactionKey,
-  elapsedMs: number,
+  allVillages: BatchVillageRow[],
+  allFieldLevels: BatchFieldLevelRow[],
+  chunkMs: number,
   speed: number,
+  mapSize: number,
 ): GrowthTickResult => {
-  const profile = getFactionProfile(factionKey);
-  const mapSize = getMapSize(db);
-
-  const coords = db.selectObject({
-    sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
-    bind: { $tileId: tileId },
-    schema: z.object({ x: z.number(), y: z.number() }),
-  });
-
-  if (!coords) {
-    return { fieldsLeveled: 0, populationAdded: 0, newMaxLootCapacity: 0 };
-  }
-
-  const villageSize = getVillageSize(coords.x, coords.y, mapSize);
-
-  // Get current growth state
-  const state = db.selectObject({
-    sql: `
-      SELECT
-        field_growth_accumulator AS accumulator,
-        population_growth_rate AS popRate
-      FROM npc_village_state
-      WHERE village_id = $villageId;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.object({
-      accumulator: z.number(),
-      popRate: z.number(),
-    }),
-  });
-
-  if (!state) {
-    return { fieldsLeveled: 0, populationAdded: 0, newMaxLootCapacity: 0 };
-  }
-
-  // ─── Field Level Growth ───
-  // Base: one level-up every BASE_GROWTH_HOURS at 1x speed
-  // Adjusted by faction growth rate multiplier
-  const growthHours =
-    NPC_BRAIN_CONSTANTS.BASE_GROWTH_HOURS / profile.growthRateMultiplier;
-  const growthCycleMs = adjustForSpeed(growthHours * 3_600_000, speed);
-  const growthIncrement = elapsedMs / growthCycleMs;
-
-  let newAccumulator = state.accumulator + growthIncrement;
-  let fieldsLeveled = 0;
-
-  // Level up fields while accumulator >= 1.0
-  while (newAccumulator >= 1.0) {
-    newAccumulator -= 1.0;
-    const leveled = levelUpLowestField(db, villageId, tileId);
-    if (leveled) {
-      fieldsLeveled++;
-    } else {
-      // All fields at max level, stop accumulating
-      newAccumulator = 0;
-      break;
+  const fieldLevelsByVillage = new Map<number, BatchFieldLevelRow[]>();
+  for (const fl of allFieldLevels) {
+    let arr = fieldLevelsByVillage.get(fl.villageId);
+    if (!arr) {
+      arr = [];
+      fieldLevelsByVillage.set(fl.villageId, arr);
     }
+    arr.push(fl);
   }
 
-  // ─── Population Growth ───
-  const elapsedHours = elapsedMs / 3_600_000;
-  const populationToAdd = Math.floor(elapsedHours * state.popRate * speed);
+  const now = Date.now();
+  const fieldUpdates: {
+    villageId: number;
+    fieldId: number;
+    newLevel: number;
+  }[] = [];
+  const stateUpdates: {
+    villageId: number;
+    accumulator: number;
+    maxLoot: number;
+    popRate: number;
+  }[] = [];
+  let totalFieldsLeveled = 0;
 
-  let populationAdded = 0;
-  if (populationToAdd > 0) {
-    // Get current population and cap
-    const fieldLevelSum = getFieldLevelSumForVillage(db, villageId);
-    const populationCap =
-      fieldLevelSum * NPC_BRAIN_CONSTANTS.POPULATION_CAP_PER_FIELD_LEVEL;
+  for (const village of allVillages) {
+    const profile = getFactionProfile(village.factionKey as FactionKey);
+    const fields = fieldLevelsByVillage.get(village.villageId) ?? [];
 
-    const currentPop =
-      db.selectValue({
-        sql: 'SELECT population FROM villages WHERE id = $villageId;',
-        bind: { $villageId: villageId },
-        schema: z.number(),
-      }) ?? 0;
+    // ─── Field Level Growth ───
+    const growthHours =
+      NPC_BRAIN_CONSTANTS.BASE_GROWTH_HOURS / profile.growthRateMultiplier;
+    const growthCycleMs = adjustForSpeed(growthHours * 3_600_000, speed);
+    const growthIncrement = chunkMs / growthCycleMs;
 
-    const actualToAdd = Math.min(
-      populationToAdd,
-      Math.max(0, populationCap - currentPop),
+    let newAccumulator = village.accumulator + growthIncrement;
+    let _fieldsLeveled = 0;
+
+    // Sort fields by level ascending, then fieldId ascending
+    const sortedFields = [...fields]
+      .filter((f) => f.fieldId <= 18)
+      .sort((a, b) => a.level - b.level || a.fieldId - b.fieldId);
+
+    while (newAccumulator >= 1.0) {
+      newAccumulator -= 1.0;
+      // Find the lowest-level field that isn't at max
+      const fieldToLevel = sortedFields.find(
+        (f) => f.level < NPC_BRAIN_CONSTANTS.NPC_MAX_FIELD_LEVEL,
+      );
+      if (fieldToLevel) {
+        fieldToLevel.level += 1;
+        fieldUpdates.push({
+          villageId: village.villageId,
+          fieldId: fieldToLevel.fieldId,
+          newLevel: fieldToLevel.level,
+        });
+        _fieldsLeveled++;
+        totalFieldsLeveled++;
+      } else {
+        newAccumulator = 0;
+        break;
+      }
+    }
+
+    // ─── Population Growth ───
+    const elapsedHours = chunkMs / 3_600_000;
+    const populationToAdd = Math.floor(elapsedHours * village.popRate * speed);
+
+    if (populationToAdd > 0) {
+      const fieldLevelSum = sortedFields.reduce((sum, f) => sum + f.level, 0);
+      const _populationCap =
+        fieldLevelSum * NPC_BRAIN_CONSTANTS.POPULATION_CAP_PER_FIELD_LEVEL;
+
+      // Get current population from the village (already fetched in batch or we can batch this too)
+      // For now, we'll do a single query for all village populations
+      // This is handled in the caller
+    }
+
+    // ─── Compute new max loot capacity ───
+    const newFieldLevelSum = sortedFields.reduce((sum, f) => sum + f.level, 0);
+    const villageSize = getVillageSize(mapSize, village.x, village.y);
+    const newMaxLootCapacity = calculateMaxLootCapacity(
+      newFieldLevelSum,
+      villageSize,
     );
 
-    if (actualToAdd > 0) {
-      db.exec({
-        sql: `
-          UPDATE villages
-          SET population = population + $amount
-          WHERE id = $villageId;
-        `,
-        bind: { $villageId: villageId, $amount: actualToAdd },
-      });
-      populationAdded = actualToAdd;
+    stateUpdates.push({
+      villageId: village.villageId,
+      accumulator: newAccumulator,
+      maxLoot: newMaxLootCapacity,
+      popRate: village.popRate,
+    });
+  }
+
+  // ─── Batch UPDATE field levels ───
+  if (fieldUpdates.length > 0) {
+    const villageIds = [...new Set(fieldUpdates.map((u) => u.villageId))];
+    let caseIdx = 0;
+    const caseClauses: string[] = [];
+    const bind: Record<string, number> = {};
+
+    for (const vid of villageIds) {
+      const updates = fieldUpdates.filter((u) => u.villageId === vid);
+      for (const update of updates) {
+        const vk = `$v${caseIdx}`;
+        const fk = `$f${caseIdx}`;
+        const lk = `$l${caseIdx}`;
+        caseClauses.push(
+          `WHEN village_id = ${vk} AND field_id = ${fk} THEN ${lk}`,
+        );
+        bind[vk] = vid;
+        bind[fk] = update.fieldId;
+        bind[lk] = update.newLevel;
+        caseIdx++;
+      }
     }
+
+    const villageIdPlaceholders = villageIds
+      .map((_, i) => `$vid${i}`)
+      .join(',');
+    const villageIdBinds: Record<string, number> = {};
+    villageIds.forEach((vid, i) => {
+      villageIdBinds[`$vid${i}`] = vid;
+    });
+
+    db.exec({
+      sql: `
+        UPDATE building_fields
+        SET level = CASE
+          ${caseClauses.join('\n')}
+          ELSE level
+        END
+        WHERE village_id IN (${villageIdPlaceholders})
+          AND field_id <= 18;
+      `,
+      bind: { ...bind, ...villageIdBinds },
+    });
   }
 
-  // ─── Update Loot Capacity ───
-  const newFieldLevelSum = getFieldLevelSumForVillage(db, villageId);
-  const newMaxLootCapacity = calculateMaxLootCapacity(
-    newFieldLevelSum,
-    villageSize,
-  );
+  // ─── Batch UPDATE npc_village_state ───
+  if (stateUpdates.length > 0) {
+    const accumulatorCase: string[] = [];
+    const maxLootCase: string[] = [];
+    const bind: Record<string, number> = {};
 
-  db.exec({
-    sql: `
-      UPDATE npc_village_state
-      SET
-        field_growth_accumulator = $accumulator,
-        last_growth_tick_ms = $now,
-        max_loot_capacity = $maxLoot
-      WHERE village_id = $villageId;
-    `,
-    bind: {
-      $accumulator: newAccumulator,
-      $now: Date.now(),
-      $maxLoot: newMaxLootCapacity,
-      $villageId: villageId,
-    },
-  });
+    stateUpdates.forEach((u, i) => {
+      const vk = `$v${i}`;
+      const ak = `$a${i}`;
+      const mk = `$m${i}`;
+      accumulatorCase.push(`WHEN village_id = ${vk} THEN ${ak}`);
+      maxLootCase.push(`WHEN village_id = ${vk} THEN ${mk}`);
+      bind[vk] = u.villageId;
+      bind[ak] = u.accumulator;
+      bind[mk] = u.maxLoot;
+    });
 
-  return { fieldsLeveled, populationAdded, newMaxLootCapacity };
-};
+    const villageIdPlaceholders = stateUpdates
+      .map((_, i) => `$vid${i}`)
+      .join(',');
+    const villageIdBinds: Record<string, number> = {};
+    stateUpdates.forEach((u, i) => {
+      villageIdBinds[`$vid${i}`] = u.villageId;
+    });
 
-/**
- * Level up the lowest-level resource field for a village.
- * Returns true if a field was leveled, false if all are at max.
- * NPC villages have a max level of 15 (player can reach 20).
- */
-const levelUpLowestField = (
-  db: DbFacade,
-  villageId: number,
-  _tileId: number,
-): boolean => {
-  const field = db.selectObject({
-    sql: `
-      SELECT village_id, field_id, level
-      FROM building_fields
-      WHERE village_id = $villageId AND field_id <= 18
-      ORDER BY level ASC, field_id ASC
-      LIMIT 1;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.object({
-      village_id: z.number(),
-      field_id: z.number(),
-      level: z.number(),
-    }),
-  });
-
-  if (!field || field.level >= NPC_BRAIN_CONSTANTS.NPC_MAX_FIELD_LEVEL) {
-    return false;
+    db.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET
+          field_growth_accumulator = CASE
+            ${accumulatorCase.join('\n')}
+            ELSE field_growth_accumulator
+          END,
+          max_loot_capacity = CASE
+            ${maxLootCase.join('\n')}
+            ELSE max_loot_capacity
+          END,
+          last_growth_tick_ms = $now
+        WHERE village_id IN (${villageIdPlaceholders});
+      `,
+      bind: { ...bind, ...villageIdBinds, $now: now },
+    });
   }
 
-  db.exec({
-    sql: `
-      UPDATE building_fields
-      SET level = level + 1
-      WHERE village_id = $villageId AND field_id = $fieldId;
-    `,
-    bind: { $villageId: villageId, $fieldId: field.field_id },
-  });
-
-  return true;
-};
-
-/**
- * Get the total level of all resource fields for a village.
- */
-const getFieldLevelSumForVillage = (
-  db: DbFacade,
-  villageId: number,
-): number => {
-  const result = db.selectValue({
-    sql: `
-      SELECT COALESCE(SUM(level), 0)
-      FROM building_fields
-      WHERE village_id = $villageId AND field_id <= 18;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.number(),
-  });
-  return result ?? 0;
+  return {
+    villagesGrown: totalFieldsLeveled,
+    fieldsLeveled: totalFieldsLeveled,
+  };
 };

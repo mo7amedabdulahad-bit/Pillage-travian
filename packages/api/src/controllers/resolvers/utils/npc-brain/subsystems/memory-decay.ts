@@ -1,52 +1,65 @@
-import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
-import { getFactionProfile } from '../faction-profiles';
+import { FACTION_PROFILES } from '../faction-profiles';
 import { adjustForSpeed } from '../helpers';
-import type { FactionKey } from '../npc-brain-types';
 
 /**
- * Memory Decay Subsystem (Section 4.1)
- *
- * Prunes expired raid history entries for non-PERMANENT factions.
- * PERMANENT factions (Iron Brotherhood, Ember Cult, Bone Reavers) never forget.
- *
- * Game design intent: Memory duration creates distinct faction personalities.
- * Short memory (River Clans, 24h) means quick forgiveness — raid them and they'll
- * calm down fast. Long memory (Stone Wardens, 168h) means they hold grudges.
- * PERMANENT means the only escape is the legendary consumable.
+ * Batched memory decay for all NPC villages.
+ * One DELETE with JOIN on npc_village_state handles all villages at once.
  */
-export const processMemoryDecay = (
+export const processMemoryDecayBatch = (
   db: DbFacade,
-  villageId: number,
-  factionKey: FactionKey,
   currentTimeMs: number,
   speed: number,
-): number => {
-  const profile = getFactionProfile(factionKey);
+): void => {
+  // Build a CASE expression for memory thresholds per faction
+  const nonPermanentFactions = Object.values(FACTION_PROFILES)
+    .filter((p) => !p.isMemoryPermanent)
+    .map((p) => p.key);
 
-  if (profile.isMemoryPermanent) {
-    return getRaidCount(db, villageId);
+  if (nonPermanentFactions.length === 0) {
+    return;
   }
 
-  const memoryThresholdMs = adjustForSpeed(
-    profile.memoryDurationHours! * 3_600_000,
-    speed,
-  );
+  // Build CASE for each faction's memory duration
+  const caseClauses: string[] = [];
+  const bind: Record<string, number | string> = {};
+
+  nonPermanentFactions.forEach((factionKey, i) => {
+    const profile = FACTION_PROFILES[factionKey];
+    const thresholdMs = adjustForSpeed(
+      profile.memoryDurationHours! * 3_600_000,
+      speed,
+    );
+    const fk = `$fk${i}`;
+    const tk = `$tk${i}`;
+    caseClauses.push(`WHEN nvs.faction_key = ${fk} THEN ${tk}`);
+    bind[fk] = factionKey;
+    bind[tk] = thresholdMs;
+  });
+
+  const factionPlaceholders = nonPermanentFactions
+    .map((_, i) => `$fk${i}`)
+    .join(',');
 
   db.exec({
     sql: `
       DELETE FROM npc_raid_history
-      WHERE village_id = $villageId
-        AND ($currentTime - timestamp) > $memoryThreshold;
+      WHERE village_id IN (
+        SELECT nvs.village_id
+        FROM npc_village_state nvs
+        WHERE nvs.faction_key IN (${factionPlaceholders})
+      )
+      AND ($currentTime - timestamp) > (
+        SELECT CASE nvs2.faction_key
+          ${caseClauses.join('\n')}
+          ELSE 999999999999
+        END
+        FROM npc_village_state nvs2
+        WHERE nvs2.village_id = npc_raid_history.village_id
+      );
     `,
-    bind: {
-      $villageId: villageId,
-      $currentTime: currentTimeMs,
-      $memoryThreshold: memoryThresholdMs,
-    },
+    bind: { ...bind, $currentTime: currentTimeMs },
   });
-
-  return getRaidCount(db, villageId);
 };
 
 /**
@@ -60,11 +73,10 @@ export const getRaidCount = (db: DbFacade, villageId: number): number => {
         SELECT COUNT(*) FROM npc_raid_history WHERE village_id = $villageId;
       `,
       bind: { $villageId: villageId },
-      schema: z.number(),
+      schema: { parse: (v: unknown) => v } as any,
     });
-    return count ?? 0;
+    return (count as number) ?? 0;
   } catch (_e) {
-    // Table might not exist for old game worlds
     return 0;
   }
 };

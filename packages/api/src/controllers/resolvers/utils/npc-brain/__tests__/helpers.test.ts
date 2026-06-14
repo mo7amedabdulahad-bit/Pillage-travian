@@ -87,15 +87,15 @@ describe('NPC Brain Helpers', () => {
 
   describe('getVillageSize', () => {
     it('should return xxs for edge of map', () => {
-      expect(getVillageSize(190, 0, 400)).toBe('xxs');
+      expect(getVillageSize(400, 190, 0)).toBe('xxs');
     });
 
     it('should return 4xl for center of map', () => {
-      expect(getVillageSize(0, 0, 400)).toBe('4xl');
+      expect(getVillageSize(400, 0, 0)).toBe('4xl');
     });
 
     it('should return md for middle distance', () => {
-      expect(getVillageSize(130, 0, 400)).toBe('md');
+      expect(getVillageSize(400, 130, 0)).toBe('md');
     });
   });
 });

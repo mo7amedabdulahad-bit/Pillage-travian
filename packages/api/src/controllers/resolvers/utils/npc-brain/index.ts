@@ -1,3 +1,4 @@
+export { getNpcVillageDebugInfo } from './developer-tools';
 export { FACTION_PROFILES, getFactionProfile } from './faction-profiles';
 export { getGameSpeed } from './helpers';
 export type {

@@ -30,5 +30,16 @@ CREATE TABLE npc_village_state
   -- Faction reference (stored as TEXT key like 'npc1', 'npc2', etc.)
   faction_key TEXT NOT NULL DEFAULT 'npc1',
 
+  -- Performance: skip villages that don't need tick processing
+  needs_tick INTEGER NOT NULL DEFAULT 1,
+
+  -- Revenge intent: deferred retaliation when village lacks troops
+  revenge_intent_target_village_id INTEGER DEFAULT NULL,
+  revenge_intent_armed_at_ms INTEGER DEFAULT NULL,
+
+  -- Importance tier: controls simulation frequency
+  simulation_tier INTEGER NOT NULL DEFAULT 2,
+  next_simulation_due INTEGER NOT NULL DEFAULT 0,
+
   FOREIGN KEY (village_id) REFERENCES villages (id) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;

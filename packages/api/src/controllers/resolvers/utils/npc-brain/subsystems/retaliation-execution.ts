@@ -144,7 +144,6 @@ const executeRetaliation = (
       type: 'troopMovementAttack',
       villageId: retaliation.villageId,
       targetId: playerVillageId,
-      // biome-ignore lint/suspicious/noExplicitAny: Unit IDs from parsed JSON match UnitId union
       troops: scaledTroops as any,
       startsAt: retaliation.executeAtMs,
     });

@@ -4,8 +4,14 @@ import type { VillageSize } from '@pillage-first/types/models/village';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../utils/create-event';
 import { getFactionProfile } from './npc-brain/faction-profiles';
-import { getPreferredTroopComposition } from './npc-brain/helpers';
+import {
+  getPlayerVillageCoords,
+  getPreferredTroopComposition,
+  mapDistance,
+  scaleTroops,
+} from './npc-brain/helpers';
 import type { FactionKey } from './npc-brain/npc-brain-types';
+import { NPC_BRAIN_CONSTANTS } from './npc-brain/npc-brain-types';
 import { addTroops } from './troops';
 
 const tribeToTiers: Record<string, string[]> = {
@@ -255,9 +261,9 @@ const regenerateWithVillageSize = (
 /**
  * Triggers NPC retaliation if applicable.
  *
- * Hybrid approach: When NPC Brain aggression state exists, delegates to the
- * aggression escalation system. Otherwise, falls back to the original
- * probability-based retaliation.
+ * For Brain-managed villages: checks faction retaliation threshold,
+ * then either creates an immediate attack event or arms revenge intent.
+ * Never returns early without firing or arming revenge.
  */
 export const handleNpcRetaliation = (
   database: DbFacade,
@@ -285,17 +291,117 @@ export const handleNpcRetaliation = (
     return;
   }
 
-  // If NPC Brain faction state exists, the aggression system handles retaliation
-  // via applyRaidReputationConsequences in the combat resolver.
-  // We still run the original logic as a fallback for any edge cases.
   const factionKey = state.faction_key as FactionKey;
+
+  // ─── Brain-managed villages: Revenge Intent System ───
   if (factionKey?.startsWith('npc')) {
-    // NPC Brain aggression system will handle this via the combat resolver hook.
-    // Skip the old probability-based retaliation to avoid double-retaliation.
+    const profile = getFactionProfile(factionKey);
+
+    // Check if this attack meets the retaliation threshold
+    if (state.times_attacked < profile.retaliationThreshold) {
+      return; // Not enough attacks yet — no silent skip, just not triggered
+    }
+
+    // Get village tile and home troops
+    const villageInfo = database.selectObject({
+      sql: `
+        SELECT v.tile_id, t.x, t.y
+        FROM villages v
+        JOIN tiles t ON t.id = v.tile_id
+        WHERE v.id = $villageId;
+      `,
+      bind: { $villageId: villageId },
+      schema: z.object({ tile_id: z.number(), x: z.number(), y: z.number() }),
+    });
+
+    if (!villageInfo) {
+      return;
+    }
+
+    const homeTroops = database.selectObjects({
+      sql: `
+        SELECT u.unit AS unitId, t.amount
+        FROM troops t
+        JOIN unit_ids u ON u.id = t.unit_id
+        WHERE t.tile_id = $tileId
+          AND t.source_tile_id = $tileId
+          AND t.amount > 0;
+      `,
+      bind: { $tileId: villageInfo.tile_id },
+      schema: z.strictObject({ unitId: z.string(), amount: z.number() }),
+    });
+
+    const totalUnits = homeTroops.reduce((sum, t) => sum + t.amount, 0);
+
+    if (totalUnits >= NPC_BRAIN_CONSTANTS.MIN_TROOPS_FOR_RETALIATION) {
+      // Enough troops: create scheduled attack event immediately
+      const troopPercentage =
+        NPC_BRAIN_CONSTANTS.AGGRESSION_TROOP_PERCENTAGES[
+          Math.min(
+            5,
+            Math.floor(state.times_attacked / profile.retaliationThreshold),
+          )
+        ];
+
+      const troopMap: Record<string, number> = {};
+      for (const troop of homeTroops) {
+        troopMap[troop.unitId] = troop.amount;
+      }
+      const retaliationTroops = scaleTroops(troopMap, troopPercentage);
+
+      if (Object.keys(retaliationTroops).length > 0) {
+        const playerCoords = getPlayerVillageCoords(database);
+        if (playerCoords) {
+          const distance = mapDistance(
+            { x: villageInfo.x, y: villageInfo.y },
+            playerCoords,
+          );
+          const slowestSpeed = 3;
+          const speed = getGameSpeedFromDb(database);
+          const travelTimeMs = Math.ceil(
+            (distance / (slowestSpeed * speed)) * 3_600_000,
+          );
+          const variance =
+            (Math.random() * 2 * NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE -
+              NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE) *
+            travelTimeMs;
+          const executeAtMs = Date.now() + travelTimeMs + variance;
+
+          createEvents<'troopMovementAttack'>(database, {
+            type: 'troopMovementAttack',
+            villageId: villageId,
+            targetId: attackerVillageId,
+            // biome-ignore lint/suspicious/noExplicitAny: Unit IDs from DB are strings but match UnitId union
+            troops: retaliationTroops as any,
+            startsAt: Math.floor(executeAtMs),
+          });
+        }
+      }
+    } else {
+      // Not enough troops: arm revenge intent for resolution in next tick
+      const speed = getGameSpeedFromDb(database);
+      const armedAtMs = Date.now() + Math.ceil(3_600_000 / speed); // 1 simulated hour
+
+      database.exec({
+        sql: `
+          UPDATE npc_village_state
+          SET revenge_intent_target_village_id = $targetId,
+              revenge_intent_armed_at_ms = $armedAtMs,
+              needs_tick = 1
+          WHERE village_id = $villageId;
+        `,
+        bind: {
+          $targetId: attackerVillageId,
+          $armedAtMs: armedAtMs,
+          $villageId: villageId,
+        },
+      });
+    }
+
     return;
   }
 
-  // Fallback: original probability-based retaliation
+  // ─── Fallback: original probability-based retaliation for non-Brain villages ───
   const npcInfo = database.selectObject({
     sql: `
       SELECT p.personality, v.tile_id
@@ -363,4 +469,15 @@ export const handleNpcRetaliation = (
     troops: attackingTroops as any,
     startsAt: timestamp,
   });
+};
+
+/**
+ * Helper to get game speed from DB.
+ */
+const getGameSpeedFromDb = (db: DbFacade): number => {
+  const result = db.selectObject({
+    sql: 'SELECT speed FROM servers LIMIT 1;',
+    schema: z.object({ speed: z.number() }),
+  });
+  return result?.speed ?? 1;
 };

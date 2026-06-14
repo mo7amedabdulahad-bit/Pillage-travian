@@ -1,137 +1,118 @@
-import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
-import type { FactionKey } from '../npc-brain-types';
+import type { BatchVillageRow } from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 
 /**
- * Loot Recovery Subsystem (Section 4.3)
- *
- * After a raid, a village's loot availability drops. It recovers over time.
- * Larger, higher-level villages recover faster.
- *
- * Game design intent: This creates a natural "farming cooldown" — raiding the
- * same village repeatedly yields diminishing returns. The rest state bonus
- * rewards patient players who time their raids well.
+ * Batched loot recovery for all NPC villages.
+ * One query fetches all loot states. JavaScript computes recovery.
+ * One batch UPDATE writes all results.
  */
-
-interface LootRecoveryResult {
-  newLootAvailable: number;
-  enteredRestState: boolean;
-}
-
-/**
- * Process loot recovery for an NPC village.
- * Recovery rate scales with village field level sum.
- */
-export const processLootRecovery = (
+export const processLootRecoveryBatch = (
   db: DbFacade,
-  villageId: number,
-  _factionKey: FactionKey,
-  elapsedMs: number,
+  allVillages: BatchVillageRow[],
+  allFieldLevels: Map<number, number>, // villageId -> field level sum
+  chunkMs: number,
   speed: number,
-): LootRecoveryResult => {
-  const state = db.selectObject({
-    sql: `
-      SELECT
-        current_loot_available AS lootAvailable,
-        max_loot_capacity AS maxLoot,
-        last_raided_ms AS lastRaidedMs,
-        rest_state AS restState,
-        rest_threshold_ms AS restThresholdMs,
-        rest_stockpile_bonus AS restBonus
-      FROM npc_village_state
-      WHERE village_id = $villageId;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.object({
-      lootAvailable: z.number(),
-      maxLoot: z.number(),
-      lastRaidedMs: z.number(),
-      restState: z.number(),
-      restThresholdMs: z.number(),
-      restBonus: z.number(),
-    }),
+): void => {
+  const now = Date.now();
+  const elapsedHours = chunkMs / 3_600_000;
+
+  const updates: { villageId: number; newLoot: number; restState?: number }[] =
+    [];
+
+  for (const village of allVillages) {
+    // Already at full loot — check rest state
+    if (village.currentLoot >= 1.0) {
+      const timeSinceRaid = now - village.lastRaidedMs;
+      if (timeSinceRaid > village.restThresholdMs && village.restState === 0) {
+        updates.push({
+          villageId: village.villageId,
+          newLoot: 1.0,
+          restState: 1,
+        });
+      }
+      continue;
+    }
+
+    // Calculate recovery
+    const fieldLevelSum = allFieldLevels.get(village.villageId) ?? 0;
+    const recoveryScale =
+      fieldLevelSum / NPC_BRAIN_CONSTANTS.FULL_RECOVERY_FIELD_SUM;
+    const baseRate = NPC_BRAIN_CONSTANTS.BASE_LOOT_RECOVERY_RATE;
+    const recoveryRate = baseRate * Math.min(1.0, recoveryScale) * speed;
+    const recoveryAmount = recoveryRate * elapsedHours;
+
+    const newLoot = Math.min(1.0, village.currentLoot + recoveryAmount);
+
+    if (newLoot >= 1.0) {
+      const timeSinceRaid = now - village.lastRaidedMs;
+      if (timeSinceRaid > village.restThresholdMs) {
+        updates.push({
+          villageId: village.villageId,
+          newLoot: 1.0,
+          restState: 1,
+        });
+      } else {
+        updates.push({ villageId: village.villageId, newLoot: 1.0 });
+      }
+    } else {
+      updates.push({ villageId: village.villageId, newLoot });
+    }
+  }
+
+  if (updates.length === 0) {
+    return;
+  }
+
+  // ─── Batch UPDATE ───
+  const lootCase: string[] = [];
+  const _restCase: string[] = [];
+  const restUpdates: typeof updates = [];
+  const bind: Record<string, number> = {};
+
+  updates.forEach((u, i) => {
+    const vk = `$v${i}`;
+    const lk = `$l${i}`;
+    lootCase.push(`WHEN village_id = ${vk} THEN ${lk}`);
+    bind[vk] = u.villageId;
+    bind[lk] = u.newLoot;
+
+    if (u.restState !== undefined) {
+      restUpdates.push(u);
+    }
   });
 
-  if (!state) {
-    return { newLootAvailable: 1.0, enteredRestState: false };
-  }
+  const villageIdPlaceholders = updates.map((_, i) => `$vid${i}`).join(',');
+  const villageIdBinds: Record<string, number> = {};
+  updates.forEach((u, i) => {
+    villageIdBinds[`$vid${i}`] = u.villageId;
+  });
 
-  // If already at full loot, check rest state
-  if (state.lootAvailable >= 1.0) {
-    const enteredRest = checkAndApplyRestState(
-      db,
-      villageId,
-      state.lastRaidedMs,
-      state.restThresholdMs,
-    );
-    return { newLootAvailable: 1.0, enteredRestState: enteredRest };
-  }
-
-  // Calculate recovery rate based on field level sum
-  const fieldLevelSum = getVillageFieldLevelSum(db, villageId);
-  const recoveryScale =
-    fieldLevelSum / NPC_BRAIN_CONSTANTS.FULL_RECOVERY_FIELD_SUM;
-  const baseRate = NPC_BRAIN_CONSTANTS.BASE_LOOT_RECOVERY_RATE;
-  const recoveryRate = baseRate * Math.min(1.0, recoveryScale) * speed;
-
-  const elapsedHours = elapsedMs / 3_600_000;
-  const recoveryAmount = recoveryRate * elapsedHours;
-
-  const newLootAvailable = Math.min(1.0, state.lootAvailable + recoveryAmount);
-
-  // Check if we just reached full loot
-  let enteredRestState = false;
-  if (newLootAvailable >= 1.0) {
-    enteredRestState = checkAndApplyRestState(
-      db,
-      villageId,
-      state.lastRaidedMs,
-      state.restThresholdMs,
-    );
+  let restClause = '';
+  if (restUpdates.length > 0) {
+    const restCaseClauses: string[] = [];
+    restUpdates.forEach((u, i) => {
+      restCaseClauses.push(`WHEN village_id = $rv${i} THEN ${u.restState}`);
+      bind[`$rv${i}`] = u.villageId;
+    });
+    restClause = `,
+        rest_state = CASE
+          ${restCaseClauses.join('\n')}
+          ELSE rest_state
+        END`;
   }
 
   db.exec({
     sql: `
       UPDATE npc_village_state
-      SET current_loot_available = $loot
-      WHERE village_id = $villageId;
+      SET current_loot_available = CASE
+        ${lootCase.join('\n')}
+        ELSE current_loot_available
+      END${restClause}
+      WHERE village_id IN (${villageIdPlaceholders});
     `,
-    bind: {
-      $loot: newLootAvailable,
-      $villageId: villageId,
-    },
+    bind: { ...bind, ...villageIdBinds },
   });
-
-  return { newLootAvailable, enteredRestState };
-};
-
-/**
- * Check if a village qualifies for rest state and apply it.
- * Rest state = loot at 100% AND enough time since last raid.
- */
-const checkAndApplyRestState = (
-  db: DbFacade,
-  villageId: number,
-  lastRaidedMs: number,
-  restThresholdMs: number,
-): boolean => {
-  const now = Date.now();
-  const timeSinceRaid = now - lastRaidedMs;
-
-  if (timeSinceRaid > restThresholdMs) {
-    db.exec({
-      sql: `
-        UPDATE npc_village_state
-        SET rest_state = 1
-        WHERE village_id = $villageId AND rest_state = 0;
-      `,
-      bind: { $villageId: villageId },
-    });
-    return true;
-  }
-
-  return false;
 };
 
 /**
@@ -160,28 +141,12 @@ export const getRestBonus = (db: DbFacade, villageId: number): number => {
       WHERE village_id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: z.object({ restState: z.number(), bonus: z.number() }),
-  });
+    schema: { parse: (v: unknown) => v } as any,
+  }) as { restState: number; bonus: number } | undefined;
 
   if (!state || state.restState === 0) {
     return 0;
   }
 
   return state.bonus;
-};
-
-/**
- * Get the total field level sum for a village.
- */
-const getVillageFieldLevelSum = (db: DbFacade, villageId: number): number => {
-  const result = db.selectValue({
-    sql: `
-      SELECT COALESCE(SUM(level), 0)
-      FROM building_fields
-      WHERE village_id = $villageId AND field_id <= 18;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.number(),
-  });
-  return result ?? 0;
 };

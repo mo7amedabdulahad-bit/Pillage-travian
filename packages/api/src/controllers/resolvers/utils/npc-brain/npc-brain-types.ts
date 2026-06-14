@@ -149,6 +149,49 @@ export interface WorldThreatState {
 // Constants
 // ───────────────────────────────────────────────────────────────
 
+// ───────────────────────────────────────────────────────────────
+// Batch Data Types (for set-based tick processing)
+// ───────────────────────────────────────────────────────────────
+
+export interface BatchVillageRow {
+  readonly villageId: number;
+  readonly factionKey: string;
+  readonly tileId: number;
+  readonly x: number;
+  readonly y: number;
+  readonly tribe: string;
+  readonly accumulator: number;
+  readonly popRate: number;
+  readonly lastRaidedMs: number;
+  readonly restState: number;
+  readonly restThresholdMs: number;
+  readonly restBonus: number;
+  readonly currentLoot: number;
+  readonly maxLoot: number;
+  readonly aggressionLevel: number;
+  readonly lastDecayMs: number;
+  readonly lastGrowthTickMs: number;
+  readonly lastTroopRegenMs: number;
+  readonly needsTick: number;
+}
+
+export interface BatchFieldLevelRow {
+  villageId: number;
+  fieldId: number;
+  level: number;
+}
+
+export interface BatchTroopRow {
+  readonly villageId: number;
+  readonly unitId: string;
+  readonly amount: number;
+  readonly tileId: number;
+}
+
+// ───────────────────────────────────────────────────────────────
+// Constants
+// ───────────────────────────────────────────────────────────────
+
 export const NPC_BRAIN_CONSTANTS = {
   /** Base hours between field level-ups at 1x speed */
   BASE_GROWTH_HOURS: 48,
@@ -232,6 +275,19 @@ export const NPC_BRAIN_CONSTANTS = {
 
   /** Minimum elapsed ms to trigger simulation */
   MIN_SIMULATION_ELAPSED_MS: 60_000,
+
+  /** Defence floor by village size — minimum troop count before needs_tick can be 0 */
+  DEFENCE_FLOOR_BY_SIZE: {
+    xxs: 20,
+    xs: 50,
+    sm: 100,
+    md: 300,
+    lg: 500,
+    xl: 1000,
+    '2xl': 1500,
+    '3xl': 3000,
+    '4xl': 5000,
+  } as Record<string, number>,
 } as const;
 
 // ───────────────────────────────────────────────────────────────

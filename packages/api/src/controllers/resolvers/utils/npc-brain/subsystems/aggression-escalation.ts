@@ -1,6 +1,5 @@
-import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
-import { getFactionProfile } from '../faction-profiles';
+import { FACTION_PROFILES, getFactionProfile } from '../faction-profiles';
 import {
   adjustForSpeed,
   getAllNPCVillages,
@@ -8,24 +7,10 @@ import {
   mapDistance,
   scaleTroops,
 } from '../helpers';
-import type { FactionKey } from '../npc-brain-types';
+import type { BatchVillageRow, FactionKey } from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 import { getRaidCount } from './memory-decay';
 import { getHomeTroops } from './troop-regeneration';
-
-/**
- * Aggression & Retaliation Subsystem (Section 4.5)
- *
- * The most complex subsystem. Determines whether and how an NPC village
- * fights back after being raided.
- *
- * Game design intent: Aggression escalates in tiers from passive to siege.
- * Aggressive factions (Iron Brotherhood, Bone Reavers) escalate immediately
- * on the first raid. Peaceful factions (Verdant Order) require many raids
- * before responding. Each tier sends a larger force, creating a risk/reward
- * decision for the player: keep raiding for more loot, or stop before
- * triggering a siege.
- */
 
 /**
  * Calculate aggression response after a raid.
@@ -39,18 +24,15 @@ export const calculateAggressionResponse = (
   const profile = getFactionProfile(factionKey);
   const raidCount = getRaidCount(db, villageId);
 
-  // Check if this faction retaliates at this raid count
   if (raidCount < profile.retaliationThreshold) {
-    return 0; // no retaliation yet
+    return 0;
   }
 
-  // Calculate new aggression tier
   const newTier = Math.min(
     5,
     Math.floor(raidCount / profile.retaliationThreshold),
   );
 
-  // Get current aggression level
   const currentState = db.selectObject({
     sql: `
       SELECT aggression_level AS level
@@ -58,13 +40,12 @@ export const calculateAggressionResponse = (
       WHERE village_id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: z.object({ level: z.number() }),
-  });
+    schema: { parse: (v: unknown) => v } as any,
+  }) as { level: number } | undefined;
 
   const currentLevel = currentState?.level ?? 0;
   const effectiveTier = Math.max(currentLevel, newTier);
 
-  // Update aggression level
   try {
     db.exec({
       sql: `
@@ -74,14 +55,10 @@ export const calculateAggressionResponse = (
       `,
       bind: { $tier: effectiveTier, $villageId: villageId },
     });
-  } catch (_e) {
-    // Column might not exist for old game worlds
-  }
+  } catch (_e) {}
 
-  // Schedule retaliation
   scheduleRetaliation(db, villageId, factionKey, effectiveTier);
 
-  // If tier >= 4, call regional reinforcements
   if (effectiveTier >= 4) {
     callRegionalReinforcements(db, villageId, factionKey, effectiveTier);
   }
@@ -91,7 +68,6 @@ export const calculateAggressionResponse = (
 
 /**
  * Schedule a retaliation attack from an NPC village.
- * Adds to npc_retaliation_queue with travel time + variance.
  */
 const scheduleRetaliation = (
   db: DbFacade,
@@ -106,7 +82,6 @@ const scheduleRetaliation = (
     return;
   }
 
-  // Get village tile for travel time calculation
   const villageInfo = db.selectObject({
     sql: `
       SELECT v.tile_id, t.x, t.y
@@ -115,8 +90,8 @@ const scheduleRetaliation = (
       WHERE v.id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: z.object({ tileId: z.number(), x: z.number(), y: z.number() }),
-  });
+    schema: { parse: (v: unknown) => v } as any,
+  }) as { tileId: number; x: number; y: number } | undefined;
 
   if (!villageInfo) {
     return;
@@ -132,27 +107,23 @@ const scheduleRetaliation = (
     playerCoords,
   );
 
-  // Travel time: distance / speed * base_time
-  // Using slowest troop speed approximation: 3 fields/hour at 1x
   const slowestSpeed = 3;
   const speed = getGameSpeedFromDb(db);
   const travelTimeMs = Math.ceil(
     (distance / (slowestSpeed * speed)) * 3_600_000,
   );
 
-  // Add variance: ±15%
   const variance =
     (Math.random() * 2 * NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE -
       NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE) *
     travelTimeMs;
   const executeAtMs = Date.now() + travelTimeMs + variance;
 
-  // Get current home troops and scale by tier percentage
   const homeTroops = getHomeTroops(db, villageInfo.tileId);
   const totalUnits = homeTroops.reduce((sum, t) => sum + t.amount, 0);
 
   if (totalUnits < NPC_BRAIN_CONSTANTS.MIN_TROOPS_FOR_RETALIATION) {
-    return; // Not enough troops
+    return;
   }
 
   const troopMap: Record<string, number> = {};
@@ -183,15 +154,11 @@ const scheduleRetaliation = (
         $troopsJson: JSON.stringify(retaliationTroops),
       },
     });
-  } catch (_e) {
-    // Table might not exist for old game worlds
-  }
+  } catch (_e) {}
 };
 
 /**
  * Call regional reinforcements from nearby same-faction villages.
- * At tier 4: calls nearest same-faction neighbor.
- * At tier 5: calls ALL same-faction villages within 5 tiles.
  */
 const callRegionalReinforcements = (
   db: DbFacade,
@@ -218,7 +185,6 @@ const callRegionalReinforcements = (
       return dist <= range;
     })
     .filter((v) => {
-      // Don't call already-engaged villages
       const state = db.selectObject({
         sql: `
           SELECT aggression_level AS level
@@ -226,13 +192,12 @@ const callRegionalReinforcements = (
           WHERE village_id = $villageId;
         `,
         bind: { $villageId: v.villageId },
-        schema: z.object({ level: z.number() }),
-      });
+        schema: { parse: (v: unknown) => v } as any,
+      }) as { level: number } | undefined;
       return (state?.level ?? 0) < 3;
     });
 
   for (const neighbor of neighbors) {
-    // Set neighbor to at least tier 2
     db.exec({
       sql: `
         UPDATE npc_village_state
@@ -248,84 +213,133 @@ const callRegionalReinforcements = (
 };
 
 /**
- * Process aggression decay for all NPC villages.
- * Called each tick. Non-PERMANENT factions lose 1 aggression tier
- * after enough time without being raided.
+ * Batched aggression decay for all NPC villages.
+ * One UPDATE with CASE expression handles all villages at once.
  */
-export const processAggressionDecay = (
+export const processAggressionDecayBatch = (
   db: DbFacade,
-  villageId: number,
-  factionKey: FactionKey,
+  allVillages: BatchVillageRow[],
   currentTimeMs: number,
   speed: number,
-): boolean => {
-  const profile = getFactionProfile(factionKey);
+): {
+  changedVillages: {
+    villageId: number;
+    factionKey: FactionKey;
+    oldLevel: number;
+    newLevel: number;
+  }[];
+} => {
+  const changedVillages: {
+    villageId: number;
+    factionKey: FactionKey;
+    oldLevel: number;
+    newLevel: number;
+  }[] = [];
 
-  if (profile.isAggressionPermanent) {
-    return false;
+  // Only process non-permanent factions
+  const nonPermanentFactions = Object.values(FACTION_PROFILES)
+    .filter((p) => !p.isAggressionPermanent)
+    .map((p) => p.key);
+
+  if (nonPermanentFactions.length === 0) {
+    return { changedVillages };
   }
 
-  const state = db.selectObject({
-    sql: `
-      SELECT
-        aggression_level AS level,
-        last_raided_ms AS lastRaidedMs,
-        last_aggression_decay_ms AS lastDecayMs
-      FROM npc_village_state
-      WHERE village_id = $villageId;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.object({
-      level: z.number(),
-      lastRaidedMs: z.number(),
-      lastDecayMs: z.number(),
-    }),
+  // Filter to villages that need decay
+  const decayCandidates: BatchVillageRow[] = [];
+  for (const village of allVillages) {
+    if (
+      village.aggressionLevel > 0 &&
+      nonPermanentFactions.includes(village.factionKey as FactionKey)
+    ) {
+      const profile = FACTION_PROFILES[village.factionKey as FactionKey];
+      if (profile.aggressionDecayDays !== null) {
+        const decayThresholdMs = adjustForSpeed(
+          profile.aggressionDecayDays * 86_400_000,
+          speed,
+        );
+        const timeSinceLastRaid = currentTimeMs - village.lastRaidedMs;
+        if (timeSinceLastRaid > decayThresholdMs) {
+          decayCandidates.push(village);
+        }
+      }
+    }
+  }
+
+  if (decayCandidates.length === 0) {
+    return { changedVillages };
+  }
+
+  // Build batch UPDATE
+  const caseClauses: string[] = [];
+  const bind: Record<string, number> = {};
+
+  for (const village of decayCandidates) {
+    const newLevel = Math.max(0, village.aggressionLevel - 1);
+    const vk = `$v${decayCandidates.indexOf(village)}`;
+    const nk = `$n${decayCandidates.indexOf(village)}`;
+    caseClauses.push(`WHEN village_id = ${vk} THEN ${nk}`);
+    bind[vk] = village.villageId;
+    bind[nk] = newLevel;
+
+    changedVillages.push({
+      villageId: village.villageId,
+      factionKey: village.factionKey as FactionKey,
+      oldLevel: village.aggressionLevel,
+      newLevel,
+    });
+  }
+
+  const villageIdPlaceholders = decayCandidates
+    .map((_, i) => `$v${i}`)
+    .join(',');
+  const villageIdBinds: Record<string, number> = {};
+  decayCandidates.forEach((v, i) => {
+    villageIdBinds[`$v${i}`] = v.villageId;
   });
 
-  if (!state || state.level <= 0) {
-    return false;
-  }
+  db.exec({
+    sql: `
+      UPDATE npc_village_state
+      SET
+        aggression_level = CASE
+          ${caseClauses.join('\n')}
+          ELSE aggression_level
+        END,
+        last_aggression_decay_ms = $now
+      WHERE village_id IN (${villageIdPlaceholders});
+    `,
+    bind: { ...bind, ...villageIdBinds, $now: currentTimeMs },
+  });
 
-  const decayThresholdMs = adjustForSpeed(
-    profile.aggressionDecayDays! * 86_400_000,
-    speed,
-  );
+  // Clear retaliation queue and regional alert for villages that dropped to 0
+  const zeroVillages = changedVillages.filter((v) => v.newLevel === 0);
+  if (zeroVillages.length > 0) {
+    const zeroPlaceholders = zeroVillages.map((_, i) => `$zv${i}`).join(',');
+    const zeroBinds: Record<string, number> = {};
+    zeroVillages.forEach((v, i) => {
+      zeroBinds[`$zv${i}`] = v.villageId;
+    });
 
-  const timeSinceLastRaid = currentTimeMs - state.lastRaidedMs;
-
-  if (timeSinceLastRaid > decayThresholdMs) {
-    const newLevel = Math.max(0, state.level - 1);
+    db.exec({
+      sql: `
+        DELETE FROM npc_retaliation_queue
+        WHERE village_id IN (${zeroPlaceholders});
+      `,
+      bind: zeroBinds,
+    });
 
     db.exec({
       sql: `
         UPDATE npc_village_state
-        SET
-          aggression_level = $newLevel,
-          last_aggression_decay_ms = $now
-        WHERE village_id = $villageId;
+        SET regional_alert_active = 0
+        WHERE village_id IN (${zeroPlaceholders});
       `,
-      bind: {
-        $newLevel: newLevel,
-        $now: currentTimeMs,
-        $villageId: villageId,
-      },
+      bind: zeroBinds,
     });
-
-    // If aggression dropped to 0, clear retaliation queue and regional alert
-    if (newLevel === 0) {
-      db.exec({
-        sql: `
-          DELETE FROM npc_retaliation_queue WHERE village_id = $villageId;
-          UPDATE npc_village_state SET regional_alert_active = 0 WHERE village_id = $villageId;
-        `,
-        bind: { $villageId: villageId },
-      });
-    }
-
-    return true;
   }
 
-  return false;
+  return { changedVillages };
 };
 
 /**
@@ -337,9 +351,9 @@ export const getAggressionLevel = (db: DbFacade, villageId: number): number => {
       SELECT aggression_level FROM npc_village_state WHERE village_id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: z.number(),
+    schema: { parse: (v: unknown) => v } as any,
   });
-  return result ?? 0;
+  return (result as number) ?? 0;
 };
 
 /**
@@ -348,7 +362,7 @@ export const getAggressionLevel = (db: DbFacade, villageId: number): number => {
 const getGameSpeedFromDb = (db: DbFacade): number => {
   const result = db.selectObject({
     sql: 'SELECT speed FROM servers LIMIT 1;',
-    schema: z.object({ speed: z.number() }),
-  });
+    schema: { parse: (v: unknown) => v } as any,
+  }) as { speed: number } | undefined;
   return result?.speed ?? 1;
 };

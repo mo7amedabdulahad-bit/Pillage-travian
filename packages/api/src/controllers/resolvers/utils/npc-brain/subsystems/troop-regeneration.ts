@@ -1,153 +1,272 @@
-import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import {
-  getMapSize,
   getMaxTroopsPerType,
   getPreferredTroopComposition,
   getTroopRegenRate,
   getVillageSize,
 } from '../helpers';
-import type { FactionKey } from '../npc-brain-types';
-
-/**
- * Troop Regeneration Subsystem (Section 4.4)
- *
- * NPC troops regenerate over time after being reduced by the player.
- * Regen rate is faction-dependent and scales with village size.
- *
- * Game design intent: Aggressive factions (Iron Brotherhood) regenerate troops
- * fast — they breed warriors. Peaceful factions (Merchant Guilds) regenerate
- * slowly — they don't prioritize military. This means aggressive factions
- * become dangerous again quickly, while peaceful ones stay weak longer.
- */
+import type {
+  BatchTroopRow,
+  BatchVillageRow,
+  FactionKey,
+} from '../npc-brain-types';
+import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 
 interface TroopRegenResult {
   totalTroopsAdded: number;
-  troopsByType: Record<string, number>;
 }
 
 /**
- * Process troop regeneration for an NPC village.
- * Uses the existing troops table and addTroops utility.
+ * Batched troop regeneration for all NPC villages.
+ * One query fetches all troop states. JavaScript computes regen.
+ * One batch INSERT/UPDATE writes all results.
  */
-export const processTroopRegen = (
+export const processTroopRegenBatch = (
   db: DbFacade,
-  villageId: number,
-  tileId: number,
-  factionKey: FactionKey,
-  tribe: string,
-  elapsedMs: number,
+  allVillages: BatchVillageRow[],
+  allTroops: BatchTroopRow[],
+  chunkMs: number,
   _speed: number,
+  mapSize: number,
 ): TroopRegenResult => {
-  const elapsedHours = elapsedMs / 3_600_000;
-
+  const elapsedHours = chunkMs / 3_600_000;
   if (elapsedHours <= 0) {
-    return { totalTroopsAdded: 0, troopsByType: {} };
+    return { totalTroopsAdded: 0 };
   }
 
-  const mapSize = getMapSize(db);
-  const coords = db.selectObject({
-    sql: 'SELECT x, y FROM tiles WHERE id = $tileId;',
-    bind: { $tileId: tileId },
-    schema: z.object({ x: z.number(), y: z.number() }),
-  });
-
-  if (!coords) {
-    return { totalTroopsAdded: 0, troopsByType: {} };
+  // Group troops by village (via tileId)
+  const troopsByVillage = new Map<number, Map<string, number>>();
+  for (const troop of allTroops) {
+    let villageTroops = troopsByVillage.get(troop.villageId);
+    if (!villageTroops) {
+      villageTroops = new Map();
+      troopsByVillage.set(troop.villageId, villageTroops);
+    }
+    villageTroops.set(
+      troop.unitId,
+      (villageTroops.get(troop.unitId) ?? 0) + troop.amount,
+    );
   }
 
-  const villageSize = getVillageSize(coords.x, coords.y, mapSize);
-  const regenRate = getTroopRegenRate(villageSize, factionKey);
-  const composition = getPreferredTroopComposition(tribe, factionKey);
-
-  if (composition.length === 0) {
-    return { totalTroopsAdded: 0, troopsByType: {} };
-  }
-
-  // Get max troops per type based on village capacity
-  const maxLoot =
-    db.selectValue({
-      sql: 'SELECT max_loot_capacity FROM npc_village_state WHERE village_id = $villageId;',
-      bind: { $villageId: villageId },
-      schema: z.number(),
-    }) ?? 500;
-
-  const maxTroopsPerType = getMaxTroopsPerType(maxLoot);
-
-  // Calculate total regen for elapsed time
-  const totalRegen = Math.floor(elapsedHours * regenRate);
-
-  if (totalRegen <= 0) {
-    return { totalTroopsAdded: 0, troopsByType: {} };
-  }
-
-  const troopsByType: Record<string, number> = {};
+  const now = Date.now();
+  const villageUpdates: { villageId: number }[] = [];
+  const troopInserts: [string, number, number, number][] = []; // [unitId, amount, tileId, sourceTileId]
+  const troopUpdates: {
+    tileId: number;
+    unitId: string;
+    amount: number;
+    maxTroops: number;
+  }[] = [];
   let totalAdded = 0;
 
-  for (const { unitId, weight } of composition) {
-    const toAdd = Math.floor(totalRegen * weight);
-    if (toAdd <= 0) {
+  for (const village of allVillages) {
+    const villageSize = getVillageSize(mapSize, village.x, village.y);
+    const regenRate = getTroopRegenRate(
+      villageSize,
+      village.factionKey as FactionKey,
+    );
+
+    const composition = getPreferredTroopComposition(
+      village.tribe,
+      village.factionKey as FactionKey,
+    );
+    if (composition.length === 0) {
       continue;
     }
 
-    // Check current troop count at this tile
-    const currentAmount =
-      db.selectValue({
-        sql: `
-        SELECT COALESCE(amount, 0)
-        FROM troops
-        WHERE unit_id = (SELECT id FROM unit_ids WHERE unit = $unitId)
-          AND tile_id = $tileId
-          AND source_tile_id = $tileId;
-      `,
-        bind: { $unitId: unitId, $tileId: tileId },
-        schema: z.number(),
-      }) ?? 0;
+    const maxTroopsPerType = getMaxTroopsPerType(village.maxLoot);
+    const totalRegen = Math.floor(elapsedHours * regenRate);
+    if (totalRegen <= 0) {
+      continue;
+    }
 
-    // Don't exceed max
-    const actualToAdd = Math.min(
-      toAdd,
-      Math.max(0, maxTroopsPerType - currentAmount),
-    );
+    const currentTroops = troopsByVillage.get(village.villageId);
+    let villageHasUpdates = false;
 
-    if (actualToAdd > 0) {
-      db.exec({
-        sql: `
-          INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
-          VALUES (
-            (SELECT id FROM unit_ids WHERE unit = $unitId),
-            $amount,
-            $tileId,
-            $sourceTileId
-          )
-          ON CONFLICT (unit_id, tile_id, source_tile_id)
-          DO UPDATE SET amount = MIN(amount + $amount, $maxTroops);
-        `,
-        bind: {
-          $unitId: unitId,
-          $amount: actualToAdd,
-          $tileId: tileId,
-          $sourceTileId: tileId,
-          $maxTroops: maxTroopsPerType,
-        },
-      });
+    // Passive regen
+    for (const { unitId, weight } of composition) {
+      const toAdd = Math.floor(totalRegen * weight);
+      if (toAdd <= 0) {
+        continue;
+      }
 
-      troopsByType[unitId] = actualToAdd;
-      totalAdded += actualToAdd;
+      const currentAmount = currentTroops?.get(unitId) ?? 0;
+      const actualToAdd = Math.min(
+        toAdd,
+        Math.max(0, maxTroopsPerType - currentAmount),
+      );
+
+      if (actualToAdd > 0) {
+        if (currentAmount > 0) {
+          troopUpdates.push({
+            tileId: village.tileId,
+            unitId,
+            amount: actualToAdd,
+            maxTroops: maxTroopsPerType,
+          });
+        } else {
+          troopInserts.push([
+            unitId,
+            actualToAdd,
+            village.tileId,
+            village.tileId,
+          ]);
+        }
+        totalAdded += actualToAdd;
+        villageHasUpdates = true;
+
+        // Update current troop tracking for defence floor check
+        if (currentTroops) {
+          currentTroops.set(unitId, currentAmount + actualToAdd);
+        }
+      }
+    }
+
+    // ─── Defence Floor Top-Up (3× passive rate until floor is reached) ───
+    const defenceFloor =
+      NPC_BRAIN_CONSTANTS.DEFENCE_FLOOR_BY_SIZE[villageSize] ?? 50;
+
+    const currentTotalTroops = currentTroops
+      ? [...currentTroops.values()].reduce((sum, amount) => sum + amount, 0)
+      : 0;
+
+    if (currentTotalTroops < defenceFloor) {
+      const acceleratedRate = regenRate * 3;
+      const topUpTotal = Math.floor(elapsedHours * acceleratedRate);
+      const deficit = defenceFloor - currentTotalTroops;
+      const topUpAmount = Math.min(topUpTotal, deficit);
+
+      if (topUpAmount > 0) {
+        for (const { unitId, weight } of composition) {
+          const toAdd = Math.floor(topUpAmount * weight);
+          if (toAdd <= 0) {
+            continue;
+          }
+
+          const currentAmount = currentTroops?.get(unitId) ?? 0;
+          const actualToAdd = Math.min(
+            toAdd,
+            Math.max(0, maxTroopsPerType - currentAmount),
+          );
+
+          if (actualToAdd > 0) {
+            if (currentAmount > 0) {
+              troopUpdates.push({
+                tileId: village.tileId,
+                unitId,
+                amount: actualToAdd,
+                maxTroops: maxTroopsPerType,
+              });
+            } else {
+              troopInserts.push([
+                unitId,
+                actualToAdd,
+                village.tileId,
+                village.tileId,
+              ]);
+            }
+            totalAdded += actualToAdd;
+            villageHasUpdates = true;
+          }
+        }
+      }
+    }
+
+    if (villageHasUpdates) {
+      villageUpdates.push({ villageId: village.villageId });
     }
   }
 
-  // Update last regen timestamp
-  db.exec({
-    sql: `
-      UPDATE npc_village_state
-      SET last_troop_regen_ms = $now
-      WHERE village_id = $villageId;
-    `,
-    bind: { $now: Date.now(), $villageId: villageId },
-  });
+  // ─── Batch INSERT new troop rows ───
+  if (troopInserts.length > 0) {
+    // Build a single INSERT with subqueries for unit_id
+    const valuesClauses: string[] = [];
+    const bind: Record<string, number> = {};
 
-  return { totalTroopsAdded: totalAdded, troopsByType };
+    troopInserts.forEach(([unitId, amount, tileId, sourceTileId], i) => {
+      const uk = `$u${i}`;
+      const ak = `$a${i}`;
+      const tk = `$t${i}`;
+      const sk = `$s${i}`;
+      valuesClauses.push(
+        `((SELECT id FROM unit_ids WHERE unit = ${uk}), ${ak}, ${tk}, ${sk})`,
+      );
+      bind[uk] = unitId as unknown as number;
+      bind[ak] = amount;
+      bind[tk] = tileId;
+      bind[sk] = sourceTileId;
+    });
+
+    db.exec({
+      sql: `
+        INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
+        VALUES ${valuesClauses.join(',')}
+        ON CONFLICT (unit_id, tile_id, source_tile_id) DO NOTHING;
+      `,
+      bind,
+    });
+  }
+
+  // ─── Batch UPDATE existing troop rows ───
+  if (troopUpdates.length > 0) {
+    const caseClauses: string[] = [];
+    const bind: Record<string, number> = {};
+
+    troopUpdates.forEach((u, i) => {
+      const tk = `$t${i}`;
+      const uk = `$u${i}`;
+      const ak = `$a${i}`;
+      const mk = `$m${i}`;
+      caseClauses.push(
+        `WHEN tile_id = ${tk} AND unit_id = (SELECT id FROM unit_ids WHERE unit = ${uk}) THEN MIN(amount + ${ak}, ${mk})`,
+      );
+      bind[tk] = u.tileId;
+      bind[uk] = u.unitId as unknown as number;
+      bind[ak] = u.amount;
+      bind[mk] = u.maxTroops;
+    });
+
+    const tileIdPlaceholders = troopUpdates.map((_, i) => `$tid${i}`).join(',');
+    const tileIdBinds: Record<string, number> = {};
+    troopUpdates.forEach((u, i) => {
+      tileIdBinds[`$tid${i}`] = u.tileId;
+    });
+
+    db.exec({
+      sql: `
+        UPDATE troops
+        SET amount = CASE
+          ${caseClauses.join('\n')}
+          ELSE amount
+        END
+        WHERE tile_id IN (${tileIdPlaceholders})
+          AND source_tile_id = tile_id;
+      `,
+      bind: { ...bind, ...tileIdBinds },
+    });
+  }
+
+  // ─── Batch UPDATE last_troop_regen_ms ───
+  if (villageUpdates.length > 0) {
+    const villageIdPlaceholders = villageUpdates
+      .map((_, i) => `$vid${i}`)
+      .join(',');
+    const villageIdBinds: Record<string, number> = {};
+    villageUpdates.forEach((u, i) => {
+      villageIdBinds[`$vid${i}`] = u.villageId;
+    });
+
+    db.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET last_troop_regen_ms = $now
+        WHERE village_id IN (${villageIdPlaceholders});
+      `,
+      bind: { ...villageIdBinds, $now: now },
+    });
+  }
+
+  return { totalTroopsAdded: totalAdded };
 };
 
 /**
@@ -167,8 +286,8 @@ export const getHomeTroops = (
         AND t.amount > 0;
     `,
     bind: { $tileId: tileId },
-    schema: z.strictObject({ unitId: z.string(), amount: z.number() }),
-  });
+    schema: { parse: (v: unknown) => v } as any,
+  }) as { unitId: string; amount: number }[];
 };
 
 /**
@@ -183,7 +302,7 @@ export const getTotalTroopCount = (db: DbFacade, tileId: number): number => {
         AND source_tile_id = $tileId;
     `,
     bind: { $tileId: tileId },
-    schema: z.number(),
+    schema: { parse: (v: unknown) => v } as any,
   });
-  return result ?? 0;
+  return (result as number) ?? 0;
 };

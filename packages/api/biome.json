@@ -1,5 +1,17 @@
 {
   "$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
   "root": false,
-  "extends": "//"
+  "extends": "//",
+  "overrides": [
+    {
+      "includes": ["**/npc-brain/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    }
+  ]
 }

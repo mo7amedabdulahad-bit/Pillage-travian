@@ -62,6 +62,7 @@ import { heroAdventuresSeeder } from '../seeders/hero-adventures-seeder';
 import { heroAppearanceSeeder } from '../seeders/hero-appearance-seeder';
 import { heroSeeder } from '../seeders/hero-seeder';
 import { mapFiltersSeeder } from '../seeders/map-filters-seeder';
+import { npcStartingBuildingsSeeder } from '../seeders/npc-starting-buildings-seeder';
 import { npcVillageStateSeeder } from '../seeders/npc-village-state-seeder';
 import { oasisSeeder } from '../seeders/oasis-seeder';
 import { occupiedOasisSeeder } from '../seeders/occupied-oasis-seeder';
@@ -200,6 +201,9 @@ export const migrateAndSeed = (
     // Building fields
     db.exec({ sql: createBuildingFieldsTable });
     buildingFieldsSeeder(db, server);
+
+    // NPC starting buildings (must run after buildingFieldsSeeder — updates existing rows)
+    npcStartingBuildingsSeeder(db, server);
 
     // Troops
     db.exec({ sql: createTroopsTable });

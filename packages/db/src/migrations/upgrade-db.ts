@@ -159,6 +159,7 @@ export const upgradeDb = (database: DbFacade): void => {
     ['last_aggression_decay_ms', 'INTEGER NOT NULL DEFAULT 0'],
     ['last_raided_ms', 'INTEGER NOT NULL DEFAULT 0'],
     ['faction_key', "TEXT NOT NULL DEFAULT 'npc1'"],
+    ['needs_tick', 'INTEGER NOT NULL DEFAULT 1'],
   ];
 
   for (const [colName, colDef] of npcBrainColumns) {
@@ -242,12 +243,12 @@ export const upgradeDb = (database: DbFacade): void => {
           last_troop_regen_ms, current_loot_available, max_loot_capacity,
           loot_recovery_rate, aggression_level, aggression_decay_timer,
           regional_alert_active, last_aggression_decay_ms, last_raided_ms,
-          faction_key
+          faction_key, needs_tick
         )
         SELECT
           v.id, 0, 0, 0, 0, 2.0, 0, 172800000, 0.15,
           0, 1.0, 500, 0.08, 0, 0, 0, 0, 0,
-          COALESCE(fi.faction, 'npc1')
+          COALESCE(fi.faction, 'npc1'), 1
         FROM villages v
         JOIN players p ON v.player_id = p.id
         LEFT JOIN faction_ids fi ON fi.id = p.faction_id
@@ -257,6 +258,49 @@ export const upgradeDb = (database: DbFacade): void => {
     });
   } catch (_e) {
     // May fail if table structure is not yet migrated
+  }
+
+  // ─── NPC Brain: needs_tick flag for performance gating ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN needs_tick INTEGER NOT NULL DEFAULT 1;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  // ─── NPC Brain: revenge intent columns for deferred retaliation ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN revenge_intent_target_village_id INTEGER DEFAULT NULL;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN revenge_intent_armed_at_ms INTEGER DEFAULT NULL;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  // ─── NPC Brain: importance tier columns ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN simulation_tier INTEGER NOT NULL DEFAULT 2;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN next_simulation_due INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {
+    // Column might already exist
   }
 
   // ─── NPC Brain: Fix faction_key for rows stuck on default 'npc1' ───
