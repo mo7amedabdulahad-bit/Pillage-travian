@@ -214,20 +214,17 @@ export const processNPCTick = (
     3: 3_600_000, // once per real hour
   };
 
-  const playerCoords = getPlayerVillageCoords(db);
-
   // Assign tier FIRST, before filtering
+  // Use (0,0) as player position directly — no need for getPlayerVillageCoords
   for (const v of allVillagesRaw) {
     let tier = 2; // default mid-ring
 
-    if (playerCoords) {
-      const dist = mapDistance({ x: v.x, y: v.y }, playerCoords);
-      if (dist <= 1) {
-        tier = 1; // directly adjacent — always Tier 1
-      } else if (dist <= 30) {
-        tier = 1;
-      }
+    // Direct distance from (0,0)
+    const distFromCenter = Math.sqrt(v.x * v.x + v.y * v.y);
+    if (distFromCenter <= 50) {
+      tier = 1; // within 50 tiles of center = Tier 1
     }
+
     if (currentTimeMs - v.lastRaidedMs < 3_600_000) {
       tier = 1;
     }
@@ -237,16 +234,10 @@ export const processNPCTick = (
     if (v.aggressionLevel >= 3) {
       tier = 1;
     }
-    if (v.x * v.x + v.y * v.y < (mapSize * 0.2) ** 2) {
-      tier = 1; // inner core (2xl+)
-    }
 
-    // Tier 3: outer edge with no interaction
+    // Tier 3: outer edge with no interaction (beyond 70% of map)
     if (v.lastRaidedMs === 0 && v.aggressionLevel === 0) {
-      const dist = playerCoords
-        ? mapDistance({ x: v.x, y: v.y }, playerCoords)
-        : Math.hypot(v.x, v.y);
-      if (dist > mapSize * 0.35) {
+      if (distFromCenter > 70) {
         tier = 3;
       }
     }
@@ -426,9 +417,7 @@ export const processNPCTick = (
         tier2Count +
         ' tier-2, ' +
         tier3Count +
-        ' tier-3. playerCoords=' +
-        JSON.stringify(playerCoords) +
-        ', mapSize=' +
+        ' tier-3. mapSize=' +
         mapSize +
         ', raw=' +
         allVillagesRaw.length +
