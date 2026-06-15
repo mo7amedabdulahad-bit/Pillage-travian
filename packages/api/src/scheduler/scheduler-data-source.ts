@@ -39,9 +39,15 @@ export const createSchedulerDataSource = (
     resolveEvent: (id: GameEvent['id']) => {
       let result: ReturnType<typeof resolveEvent> | undefined;
 
-      database.transaction((tx) => {
-        result = resolveEvent(tx, id);
-      });
+      try {
+        result = resolveEvent(database, id);
+      } catch (error) {
+        globalThis.postMessage({
+          eventKey: 'event:error',
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+        return;
+      }
 
       if (!result) {
         return;
@@ -50,6 +56,7 @@ export const createSchedulerDataSource = (
       globalThis.postMessage({
         eventKey: result.ok ? 'event:success' : 'event:error',
         ...result.event,
+        ...(result.ok ? {} : { error: new Error('Event resolution failed') }),
       } satisfies EventApiNotificationEvent);
     },
   };

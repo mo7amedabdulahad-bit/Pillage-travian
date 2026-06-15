@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import {
   getMaxTroopsPerType,
@@ -58,37 +59,6 @@ export const processTroopRegenBatch = (
     maxTroops: number;
   }[] = [];
   let totalAdded = 0;
-
-  // Diagnostic: log first village's regen data
-  if (allVillages.length > 0) {
-    const v = allVillages[0];
-    const vs = getVillageSize(mapSize, v.x, v.y);
-    const rr = getTroopRegenRate(vs, v.factionKey as FactionKey);
-    const comp = getPreferredTroopComposition(
-      v.tribe,
-      v.factionKey as FactionKey,
-    );
-    const mtp = getMaxTroopsPerType(v.maxLoot);
-    const tr = Math.floor(elapsedHours * rr);
-    console.error(
-      '[NPC Brain] TroopRegen: village=' +
-        v.villageId +
-        ' tribe=' +
-        v.tribe +
-        ' size=' +
-        vs +
-        ' regenRate=' +
-        rr +
-        ' composition=' +
-        comp.length +
-        ' maxTroops=' +
-        mtp +
-        ' totalRegen=' +
-        tr +
-        ' elapsed=' +
-        elapsedHours.toFixed(4),
-    );
-  }
 
   for (const village of allVillages) {
     const villageSize = getVillageSize(mapSize, village.x, village.y);
@@ -317,7 +287,7 @@ export const getHomeTroops = (
         AND t.amount > 0;
     `,
     bind: { $tileId: tileId },
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as { unitId: string; amount: number }[];
 };
 
@@ -333,7 +303,7 @@ export const getTotalTroopCount = (db: DbFacade, tileId: number): number => {
         AND source_tile_id = $tileId;
     `,
     bind: { $tileId: tileId },
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   });
   return (result as number) ?? 0;
 };

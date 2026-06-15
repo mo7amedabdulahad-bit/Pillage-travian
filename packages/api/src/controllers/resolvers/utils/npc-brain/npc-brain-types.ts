@@ -173,6 +173,7 @@ export interface BatchVillageRow {
   readonly lastGrowthTickMs: number;
   readonly lastTroopRegenMs: number;
   readonly needsTick: number;
+  readonly buildingBudget: number;
 }
 
 export interface BatchFieldLevelRow {

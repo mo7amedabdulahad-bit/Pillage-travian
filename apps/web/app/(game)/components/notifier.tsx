@@ -123,9 +123,7 @@ export const Notifier = ({ serverSlug }: NotifierProps) => {
 
       if (isControllerMessageErrorNotificationMessageEvent(event)) {
         const { data } = event;
-        const {
-          error: { message },
-        } = data;
+        const message = data.error?.message ?? 'Unknown error';
 
         toast.error(t('An error has occurred'), {
           description: message,

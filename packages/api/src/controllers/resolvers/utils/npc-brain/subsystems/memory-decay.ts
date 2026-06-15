@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { FACTION_PROFILES } from '../faction-profiles';
 import { adjustForSpeed } from '../helpers';
@@ -32,7 +33,7 @@ export const processMemoryDecayBatch = (
     );
     const fk = `$fk${i}`;
     const tk = `$tk${i}`;
-    caseClauses.push(`WHEN nvs.faction_key = ${fk} THEN ${tk}`);
+    caseClauses.push(`WHEN nvs2.faction_key = ${fk} THEN ${tk}`);
     bind[fk] = factionKey;
     bind[tk] = thresholdMs;
   });
@@ -73,7 +74,7 @@ export const getRaidCount = (db: DbFacade, villageId: number): number => {
         SELECT COUNT(*) FROM npc_raid_history WHERE village_id = $villageId;
       `,
       bind: { $villageId: villageId },
-      schema: { parse: (v: unknown) => v } as any,
+      schema: z.any(),
     });
     return (count as number) ?? 0;
   } catch (_e) {

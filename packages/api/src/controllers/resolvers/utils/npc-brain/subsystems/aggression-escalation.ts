@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { FACTION_PROFILES, getFactionProfile } from '../faction-profiles';
 import {
@@ -40,7 +41,7 @@ export const calculateAggressionResponse = (
       WHERE village_id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as { level: number } | undefined;
 
   const currentLevel = currentState?.level ?? 0;
@@ -90,7 +91,7 @@ const scheduleRetaliation = (
       WHERE v.id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as { tileId: number; x: number; y: number } | undefined;
 
   if (!villageInfo) {
@@ -192,7 +193,7 @@ const callRegionalReinforcements = (
           WHERE village_id = $villageId;
         `,
         bind: { $villageId: v.villageId },
-        schema: { parse: (v: unknown) => v } as any,
+        schema: z.any(),
       }) as { level: number } | undefined;
       return (state?.level ?? 0) < 3;
     });
@@ -351,7 +352,7 @@ export const getAggressionLevel = (db: DbFacade, villageId: number): number => {
       SELECT aggression_level FROM npc_village_state WHERE village_id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   });
   return (result as number) ?? 0;
 };
@@ -362,7 +363,7 @@ export const getAggressionLevel = (db: DbFacade, villageId: number): number => {
 const getGameSpeedFromDb = (db: DbFacade): number => {
   const result = db.selectObject({
     sql: 'SELECT speed FROM servers LIMIT 1;',
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as { speed: number } | undefined;
   return result?.speed ?? 1;
 };

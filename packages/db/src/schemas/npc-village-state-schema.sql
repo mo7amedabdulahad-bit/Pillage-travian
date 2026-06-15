@@ -41,5 +41,8 @@ CREATE TABLE npc_village_state
   simulation_tier INTEGER NOT NULL DEFAULT 2,
   next_simulation_due INTEGER NOT NULL DEFAULT 0,
 
+  -- Build budget: accumulated resources for building decisions
+  building_budget REAL NOT NULL DEFAULT 0,
+
   FOREIGN KEY (village_id) REFERENCES villages (id) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;

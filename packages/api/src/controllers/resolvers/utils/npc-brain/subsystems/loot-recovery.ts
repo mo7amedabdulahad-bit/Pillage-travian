@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import type { BatchVillageRow } from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
@@ -141,7 +142,7 @@ export const getRestBonus = (db: DbFacade, villageId: number): number => {
       WHERE village_id = $villageId;
     `,
     bind: { $villageId: villageId },
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as { restState: number; bonus: number } | undefined;
 
   if (!state || state.restState === 0) {

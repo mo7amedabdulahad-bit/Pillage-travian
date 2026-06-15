@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { BuildingId } from '@pillage-first/types/models/building';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import {
@@ -47,7 +48,7 @@ export const processBuildDecisions = (
   // Fetch building key mapping
   const buildingIdRows = db.selectObjects({
     sql: 'SELECT id, building FROM building_ids',
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as unknown as { id: number; building: string }[];
 
   const buildingKeyToId = new Map<string, number>();
@@ -71,7 +72,7 @@ export const processBuildDecisions = (
       WHERE v.player_id != 1
         AND bf.field_id > 18;
     `,
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as unknown as {
     villageId: number;
     fieldId: number;
@@ -113,6 +114,7 @@ export const processBuildDecisions = (
     newLevel: number;
   }[] = [];
   const lootCapacityUpdates: { villageId: number; newMaxLoot: number }[] = [];
+  const budgetUpdates: { villageId: number; remaining: number }[] = [];
   let totalBuilt = 0;
 
   for (const village of allVillages) {
@@ -125,13 +127,13 @@ export const processBuildDecisions = (
     const spendingRate = FACTION_SPENDING_RATE[factionKey] ?? 0.8;
     const villageBuildings = buildingIndex.get(village.villageId) ?? new Map();
 
-    // Calculate economy budget
+    // Calculate economy budget — accumulate across ticks
     const fieldSum = resourceFieldSumByVillage.get(village.villageId) ?? 0;
     const productionPerHour = fieldSum * 10;
     const tickFraction = chunkMs / 3_600_000;
-    const budget = productionPerHour * tickFraction * spendingRate * speed;
-
-    let remainingBudget = budget;
+    const tickProduction =
+      productionPerHour * tickFraction * spendingRate * speed;
+    let remainingBudget = village.buildingBudget + tickProduction;
     let buildsThisTick = 0;
     const maxBuildsPerTick = 5;
 
@@ -195,7 +197,7 @@ export const processBuildDecisions = (
             LIMIT 1;
           `,
           bind: { $villageId: village.villageId },
-          schema: { parse: (v: unknown) => v } as any,
+          schema: z.any(),
         }) as { fieldId: number } | undefined;
 
         if (!emptySlotRow) {
@@ -274,6 +276,11 @@ export const processBuildDecisions = (
       buildsThisTick++;
       totalBuilt++;
     }
+
+    budgetUpdates.push({
+      villageId: village.villageId,
+      remaining: remainingBudget,
+    });
   }
 
   // ─── Batch UPDATE building_fields ───
@@ -346,6 +353,41 @@ export const processBuildDecisions = (
         SET max_loot_capacity = CASE
           ${caseClauses.join('\n')}
           ELSE max_loot_capacity
+        END
+        WHERE village_id IN (${villageIdPlaceholders});
+      `,
+      bind: { ...bind, ...villageIdBinds },
+    });
+  }
+
+  // ─── Batch UPDATE building_budget (persist unspent resources) ───
+  if (budgetUpdates.length > 0) {
+    const caseClauses: string[] = [];
+    const bind: Record<string, number | string> = {};
+
+    budgetUpdates.forEach((u, i) => {
+      const vk = `$bv${i}`;
+      const bk = `$bb${i}`;
+      caseClauses.push(`WHEN village_id = ${vk} THEN ${bk}`);
+      bind[vk] = u.villageId;
+      bind[bk] = Math.max(0, Math.round(u.remaining * 100) / 100);
+    });
+
+    const villageIds = [...new Set(budgetUpdates.map((u) => u.villageId))];
+    const villageIdPlaceholders = villageIds
+      .map((_, i) => `$bvid${i}`)
+      .join(',');
+    const villageIdBinds: Record<string, number> = {};
+    villageIds.forEach((vid, i) => {
+      villageIdBinds[`$bvid${i}`] = vid;
+    });
+
+    db.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET building_budget = CASE
+          ${caseClauses.join('\n')}
+          ELSE building_budget
         END
         WHERE village_id IN (${villageIdPlaceholders});
       `,

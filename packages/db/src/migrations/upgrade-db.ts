@@ -303,6 +303,15 @@ export const upgradeDb = (database: DbFacade): void => {
     // Column might already exist
   }
 
+  // ─── NPC Brain: building_budget for persistent build resource accumulation ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN building_budget REAL NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
   // ─── NPC Brain: Fix faction_key for rows stuck on default 'npc1' ───
   try {
     database.exec({

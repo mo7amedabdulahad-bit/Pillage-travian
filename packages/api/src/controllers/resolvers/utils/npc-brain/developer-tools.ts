@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { FACTION_PROFILES } from './faction-profiles';
 import { getMapSize, getVillageSize } from './helpers';
@@ -58,6 +59,7 @@ export const getNpcVillageDebugInfo = (
         SELECT
           nvs.*,
           v.name AS village_name,
+          v.tile_id AS tile_id,
           t.x,
           t.y
         FROM npc_village_state nvs
@@ -66,7 +68,7 @@ export const getNpcVillageDebugInfo = (
         WHERE nvs.village_id = $villageId;
       `,
       bind: { $villageId: villageId },
-      schema: { parse: (v: unknown) => v } as any,
+      schema: z.any(),
     }) as Record<string, unknown> | undefined;
   } catch (e) {
     console.error('[NPC Debug] state query failed:', e);
@@ -95,7 +97,7 @@ export const getNpcVillageDebugInfo = (
           AND UPPER(bi.building) IN ('WAREHOUSE', 'GRANARY');
       `,
       bind: { $villageId: villageId },
-      schema: { parse: (v: unknown) => v } as any,
+      schema: z.any(),
     }) as { buildingKey: string; level: number }[];
   } catch (e) {
     console.error('[NPC Debug] buildingLevels query failed:', e);
@@ -177,7 +179,7 @@ export const getNpcVillageDebugInfo = (
         LIMIT 10;
       `,
       bind: { $villageId: villageId },
-      schema: { parse: (v: unknown) => v } as any,
+      schema: z.any(),
     }) as { buildingKey: string; newLevel: number; timestamp: number }[];
   } catch (_e) {
     // Table might not exist

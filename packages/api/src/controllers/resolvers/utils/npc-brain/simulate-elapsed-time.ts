@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../../utils/create-event.ts';
 import {
@@ -188,6 +189,7 @@ export const processNPCTick = (
         nvs.last_growth_tick_ms AS lastGrowthTickMs,
         nvs.last_troop_regen_ms AS lastTroopRegenMs,
         nvs.needs_tick AS needsTick,
+        nvs.building_budget AS buildingBudget,
         nvs.simulation_tier AS simulationTier,
         nvs.next_simulation_due AS nextSimulationDue,
         nvs.revenge_intent_target_village_id AS revengeIntentTarget
@@ -198,9 +200,7 @@ export const processNPCTick = (
       JOIN tribe_ids ti ON ti.id = p.tribe_id
       WHERE nvs.needs_tick = 1;
     `,
-    schema: {
-      parse: (v: unknown) => v,
-    } as any,
+    schema: z.any(),
   }) as unknown as (BatchVillageRow & {
     simulationTier: number;
     nextSimulationDue: number;
@@ -281,7 +281,7 @@ export const processNPCTick = (
       WHERE village_id IN (${villageIdPlaceholders});
     `,
     bind: villageIdBinds,
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as unknown as BatchFieldLevelRow[];
 
   // Pre-compute field level sums per village (used by loot recovery)
@@ -303,12 +303,13 @@ export const processNPCTick = (
         t.tile_id AS tileId
       FROM troops t
       JOIN unit_ids u ON u.id = t.unit_id
-      JOIN villages v ON v.tile_id = t.tile_id AND v.tile_id = t.source_tile_id
+      JOIN villages v ON v.tile_id = t.source_tile_id
       WHERE v.id IN (${villageIdPlaceholders})
-        AND t.amount > 0;
+        AND t.amount > 0
+        AND t.tile_id = t.source_tile_id;
     `,
     bind: villageIdBinds,
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as unknown as BatchTroopRow[];
 
   // ─── 4.1 Memory Decay (batched: one DELETE) ───
@@ -368,9 +369,9 @@ export const processNPCTick = (
     const vk = `$tv${village.villageId}`;
     const dk = `$td${village.villageId}`;
     tierCaseClauses.push(`WHEN village_id = ${vk} THEN ${tier}`);
-    dueCaseClauses.push(`WHEN village_id = ${vk} THEN ${due}`);
+    dueCaseClauses.push(`WHEN village_id = ${vk} THEN ${dk}`);
     tierBind[vk] = village.villageId;
-    tierBind[dk] = village.villageId;
+    tierBind[dk] = due;
   }
 
   if (allVillages.length > 0) {
@@ -398,41 +399,6 @@ export const processNPCTick = (
       `,
       bind: { ...tierBind, ...villageIdBinds },
     });
-
-    // Diagnostic: count tier 1 vs tier 2 assignments
-    const tier1Count = allVillages.filter(
-      (v) => (v as any).calculatedTier === 1,
-    ).length;
-    const tier2Count = allVillages.filter(
-      (v) => (v as any).calculatedTier === 2,
-    ).length;
-    const tier3Count = allVillages.filter(
-      (v) => (v as any).calculatedTier === 3,
-    ).length;
-    const sample = allVillages[0];
-    console.error(
-      '[NPC Brain] Tier update: ' +
-        tier1Count +
-        ' tier-1, ' +
-        tier2Count +
-        ' tier-2, ' +
-        tier3Count +
-        ' tier-3. mapSize=' +
-        mapSize +
-        ', raw=' +
-        allVillagesRaw.length +
-        ', filtered=' +
-        allVillages.length +
-        (sample
-          ? ', sample=' +
-            JSON.stringify({
-              id: sample.villageId,
-              x: sample.x,
-              y: sample.y,
-              calculatedTier: (sample as any).calculatedTier,
-            })
-          : ''),
-    );
 
     // ─── Clear needs_tick for fully-stocked villages ───
     // A village can skip ticks when: full loot, troops ≥ defence floor, aggression = 0, at field cap
@@ -522,7 +488,7 @@ const processRevengeIntentBatch = (
         AND nvs.revenge_intent_armed_at_ms <= $now;
     `,
     bind: { $now: currentTimeMs },
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   }) as unknown as {
     villageId: number;
     targetVillageId: number;
@@ -637,7 +603,7 @@ export const getLastSimulationTimestamp = (db: DbFacade): number => {
       SELECT COALESCE(MAX(last_growth_tick_ms), 0)
       FROM npc_village_state;
     `,
-    schema: { parse: (v: unknown) => v } as any,
+    schema: z.any(),
   });
   return (result as number) ?? 0;
 };
@@ -654,8 +620,7 @@ export const setLastSimulationTimestamp = (
       UPDATE npc_village_state
       SET last_growth_tick_ms = $timestamp,
           last_troop_regen_ms = $timestamp,
-          last_aggression_decay_ms = $timestamp
-      WHERE last_growth_tick_ms = 0;
+          last_aggression_decay_ms = $timestamp;
     `,
     bind: { $timestamp: timestamp },
   });
