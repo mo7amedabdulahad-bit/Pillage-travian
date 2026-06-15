@@ -51,21 +51,27 @@ export const getNpcVillageDebugInfo = (
   villageId: number,
 ): NpcVillageDebugInfo | null => {
   // Fetch village + npc_village_state
-  const state = db.selectObject({
-    sql: `
-      SELECT
-        nvs.*,
-        v.name AS village_name,
-        t.x,
-        t.y
-      FROM npc_village_state nvs
-      JOIN villages v ON v.id = nvs.village_id
-      JOIN tiles t ON t.id = v.tile_id
-      WHERE nvs.village_id = $villageId;
-    `,
-    bind: { $villageId: villageId },
-    schema: { parse: (v: unknown) => v } as any,
-  }) as Record<string, unknown> | undefined;
+  let state: Record<string, unknown> | undefined;
+  try {
+    state = db.selectObject({
+      sql: `
+        SELECT
+          nvs.*,
+          v.name AS village_name,
+          t.x,
+          t.y
+        FROM npc_village_state nvs
+        JOIN villages v ON v.id = nvs.village_id
+        JOIN tiles t ON t.id = v.tile_id
+        WHERE nvs.village_id = $villageId;
+      `,
+      bind: { $villageId: villageId },
+      schema: { parse: (v: unknown) => v } as any,
+    }) as Record<string, unknown> | undefined;
+  } catch (e) {
+    console.error('[NPC Debug] state query failed:', e);
+    throw e;
+  }
 
   if (!state) {
     return null;
@@ -78,17 +84,22 @@ export const getNpcVillageDebugInfo = (
   }
 
   // Get storage building levels
-  const buildingLevels = db.selectObjects({
-    sql: `
-      SELECT bi.building AS buildingKey, bf.level
-      FROM building_fields bf
-      JOIN building_ids bi ON bi.id = bf.building_id
-      WHERE bf.village_id = $villageId
-        AND UPPER(bi.building) IN ('WAREHOUSE', 'GRANARY');
-    `,
-    bind: { $villageId: villageId },
-    schema: { parse: (v: unknown) => v } as any,
-  }) as { buildingKey: string; level: number }[];
+  let buildingLevels: { buildingKey: string; level: number }[] = [];
+  try {
+    buildingLevels = db.selectObjects({
+      sql: `
+        SELECT bi.building AS buildingKey, bf.level
+        FROM building_fields bf
+        JOIN building_ids bi ON bi.id = bf.building_id
+        WHERE bf.village_id = $villageId
+          AND UPPER(bi.building) IN ('WAREHOUSE', 'GRANARY');
+      `,
+      bind: { $villageId: villageId },
+      schema: { parse: (v: unknown) => v } as any,
+    }) as { buildingKey: string; level: number }[];
+  } catch (e) {
+    console.error('[NPC Debug] buildingLevels query failed:', e);
+  }
 
   const warehouseLevel =
     buildingLevels.find((b) => b.buildingKey.toUpperCase() === 'WAREHOUSE')
@@ -98,14 +109,24 @@ export const getNpcVillageDebugInfo = (
       ?.level ?? 0;
 
   // Get troop count
-  const tileId = state.tile_id as number;
-  const totalTroops = getTotalTroopCount(db, tileId ?? 0);
+  let totalTroops = 0;
+  try {
+    const tileId = state.tile_id as number;
+    totalTroops = getTotalTroopCount(db, tileId ?? 0);
+  } catch (e) {
+    console.error('[NPC Debug] troop count query failed:', e);
+  }
 
   // Get village size using shared helper
-  const x = state.x as number;
-  const y = state.y as number;
-  const mapSize = getMapSize(db);
-  const villageSize = getVillageSize(mapSize, x, y);
+  let villageSize = 'unknown';
+  try {
+    const x = state.x as number;
+    const y = state.y as number;
+    const mapSize = getMapSize(db);
+    villageSize = getVillageSize(mapSize, x, y);
+  } catch (e) {
+    console.error('[NPC Debug] villageSize query failed:', e);
+  }
 
   const defenceFloor =
     NPC_BRAIN_CONSTANTS.DEFENCE_FLOOR_BY_SIZE[villageSize] ?? 50;
@@ -146,7 +167,7 @@ export const getNpcVillageDebugInfo = (
       growthRateMultiplier: profile.growthRateMultiplier,
       troopRegenRateMultiplier: profile.troopRegenRateMultiplier,
     },
-    coordinates: { x, y },
+    coordinates: { x: state.x as number, y: state.y as number },
     villageSize,
     npcVillageState: state as Record<string, unknown>,
     currentTroopCount: totalTroops,
@@ -160,8 +181,8 @@ export const getNpcVillageDebugInfo = (
       targetVillageId: state.revenge_intent_target_village_id as number | null,
       armedAtMs: state.revenge_intent_armed_at_ms as number | null,
     },
-    simulationTier: state.simulation_tier as number,
-    nextSimulationDue: state.next_simulation_due as number,
+    simulationTier: (state.simulation_tier as number) ?? 2,
+    nextSimulationDue: (state.next_simulation_due as number) ?? 0,
     needsTick: (state.needs_tick as number) === 1,
     lastBuildDecisions: recentBuilds.map(
       (b) => `${b.buildingKey} → level ${b.newLevel}`,
