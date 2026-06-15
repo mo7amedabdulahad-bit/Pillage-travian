@@ -224,50 +224,59 @@ export const killHero = createController(
 export const getNpcVillagesList = createController(
   '/developer-settings/npc-villages',
 )(({ database, query }) => {
-  const search = (query?.search as string) ?? '';
-  const hasSearch = search.length > 0;
+  try {
+    const search = (query?.search as string) ?? '';
+    const hasSearch = search.length > 0;
 
-  return database.selectObjects({
-    sql: `
-      SELECT
-        nvs.village_id AS villageId,
-        v.name AS villageName,
-        nvs.faction_key AS factionKey,
-        t.x,
-        t.y,
-        nvs.aggression_level AS aggressionLevel,
-        nvs.current_loot_available AS currentLoot,
-        nvs.max_loot_capacity AS maxLoot,
-        nvs.simulation_tier AS simulationTier,
-        nvs.needs_tick AS needsTick
-      FROM npc_village_state nvs
-      JOIN villages v ON v.id = nvs.village_id
-      JOIN tiles t ON t.id = v.tile_id
-      ${hasSearch ? 'WHERE v.name LIKE $search OR nvs.faction_key LIKE $search OR CAST(nvs.village_id AS TEXT) LIKE $search' : ''}
-      ORDER BY nvs.village_id ASC;
-    `,
-    bind: hasSearch ? { $search: `%${search}%` } : undefined,
-    schema: z.strictObject({
-      villageId: z.number(),
-      villageName: z.string(),
-      factionKey: z.string(),
-      x: z.number(),
-      y: z.number(),
-      aggressionLevel: z.number(),
-      currentLoot: z.number(),
-      maxLoot: z.number(),
-      simulationTier: z.number(),
-      needsTick: z.number(),
-    }),
-  });
+    return database.selectObjects({
+      sql: `
+        SELECT
+          nvs.village_id AS villageId,
+          v.name AS villageName,
+          nvs.faction_key AS factionKey,
+          t.x,
+          t.y,
+          nvs.aggression_level AS aggressionLevel,
+          nvs.current_loot_available AS currentLoot,
+          nvs.max_loot_capacity AS maxLoot,
+          COALESCE(nvs.simulation_tier, 2) AS simulationTier,
+          nvs.needs_tick AS needsTick
+        FROM npc_village_state nvs
+        JOIN villages v ON v.id = nvs.village_id
+        JOIN tiles t ON t.id = v.tile_id
+        ${hasSearch ? 'WHERE v.name LIKE $search OR nvs.faction_key LIKE $search OR CAST(nvs.village_id AS TEXT) LIKE $search' : ''}
+        ORDER BY nvs.village_id ASC;
+      `,
+      bind: hasSearch ? { $search: `%${search}%` } : undefined,
+      schema: z.object({
+        villageId: z.number(),
+        villageName: z.string(),
+        factionKey: z.string(),
+        x: z.number(),
+        y: z.number(),
+        aggressionLevel: z.number(),
+        currentLoot: z.number(),
+        maxLoot: z.number(),
+        simulationTier: z.number(),
+        needsTick: z.number(),
+      }),
+    });
+  } catch (e) {
+    console.error('[NPC Brain] getNpcVillagesList error:', e);
+    return [];
+  }
 });
 
 export const getNpcVillageDebug = createController(
   '/developer-settings/npc-villages/:villageId',
 )(({ database, path: { villageId } }) => {
-  const info = getNpcVillageDebugInfo(database, Number(villageId));
-  if (!info) {
-    return { error: 'Village not found or not an NPC village' };
+  try {
+    const info = getNpcVillageDebugInfo(database, Number(villageId));
+    if (!info) {
+      return { error: 'Village not found or not an NPC village' };
+    }
+    return info;
+  } catch (e) {
+    return { error: String(e) };
   }
-  return info;
 });
