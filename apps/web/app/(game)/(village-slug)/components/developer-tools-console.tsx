@@ -637,31 +637,31 @@ const NpcBrainSection = () => {
       const params = searchTerm
         ? `?search=${encodeURIComponent(searchTerm)}`
         : '';
-      const { data } = await fetcher(
-        `/developer-settings/npc-villages${params}`,
-      );
-      return data as {
-        villageId: number;
-        villageName: string;
-        factionKey: string;
-        x: number;
-        y: number;
-        aggressionLevel: number;
-        currentLoot: number;
-        maxLoot: number;
-        simulationTier: number;
-        needsTick: number;
-      }[];
+      const response = await fetcher<
+        {
+          villageId: number;
+          villageName: string;
+          factionKey: string;
+          x: number;
+          y: number;
+          aggressionLevel: number;
+          currentLoot: number;
+          maxLoot: number;
+          simulationTier: number;
+          needsTick: number;
+        }[]
+      >(`/developer-settings/npc-villages${params}`);
+      return response.data;
     },
   });
 
   const { data: debugInfo } = useQuery({
     queryKey: ['npc-village-debug', selectedVillageId],
     queryFn: async () => {
-      const { data } = await fetcher(
+      const response = await fetcher<Record<string, unknown>>(
         `/developer-settings/npc-villages/${selectedVillageId}`,
       );
-      return data as Record<string, unknown>;
+      return response.data;
     },
     enabled: !!selectedVillageId,
   });

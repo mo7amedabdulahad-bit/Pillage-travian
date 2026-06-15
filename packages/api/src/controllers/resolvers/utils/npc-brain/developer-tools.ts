@@ -111,18 +111,27 @@ export const getNpcVillageDebugInfo = (
     NPC_BRAIN_CONSTANTS.DEFENCE_FLOOR_BY_SIZE[villageSize] ?? 50;
 
   // Get recent build decisions from building level change history
-  const recentBuilds = db.selectObjects({
-    sql: `
-      SELECT bi.building AS buildingKey, blch.new_level AS newLevel, blch.timestamp
-      FROM building_level_change_history blch
-      JOIN building_ids bi ON bi.id = blch.building_id
-      WHERE blch.village_id = $villageId
-      ORDER BY blch.timestamp DESC
-      LIMIT 10;
-    `,
-    bind: { $villageId: villageId },
-    schema: { parse: (v: unknown) => v } as any,
-  }) as { buildingKey: string; newLevel: number; timestamp: number }[];
+  let recentBuilds: {
+    buildingKey: string;
+    newLevel: number;
+    timestamp: number;
+  }[] = [];
+  try {
+    recentBuilds = db.selectObjects({
+      sql: `
+        SELECT bi.building AS buildingKey, blch.new_level AS newLevel, blch.timestamp
+        FROM building_level_change_history blch
+        JOIN building_ids bi ON bi.id = blch.building_id
+        WHERE blch.village_id = $villageId
+        ORDER BY blch.timestamp DESC
+        LIMIT 10;
+      `,
+      bind: { $villageId: villageId },
+      schema: { parse: (v: unknown) => v } as any,
+    }) as { buildingKey: string; newLevel: number; timestamp: number }[];
+  } catch (_e) {
+    // Table might not exist
+  }
 
   return {
     villageId,
