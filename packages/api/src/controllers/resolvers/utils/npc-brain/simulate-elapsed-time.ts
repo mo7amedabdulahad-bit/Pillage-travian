@@ -48,11 +48,15 @@ export const simulateElapsedTime = async (
   const cappedElapsedMs = Math.min(elapsedMs, MAX_OFFLINE_MS);
 
   db.exec({
-    sql: `
-      UPDATE npc_village_state SET last_growth_tick_ms = $now WHERE last_growth_tick_ms = 0;
-      UPDATE npc_village_state SET last_troop_regen_ms = $now WHERE last_troop_regen_ms = 0;
-      UPDATE npc_village_state SET last_aggression_decay_ms = $now WHERE last_aggression_decay_ms = 0;
-    `,
+    sql: 'UPDATE npc_village_state SET last_growth_tick_ms = $now WHERE last_growth_tick_ms = 0;',
+    bind: { $now: now },
+  });
+  db.exec({
+    sql: 'UPDATE npc_village_state SET last_troop_regen_ms = $now WHERE last_troop_regen_ms = 0;',
+    bind: { $now: now },
+  });
+  db.exec({
+    sql: 'UPDATE npc_village_state SET last_aggression_decay_ms = $now WHERE last_aggression_decay_ms = 0;',
     bind: { $now: now },
   });
 
@@ -142,6 +146,20 @@ export const processNPCTick = (
   | 'aggressionChanges'
 > => {
   const currentTimeMs = Date.now();
+
+  // ─── Seed timestamps on first tick (new worlds have 0 timestamps) ───
+  db.exec({
+    sql: 'UPDATE npc_village_state SET last_growth_tick_ms = $now WHERE last_growth_tick_ms = 0;',
+    bind: { $now: currentTimeMs },
+  });
+  db.exec({
+    sql: 'UPDATE npc_village_state SET last_troop_regen_ms = $now WHERE last_troop_regen_ms = 0;',
+    bind: { $now: currentTimeMs },
+  });
+  db.exec({
+    sql: 'UPDATE npc_village_state SET last_aggression_decay_ms = $now WHERE last_aggression_decay_ms = 0;',
+    bind: { $now: currentTimeMs },
+  });
 
   // ─── Cache shared values (eliminates ~1000 redundant SQL queries per tick) ───
   const mapSize = getMapSize(db);

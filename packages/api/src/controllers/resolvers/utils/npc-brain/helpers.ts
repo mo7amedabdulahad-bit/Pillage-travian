@@ -141,10 +141,10 @@ export const getGameSpeed = (db: DbFacade): number => {
  */
 export const getMapSize = (db: DbFacade): number => {
   const result = db.selectObject({
-    sql: 'SELECT map_size as mapSize FROM servers LIMIT 1;',
-    schema: z.object({ mapSize: z.number() }),
+    sql: 'SELECT map_size FROM servers LIMIT 1;',
+    schema: z.object({ map_size: z.number() }),
   });
-  return result?.mapSize ?? 400;
+  return result?.map_size ?? 400;
 };
 
 /**
