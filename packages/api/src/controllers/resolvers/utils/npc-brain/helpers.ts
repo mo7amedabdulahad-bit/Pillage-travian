@@ -211,7 +211,7 @@ export const getPlayerVillageId = (db: DbFacade): number | null => {
 export const getPlayerVillageCoords = (
   db: DbFacade,
 ): { x: number; y: number } | null => {
-  // Primary: find the player's village by PLAYER_ID
+  // Primary: find any village belonging to the human player (PLAYER_ID)
   const result = db.selectObject({
     sql: `
       SELECT t.x, t.y
@@ -228,7 +228,7 @@ export const getPlayerVillageCoords = (
     return result;
   }
 
-  // Fallback: find the village at (0,0) — the player always starts there
+  // Fallback: find any village at (0,0)
   const fallback = db.selectObject({
     sql: `
       SELECT t.x, t.y
@@ -240,16 +240,13 @@ export const getPlayerVillageCoords = (
     schema: z.object({ x: z.number(), y: z.number() }),
   });
   if (fallback) {
-    console.error(
-      '[NPC Brain] getPlayerVillageCoords: PLAYER_ID=' +
-        PLAYER_ID +
-        ' query returned null, using fallback village at (0,0)',
-    );
     return fallback;
   }
 
   console.error(
-    '[NPC Brain] getPlayerVillageCoords returned null — no village found. Tier 1 proximity will not work.',
+    '[NPC Brain] getPlayerVillageCoords: no player village found. ' +
+      'PLAYER_ID=' +
+      PLAYER_ID,
   );
   return null;
 };

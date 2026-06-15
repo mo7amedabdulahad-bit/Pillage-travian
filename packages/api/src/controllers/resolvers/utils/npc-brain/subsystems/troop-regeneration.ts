@@ -59,6 +59,37 @@ export const processTroopRegenBatch = (
   }[] = [];
   let totalAdded = 0;
 
+  // Diagnostic: log first village's regen data
+  if (allVillages.length > 0) {
+    const v = allVillages[0];
+    const vs = getVillageSize(mapSize, v.x, v.y);
+    const rr = getTroopRegenRate(vs, v.factionKey as FactionKey);
+    const comp = getPreferredTroopComposition(
+      v.tribe,
+      v.factionKey as FactionKey,
+    );
+    const mtp = getMaxTroopsPerType(v.maxLoot);
+    const tr = Math.floor(elapsedHours * rr);
+    console.error(
+      '[NPC Brain] TroopRegen: village=' +
+        v.villageId +
+        ' tribe=' +
+        v.tribe +
+        ' size=' +
+        vs +
+        ' regenRate=' +
+        rr +
+        ' composition=' +
+        comp.length +
+        ' maxTroops=' +
+        mtp +
+        ' totalRegen=' +
+        tr +
+        ' elapsed=' +
+        elapsedHours.toFixed(4),
+    );
+  }
+
   for (const village of allVillages) {
     const villageSize = getVillageSize(mapSize, village.x, village.y);
     const regenRate = getTroopRegenRate(
