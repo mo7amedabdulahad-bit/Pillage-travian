@@ -84,16 +84,18 @@ export const getNpcVillageDebugInfo = (
       FROM building_fields bf
       JOIN building_ids bi ON bi.id = bf.building_id
       WHERE bf.village_id = $villageId
-        AND bi.building IN ('warehouse', 'granary');
+        AND UPPER(bi.building) IN ('WAREHOUSE', 'GRANARY');
     `,
     bind: { $villageId: villageId },
     schema: { parse: (v: unknown) => v } as any,
   }) as { buildingKey: string; level: number }[];
 
   const warehouseLevel =
-    buildingLevels.find((b) => b.buildingKey === 'warehouse')?.level ?? 0;
+    buildingLevels.find((b) => b.buildingKey.toUpperCase() === 'WAREHOUSE')
+      ?.level ?? 0;
   const granaryLevel =
-    buildingLevels.find((b) => b.buildingKey === 'granary')?.level ?? 0;
+    buildingLevels.find((b) => b.buildingKey.toUpperCase() === 'GRANARY')
+      ?.level ?? 0;
 
   // Get troop count
   const tileId = state.tile_id as number;

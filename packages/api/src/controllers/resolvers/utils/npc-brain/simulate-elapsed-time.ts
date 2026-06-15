@@ -390,6 +390,29 @@ export const processNPCTick = (
       bind: { ...tierBind, ...villageIdBinds },
     });
 
+    // Diagnostic: count tier 1 vs tier 2 assignments
+    const tier1Count = allVillages.filter(
+      (v) => (v as any).calculatedTier === 1,
+    ).length;
+    const tier2Count = allVillages.filter(
+      (v) => (v as any).calculatedTier === 2,
+    ).length;
+    const tier3Count = allVillages.filter(
+      (v) => (v as any).calculatedTier === 3,
+    ).length;
+    console.error(
+      '[NPC Brain] Tier update: ' +
+        tier1Count +
+        ' tier-1, ' +
+        tier2Count +
+        ' tier-2, ' +
+        tier3Count +
+        ' tier-3. playerCoords=' +
+        JSON.stringify(playerCoords) +
+        ', mapSize=' +
+        mapSize,
+    );
+
     // ─── Clear needs_tick for fully-stocked villages ───
     // A village can skip ticks when: full loot, troops ≥ defence floor, aggression = 0, at field cap
     const needsTickClearIds: number[] = [];
