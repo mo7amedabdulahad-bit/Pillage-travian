@@ -195,10 +195,11 @@ export const getPlayerVillageId = (db: DbFacade): number | null => {
     sql: `
       SELECT v.id
       FROM villages v
-      JOIN players p ON p.id = v.player_id
-      WHERE p.id = 1
+      WHERE v.player_id = $playerId
+      ORDER BY v.id ASC
       LIMIT 1;
     `,
+    bind: { $playerId: PLAYER_ID },
     schema: z.object({ id: z.number() }),
   });
   return result?.id ?? null;

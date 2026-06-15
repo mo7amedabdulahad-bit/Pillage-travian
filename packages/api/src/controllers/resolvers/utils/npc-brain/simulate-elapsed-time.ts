@@ -400,6 +400,7 @@ export const processNPCTick = (
     const tier3Count = allVillages.filter(
       (v) => (v as any).calculatedTier === 3,
     ).length;
+    const sample = allVillages[0];
     console.error(
       '[NPC Brain] Tier update: ' +
         tier1Count +
@@ -410,7 +411,20 @@ export const processNPCTick = (
         ' tier-3. playerCoords=' +
         JSON.stringify(playerCoords) +
         ', mapSize=' +
-        mapSize,
+        mapSize +
+        ', raw=' +
+        allVillagesRaw.length +
+        ', filtered=' +
+        allVillages.length +
+        (sample
+          ? ', sample=' +
+            JSON.stringify({
+              id: sample.villageId,
+              x: sample.x,
+              y: sample.y,
+              calculatedTier: (sample as any).calculatedTier,
+            })
+          : ''),
     );
 
     // ─── Clear needs_tick for fully-stocked villages ───
