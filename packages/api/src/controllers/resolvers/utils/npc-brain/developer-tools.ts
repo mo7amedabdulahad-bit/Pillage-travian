@@ -101,36 +101,41 @@ export const getNpcVillageDebugInfo = (
     console.error('[NPC Debug] buildingLevels query failed:', e);
   }
 
-  // If query returned nothing, compute from max_loot_capacity
-  // Each building at level N has capacity: 800 + (N-1) * 750
+  // Compute storage levels — use DB if available, otherwise compute from max_loot_capacity
+  // Each building at level N has capacity = 800 + (level-1) * 750
   // max_loot_capacity = warehouse_capacity + granary_capacity
-  // Assume warehouse and granary have the same level
+  // Assume equal levels if we need to compute
   let warehouseLevel = 0;
-  let _granaryLevel = 0;
+  let granaryLevel = 0;
 
   if (buildingLevels.length > 0) {
     warehouseLevel =
       buildingLevels.find((b) => b.buildingKey.toUpperCase() === 'WAREHOUSE')
         ?.level ?? 0;
-    _granaryLevel =
+    granaryLevel =
       buildingLevels.find((b) => b.buildingKey.toUpperCase() === 'GRANARY')
         ?.level ?? 0;
-  } else {
-    // Fallback: compute from max_loot_capacity
+  }
+
+  // Fallback: compute missing levels from max_loot_capacity
+  // Formula: per_building_capacity = 800 + (level-1) * 750
+  // max_loot = warehouse_cap + granary_cap = 2 * (800 + (level-1) * 750) if equal
+  if (warehouseLevel === 0 || granaryLevel === 0) {
     const maxLoot = (state.max_loot_capacity as number) ?? 0;
     if (maxLoot > 0) {
-      // Each building has capacity = 800 + (level-1) * 750
-      // maxLoot = 2 * (800 + (level-1) * 750)
-      // (maxLoot / 2 - 800) / 750 + 1 = level
       const perBuilding = maxLoot / 2;
-      const computedLevel = Math.floor((perBuilding - 800) / 750 + 1);
-      warehouseLevel = Math.max(0, computedLevel);
-      _granaryLevel = Math.max(0, computedLevel);
+      const computedLevel = Math.max(
+        0,
+        Math.floor((perBuilding - 800) / 750 + 1),
+      );
+      if (warehouseLevel === 0) {
+        warehouseLevel = computedLevel;
+      }
+      if (granaryLevel === 0) {
+        granaryLevel = computedLevel;
+      }
     }
   }
-  const granaryLevel =
-    buildingLevels.find((b) => b.buildingKey.toUpperCase() === 'GRANARY')
-      ?.level ?? 0;
 
   // Get troop count
   let totalTroops = 0;
