@@ -228,8 +228,8 @@ export const getPlayerVillageCoords = (
     return result;
   }
 
-  // Fallback: find any village at (0,0)
-  const fallback = db.selectObject({
+  // Fallback 1: find any village at (0,0)
+  const atZero = db.selectObject({
     sql: `
       SELECT t.x, t.y
       FROM tiles t
@@ -239,15 +239,26 @@ export const getPlayerVillageCoords = (
     `,
     schema: z.object({ x: z.number(), y: z.number() }),
   });
-  if (fallback) {
-    return fallback;
+  if (atZero) {
+    return atZero;
   }
 
-  console.error(
-    '[NPC Brain] getPlayerVillageCoords: no player village found. ' +
-      'PLAYER_ID=' +
-      PLAYER_ID,
-  );
+  // Fallback 2: find the first village ever created (lowest id)
+  const firstVillage = db.selectObject({
+    sql: `
+      SELECT t.x, t.y
+      FROM villages v
+      JOIN tiles t ON t.id = v.tile_id
+      ORDER BY v.id ASC
+      LIMIT 1;
+    `,
+    schema: z.object({ x: z.number(), y: z.number() }),
+  });
+  if (firstVillage) {
+    return firstVillage;
+  }
+
+  console.error('[NPC Brain] getPlayerVillageCoords: no village found at all');
   return null;
 };
 

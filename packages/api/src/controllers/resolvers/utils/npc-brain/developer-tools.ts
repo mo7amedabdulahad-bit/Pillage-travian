@@ -101,6 +101,13 @@ export const getNpcVillageDebugInfo = (
     console.error('[NPC Debug] buildingLevels query failed:', e);
   }
 
+  console.error(
+    '[NPC Debug] buildingLevels:',
+    buildingLevels.length,
+    'rows for village',
+    villageId,
+  );
+
   const warehouseLevel =
     buildingLevels.find((b) => b.buildingKey.toUpperCase() === 'WAREHOUSE')
       ?.level ?? 0;
