@@ -208,22 +208,23 @@ export const processBuildDecisions = (
           continue; // no empty slot available
         }
 
-        // INSERT new building slot and set level
+        // INSERT new building slot at target level directly
         db.exec({
           sql: `
             INSERT INTO building_fields (village_id, field_id, building_id, level)
-            VALUES ($villageId, $fieldId, $buildingId, 0);
+            VALUES ($villageId, $fieldId, $buildingId, $level);
           `,
           bind: {
             $villageId: village.villageId,
             $fieldId: emptyFieldId,
             $buildingId: numericBuildingId,
+            $level: newLevel,
           },
         });
 
-        // Register in-memory and push the level 1 upgrade
+        // Register in-memory and push the level upgrade
         villageBuildings.set(buildingKey, {
-          level: 0,
+          level: newLevel,
           fieldId: emptyFieldId,
         });
         buildUpdates.push({
@@ -231,11 +232,7 @@ export const processBuildDecisions = (
           fieldId: emptyFieldId,
           buildingId: numericBuildingId,
           previousLevel: 0,
-          newLevel: 1,
-        });
-        villageBuildings.set(buildingKey, {
-          level: 1,
-          fieldId: emptyFieldId,
+          newLevel,
         });
 
         if (buildingKey === 'WAREHOUSE' || buildingKey === 'GRANARY') {
@@ -287,10 +284,17 @@ export const processBuildDecisions = (
 
   // ─── Batch UPDATE building_fields ───
   if (buildUpdates.length > 0) {
+    // Deduplicate: keep only the LAST entry per (villageId, fieldId) to avoid CASE collision
+    const deduped = new Map<string, (typeof buildUpdates)[0]>();
+    for (const u of buildUpdates) {
+      deduped.set(`${u.villageId}:${u.fieldId}`, u);
+    }
+    const uniqueUpdates = [...deduped.values()];
+
     const caseClauses: string[] = [];
     const bind: Record<string, number> = {};
 
-    buildUpdates.forEach((u, i) => {
+    uniqueUpdates.forEach((u, i) => {
       const vk = `$v${i}`;
       const fk = `$f${i}`;
       const lk = `$l${i}`;
@@ -302,7 +306,7 @@ export const processBuildDecisions = (
       bind[lk] = u.newLevel;
     });
 
-    const villageIds = [...new Set(buildUpdates.map((u) => u.villageId))];
+    const villageIds = [...new Set(uniqueUpdates.map((u) => u.villageId))];
     const villageIdPlaceholders = villageIds
       .map((_, i) => `$vid${i}`)
       .join(',');
@@ -326,7 +330,7 @@ export const processBuildDecisions = (
 
     // ─── Record NPC builds in building_level_change_history ───
     const historyRows: [number, number, number, number, number, number][] = [];
-    for (const u of buildUpdates) {
+    for (const u of uniqueUpdates) {
       historyRows.push([
         u.villageId,
         u.fieldId,

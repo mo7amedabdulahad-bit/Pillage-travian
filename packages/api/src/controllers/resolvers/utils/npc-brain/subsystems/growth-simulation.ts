@@ -111,13 +111,20 @@ export const processGrowthBatch = (
 
   // ─── Batch UPDATE field levels ───
   if (fieldUpdates.length > 0) {
-    const villageIds = [...new Set(fieldUpdates.map((u) => u.villageId))];
+    // Deduplicate: keep only the LAST entry per (villageId, fieldId) to avoid CASE collision
+    const deduped = new Map<string, (typeof fieldUpdates)[0]>();
+    for (const u of fieldUpdates) {
+      deduped.set(`${u.villageId}:${u.fieldId}`, u);
+    }
+    const uniqueUpdates = [...deduped.values()];
+
+    const villageIds = [...new Set(uniqueUpdates.map((u) => u.villageId))];
     let caseIdx = 0;
     const caseClauses: string[] = [];
     const bind: Record<string, number> = {};
 
     for (const vid of villageIds) {
-      const updates = fieldUpdates.filter((u) => u.villageId === vid);
+      const updates = uniqueUpdates.filter((u) => u.villageId === vid);
       for (const update of updates) {
         const vk = `$v${caseIdx}`;
         const fk = `$f${caseIdx}`;
