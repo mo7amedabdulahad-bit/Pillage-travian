@@ -183,7 +183,7 @@ export const processNPCTick = (
       JOIN villages v ON v.id = nvs.village_id
       JOIN tiles t ON t.id = v.tile_id
       JOIN players p ON p.id = v.player_id
-      JOIN tribe_ids ti ON ti.id = p.tribe_id
+      LEFT JOIN tribe_ids ti ON ti.id = p.tribe_id
       WHERE nvs.needs_tick = 1;
     `,
     schema: z.any(),

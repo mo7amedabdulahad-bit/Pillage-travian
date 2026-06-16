@@ -200,12 +200,6 @@ export const NPC_BRAIN_CONSTANTS = {
   /** Max field level for NPC villages (player can reach 20) */
   NPC_MAX_FIELD_LEVEL: 15,
 
-  /** Base population growth per real hour at 1x speed */
-  BASE_POPULATION_GROWTH_RATE: 2,
-
-  /** Population cap = sum of field levels * this multiplier */
-  POPULATION_CAP_PER_FIELD_LEVEL: 8,
-
   /** Village size multipliers for loot capacity */
   VILLAGE_SIZE_MULTIPLIER: {
     xxs: 0.5,

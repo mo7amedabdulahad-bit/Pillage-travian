@@ -27,10 +27,10 @@ export const processTroopRegenBatch = (
   allVillages: BatchVillageRow[],
   allTroops: BatchTroopRow[],
   chunkMs: number,
-  _speed: number,
+  speed: number,
   mapSize: number,
 ): TroopRegenResult => {
-  const elapsedHours = chunkMs / 3_600_000;
+  const elapsedHours = (chunkMs / 3_600_000) * speed;
   if (elapsedHours <= 0) {
     return { totalTroopsAdded: 0 };
   }
