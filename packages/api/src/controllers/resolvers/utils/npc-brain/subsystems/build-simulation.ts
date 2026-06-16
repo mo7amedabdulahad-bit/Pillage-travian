@@ -1,6 +1,14 @@
 import { z } from 'zod';
+import {
+  getBuildingDataForLevel,
+  getBuildingDefinition,
+} from '@pillage-first/game-assets/utils/buildings';
 import type { BuildingId } from '@pillage-first/types/models/building';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
+import {
+  updateBuildingEffectQuery,
+  updatePopulationEffectQuery,
+} from '../../../../../utils/queries/effect-queries';
 import {
   type BuildPriorityEntry,
   FACTION_BUILD_PRIORITIES,
@@ -112,6 +120,7 @@ export const processBuildDecisions = (
     villageId: number;
     fieldId: number;
     buildingId: number;
+    buildingKey: string;
     previousLevel: number;
     newLevel: number;
   }[] = [];
@@ -231,6 +240,7 @@ export const processBuildDecisions = (
           villageId: village.villageId,
           fieldId: emptyFieldId,
           buildingId: numericBuildingId,
+          buildingKey,
           previousLevel: 0,
           newLevel,
         });
@@ -254,6 +264,7 @@ export const processBuildDecisions = (
         villageId: village.villageId,
         fieldId,
         buildingId: numericBuildingId,
+        buildingKey,
         previousLevel: currentLevel,
         newLevel,
       });
@@ -364,6 +375,54 @@ export const processBuildDecisions = (
       `,
       bind: historyBind,
     });
+
+    // ─── Update effects table for NPC builds (population + building effects) ───
+    for (const u of uniqueUpdates) {
+      try {
+        const buildingDef = getBuildingDefinition(u.buildingKey as BuildingId);
+        if (!buildingDef) {
+          continue;
+        }
+
+        // Update population effect (wheat production)
+        const prevData = getBuildingDataForLevel(
+          u.buildingKey as BuildingId,
+          u.previousLevel,
+        );
+        const newData = getBuildingDataForLevel(
+          u.buildingKey as BuildingId,
+          u.newLevel,
+        );
+        const populationDifference = newData.population - prevData.population;
+
+        if (populationDifference !== 0) {
+          db.exec({
+            sql: updatePopulationEffectQuery,
+            bind: {
+              $village_id: u.villageId,
+              $value: populationDifference,
+            },
+          });
+        }
+
+        // Update building-specific effects
+        for (const { effectId, valuesPerLevel, type } of buildingDef.effects) {
+          const effectValue = valuesPerLevel[u.newLevel] ?? 0;
+          db.exec({
+            sql: updateBuildingEffectQuery,
+            bind: {
+              $effect_id: effectId,
+              $value: effectValue,
+              $type: type,
+              $village_id: u.villageId,
+              $source_specifier: u.fieldId,
+            },
+          });
+        }
+      } catch (_e) {
+        // Building definition not found or effect update failed — skip silently
+      }
+    }
   }
 
   // ─── Batch UPDATE max_loot_capacity for storage upgrades ───
