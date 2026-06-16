@@ -24,6 +24,7 @@ import { processBuildDecisions } from './subsystems/build-simulation';
 import { processGrowthBatch } from './subsystems/growth-simulation';
 import { processLootRecoveryBatch } from './subsystems/loot-recovery';
 import { processMemoryDecayBatch } from './subsystems/memory-decay';
+import { processRetaliations } from './subsystems/retaliation-execution';
 import { processTroopRegenBatch } from './subsystems/troop-regeneration';
 import { calculateWorldThreatLevel } from './world-threat-level';
 
@@ -147,23 +148,9 @@ export const processNPCTick = (
 > => {
   const currentTimeMs = Date.now();
 
-  // ─── Seed timestamps on first tick (new worlds have 0 timestamps) ───
-  db.exec({
-    sql: 'UPDATE npc_village_state SET last_growth_tick_ms = $now WHERE last_growth_tick_ms = 0;',
-    bind: { $now: currentTimeMs },
-  });
-  db.exec({
-    sql: 'UPDATE npc_village_state SET last_troop_regen_ms = $now WHERE last_troop_regen_ms = 0;',
-    bind: { $now: currentTimeMs },
-  });
-  db.exec({
-    sql: 'UPDATE npc_village_state SET last_aggression_decay_ms = $now WHERE last_aggression_decay_ms = 0;',
-    bind: { $now: currentTimeMs },
-  });
-
   // ─── Cache shared values (eliminates ~1000 redundant SQL queries per tick) ───
   const mapSize = getMapSize(db);
-  const _worldThreatLevel = calculateWorldThreatLevel(db);
+  const worldThreatLevel = calculateWorldThreatLevel(db);
 
   // ─── Single JOIN query: fetch all NPC village states + coordinates + tribe ───
   const allVillagesRaw = db.selectObjects({
@@ -214,14 +201,15 @@ export const processNPCTick = (
   };
 
   // Assign tier FIRST, before filtering
-  // Use (0,0) as player position directly — no need for getPlayerVillageCoords
+  // Scale distance thresholds by mapSize (normalized: thresholds as fraction of map radius)
+  const mapRadius = mapSize / 2;
   for (const v of allVillagesRaw) {
     let tier = 2; // default mid-ring
 
     // Direct distance from (0,0)
     const distFromCenter = Math.sqrt(v.x * v.x + v.y * v.y);
-    if (distFromCenter <= 50) {
-      tier = 1; // within 50 tiles of center = Tier 1
+    if (distFromCenter <= mapRadius * 0.25) {
+      tier = 1; // within 25% of center = Tier 1
     }
 
     if (currentTimeMs - v.lastRaidedMs < 3_600_000) {
@@ -236,7 +224,7 @@ export const processNPCTick = (
 
     // Tier 3: outer edge with no interaction (beyond 70% of map)
     if (v.lastRaidedMs === 0 && v.aggressionLevel === 0) {
-      if (distFromCenter > 70) {
+      if (distFromCenter > mapRadius * 0.7) {
         tier = 3;
       }
     }
@@ -356,6 +344,14 @@ export const processNPCTick = (
     allTroops,
     allVillages,
   );
+
+  // ─── 4.7 Process queued retaliations from npc_retaliation_queue ───
+  const queuedRetaliations = processRetaliations(
+    db,
+    currentTimeMs,
+    worldThreatLevel,
+  );
+  resolvedRetaliations.push(...queuedRetaliations);
 
   // ─── Update simulation_tier and next_simulation_due ───
   const tierCaseClauses: string[] = [];

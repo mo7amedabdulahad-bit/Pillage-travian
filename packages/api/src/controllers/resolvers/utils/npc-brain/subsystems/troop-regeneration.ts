@@ -219,7 +219,7 @@ export const processTroopRegenBatch = (
       const ak = `$a${i}`;
       const mk = `$m${i}`;
       caseClauses.push(
-        `WHEN tile_id = ${tk} AND unit_id = (SELECT id FROM unit_ids WHERE unit = ${uk}) THEN MIN(amount + ${ak}, ${mk})`,
+        `WHEN tile_id = ${tk} AND unit_id = (SELECT id FROM unit_ids WHERE unit = ${uk}) THEN CASE WHEN amount + ${ak} > ${mk} THEN ${mk} ELSE amount + ${ak} END`,
       );
       bind[tk] = u.tileId;
       bind[uk] = u.unitId as unknown as number;

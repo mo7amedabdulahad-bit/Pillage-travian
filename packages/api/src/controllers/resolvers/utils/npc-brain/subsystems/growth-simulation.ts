@@ -93,20 +93,6 @@ export const processGrowthBatch = (
       }
     }
 
-    // ─── Population Growth ───
-    const elapsedHours = chunkMs / 3_600_000;
-    const populationToAdd = Math.floor(elapsedHours * village.popRate * speed);
-
-    if (populationToAdd > 0) {
-      const fieldLevelSum = sortedFields.reduce((sum, f) => sum + f.level, 0);
-      const _populationCap =
-        fieldLevelSum * NPC_BRAIN_CONSTANTS.POPULATION_CAP_PER_FIELD_LEVEL;
-
-      // Get current population from the village (already fetched in batch or we can batch this too)
-      // For now, we'll do a single query for all village populations
-      // This is handled in the caller
-    }
-
     // ─── Compute new max loot capacity ───
     const newFieldLevelSum = sortedFields.reduce((sum, f) => sum + f.level, 0);
     const villageSize = getVillageSize(mapSize, village.x, village.y);

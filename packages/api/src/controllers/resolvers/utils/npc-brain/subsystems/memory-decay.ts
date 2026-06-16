@@ -51,7 +51,7 @@ export const processMemoryDecayBatch = (
         WHERE nvs.faction_key IN (${factionPlaceholders})
       )
       AND ($currentTime - timestamp) > (
-        SELECT CASE nvs2.faction_key
+        SELECT CASE
           ${caseClauses.join('\n')}
           ELSE 999999999999
         END

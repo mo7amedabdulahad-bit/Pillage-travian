@@ -120,8 +120,8 @@ export const getNpcVillageDebugInfo = (
   }
 
   // Fallback: compute missing levels from max_loot_capacity
-  // Formula: per_building_capacity = 800 + (level-1) * 750
-  // max_loot = warehouse_cap + granary_cap = 2 * (800 + (level-1) * 750) if equal
+  // Only used when a building doesn't exist in the DB yet.
+  // Formula: capacity = 800 + (level-1) * 750; assumes equal levels for both buildings.
   if (warehouseLevel === 0 || granaryLevel === 0) {
     const maxLoot = (state.max_loot_capacity as number) ?? 0;
     if (maxLoot > 0) {

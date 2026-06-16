@@ -4,6 +4,7 @@ import { FACTION_PROFILES, getFactionProfile } from '../faction-profiles';
 import {
   adjustForSpeed,
   getAllNPCVillages,
+  getGameSpeed,
   getPlayerVillageCoords,
   mapDistance,
   scaleTroops,
@@ -56,7 +57,13 @@ export const calculateAggressionResponse = (
       `,
       bind: { $tier: effectiveTier, $villageId: villageId },
     });
-  } catch (_e) {}
+  } catch (e) {
+    // biome-ignore lint/suspicious/noConsole: NPC brain error logging is intentional
+    console.warn(
+      `[NPC Brain] Failed to update aggression for village ${villageId}:`,
+      e,
+    );
+  }
 
   scheduleRetaliation(db, villageId, factionKey, effectiveTier);
 
@@ -109,7 +116,7 @@ const scheduleRetaliation = (
   );
 
   const slowestSpeed = 3;
-  const speed = getGameSpeedFromDb(db);
+  const speed = getGameSpeed(db);
   const travelTimeMs = Math.ceil(
     (distance / (slowestSpeed * speed)) * 3_600_000,
   );
@@ -155,7 +162,13 @@ const scheduleRetaliation = (
         $troopsJson: JSON.stringify(retaliationTroops),
       },
     });
-  } catch (_e) {}
+  } catch (e) {
+    // biome-ignore lint/suspicious/noConsole: NPC brain error logging is intentional
+    console.warn(
+      `[NPC Brain] Failed to queue retaliation for village ${villageId}:`,
+      e,
+    );
+  }
 };
 
 /**
@@ -184,21 +197,39 @@ const callRegionalReinforcements = (
         { x: v.x, y: v.y },
       );
       return dist <= range;
-    })
-    .filter((v) => {
-      const state = db.selectObject({
-        sql: `
-          SELECT aggression_level AS level
-          FROM npc_village_state
-          WHERE village_id = $villageId;
-        `,
-        bind: { $villageId: v.villageId },
-        schema: z.any(),
-      }) as { level: number } | undefined;
-      return (state?.level ?? 0) < 3;
     });
 
-  for (const neighbor of neighbors) {
+  if (neighbors.length === 0) {
+    return;
+  }
+
+  // Batch query aggression levels for all neighbors
+  const neighborIds = neighbors.map((v) => v.villageId);
+  const neighborPlaceholders = neighborIds.map((_, i) => `$nv${i}`).join(',');
+  const neighborBinds: Record<string, number> = {};
+  neighborIds.forEach((nid, i) => {
+    neighborBinds[`$nv${i}`] = nid;
+  });
+
+  const aggressionLevels = db.selectObjects({
+    sql: `
+      SELECT village_id AS villageId, aggression_level AS level
+      FROM npc_village_state
+      WHERE village_id IN (${neighborPlaceholders});
+    `,
+    bind: neighborBinds,
+    schema: z.any(),
+  }) as { villageId: number; level: number }[];
+
+  const aggressionMap = new Map(
+    aggressionLevels.map((r) => [r.villageId, r.level]),
+  );
+
+  const lowAggressionNeighbors = neighbors.filter((v) => {
+    return (aggressionMap.get(v.villageId) ?? 0) < 3;
+  });
+
+  for (const neighbor of lowAggressionNeighbors) {
     db.exec({
       sql: `
         UPDATE npc_village_state
@@ -355,15 +386,4 @@ export const getAggressionLevel = (db: DbFacade, villageId: number): number => {
     schema: z.any(),
   });
   return (result as number) ?? 0;
-};
-
-/**
- * Helper to get game speed from DB.
- */
-const getGameSpeedFromDb = (db: DbFacade): number => {
-  const result = db.selectObject({
-    sql: 'SELECT speed FROM servers LIMIT 1;',
-    schema: z.any(),
-  }) as { speed: number } | undefined;
-  return result?.speed ?? 1;
 };
