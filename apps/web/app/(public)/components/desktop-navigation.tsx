@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { BiWorld } from 'react-icons/bi';
 import { CiImport } from 'react-icons/ci';
 import { FaChevronDown } from 'react-icons/fa';
-import { FaDiscord, FaGithub } from 'react-icons/fa6';
 import { GrHelpBook } from 'react-icons/gr';
 import { IoIosChatbubbles } from 'react-icons/io';
 import { IoCreate } from 'react-icons/io5';
@@ -96,7 +95,7 @@ export const DesktopNavigation = () => {
   const { key } = useLocation();
 
   const [activeDropdown, setActiveDropdown] = useState<
-    'game' | 'resources' | 'guides' | 'social' | null
+    'game' | 'resources' | 'guides' | null
   >(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Key is expected
@@ -191,37 +190,6 @@ export const DesktopNavigation = () => {
               </div>
             </NavMenu>
 
-            <NavMenu
-              label={t('Community')}
-              isOpen={activeDropdown === 'social'}
-              onMouseEnter={() => setActiveDropdown('social')}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
-              <a
-                href="https://discord.gg/Ep7NKVXUZA"
-                className="flex items-start gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <DropdownLinkContent
-                  label="Discord"
-                  description={t('Join the discussion')}
-                  icon={<FaDiscord />}
-                />
-              </a>
-              <a
-                href="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-                className="flex items-start gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <DropdownLinkContent
-                  label="GitHub"
-                  description={t('Contribute or raise issues')}
-                  icon={<FaGithub />}
-                />
-              </a>
-            </NavMenu>
             <NavLink to="/latest-updates">{t('Latest updates')}</NavLink>
           </div>
         </div>

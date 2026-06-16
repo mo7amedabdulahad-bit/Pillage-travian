@@ -337,6 +337,11 @@ body {
    */
 }
 
+/* Prevent body scroll when game layout is active (h-dvh overflow-hidden on wrapper) */
+body.game-layout-active {
+  overflow: hidden !important;
+}
+
 input,
 textarea {
   -webkit-user-select: text;

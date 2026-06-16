@@ -2,7 +2,7 @@ import { Activity, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BiWorld } from 'react-icons/bi';
 import { CiImport } from 'react-icons/ci';
-import { FaDiscord, FaGithub, FaRegNewspaper } from 'react-icons/fa6';
+import { FaRegNewspaper } from 'react-icons/fa6';
 import { GrHelpBook } from 'react-icons/gr';
 import { HiOutlineMenu } from 'react-icons/hi';
 import { IoIosChatbubbles } from 'react-icons/io';
@@ -156,33 +156,6 @@ export const MobileNavigation = () => {
                   </ul>
                 </div>
 
-                <div className="border border-dashed border-border w-full" />
-                <div className="flex flex-col gap-2">
-                  <Text className="text-2xs font-semibold uppercase text-muted-foreground">
-                    {t('Community')}
-                  </Text>
-                  <ul className="flex flex-col gap-2">
-                    <li>
-                      <a
-                        href="https://discord.gg/Ep7NKVXUZA"
-                        rel="noopener"
-                        className="inline-flex gap-2 items-center"
-                      >
-                        <FaDiscord className="text-muted-foreground text-lg" />
-                        <Text className="font-medium">Discord</Text>
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        href="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-                        className="inline-flex gap-2 items-center"
-                      >
-                        <FaGithub className="text-muted-foreground text-lg" />
-                        <Text className="font-medium">GitHub</Text>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
                 <div className="flex flex-1" />
                 <div className="border border-dashed border-border w-full" />
                 <div className="flex justify-center gap-2">

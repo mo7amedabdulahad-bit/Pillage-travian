@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { SplashScreen } from '@capacitor/splash-screen';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { StatusBar } from '@capacitor/status-bar';
 import { StrictMode, startTransition } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
@@ -68,8 +68,8 @@ async function initAndroidPlugins() {
   }
 
   // Hide status bar for immersive game feel
-  await StatusBar.setStyle({ style: Style.Dark });
-  await StatusBar.setBackgroundColor({ color: '#111111' });
+  await StatusBar.hide();
+  await StatusBar.setOverlaysWebView({ overlay: true });
 
   // Lock to portrait (matches existing PWA manifest orientation setting)
   await ScreenOrientation.lock({ orientation: 'portrait' });

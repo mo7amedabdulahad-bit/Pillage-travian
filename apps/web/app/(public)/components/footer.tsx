@@ -1,6 +1,5 @@
 import { use, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaDiscord, FaGithub } from 'react-icons/fa6';
 import { Link } from 'react-router';
 import type { UIColorScheme } from '@pillage-first/types/models/preferences';
 import { env } from '@pillage-first/utils/env';
@@ -103,37 +102,6 @@ export const Footer = () => {
         </nav>
 
         <div className="flex flex-col gap-4">
-          <nav className="flex flex-col gap-2">
-            <Text
-              as="span"
-              className="font-medium uppercase text-xs text-muted-foreground"
-            >
-              {t('Community')}
-            </Text>
-            <ul className="flex flex-wrap gap-2">
-              <li>
-                <a
-                  href="https://discord.gg/Ep7NKVXUZA"
-                  rel="noopener nofollow"
-                  className="flex items-center justify-center gap-2 rounded-full bg-[#7289da] shadow-md p-2 hover:opacity-80 transition-opacity"
-                  aria-label="Discord"
-                >
-                  <FaDiscord className="text-2xl md:text-3xl text-white" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-                  rel="noopener nofollow"
-                  className="flex items-center justify-center gap-2 rounded-full bg-[#24292e] shadow-md p-2 hover:opacity-80 transition-opacity"
-                  aria-label="GitHub"
-                >
-                  <FaGithub className="text-2xl md:text-3xl text-white" />
-                </a>
-              </li>
-            </ul>
-          </nav>
-
           <div className="flex flex-col gap-2">
             <Text
               as="span"

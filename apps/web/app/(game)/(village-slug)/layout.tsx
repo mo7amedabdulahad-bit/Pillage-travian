@@ -7,13 +7,13 @@ import {
   type ReactNode,
   Suspense,
   use,
+  useEffect,
   useMemo,
   useRef,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CiCircleList } from 'react-icons/ci';
 import { FaHome } from 'react-icons/fa';
-import { FaDiscord, FaGithub } from 'react-icons/fa6';
 import { GiWheat } from 'react-icons/gi';
 import { GoGraph } from 'react-icons/go';
 import { HiStar } from 'react-icons/hi2';
@@ -597,39 +597,6 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
           <div className="hidden lg:flex w-full bg-muted py-1 px-2">
             <nav className="hidden lg:flex justify-between container mx-auto">
               <ul className="flex gap-1">
-                <li>
-                  <Link
-                    target="_blank"
-                    to="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-                  >
-                    <DesktopTopRowItem>
-                      <span className="inline-flex gap-2 items-center">
-                        <FaGithub className="text-xl text-[#24292e] dark:text-white" />
-                        <span className="text-sm font-semibold hidden xl:inline-flex text-[#24292e] dark:text-white">
-                          GitHub
-                        </span>
-                      </span>
-                    </DesktopTopRowItem>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    className="bg-[#7289da]"
-                    target="_blank"
-                    to="https://discord.com/invite/Ep7NKVXUZA"
-                  >
-                    <DesktopTopRowItem>
-                      <span className="inline-flex gap-2 items-center">
-                        <FaDiscord className="text-xl text-[#7289da]" />
-                        <span className="text-sm font-semibold hidden xl:inline-flex text-[#7289da]">
-                          Discord
-                        </span>
-                      </span>
-                    </DesktopTopRowItem>
-                  </Link>
-                </li>
-              </ul>
-              <ul className="flex gap-1">
                 {preferences.isDeveloperToolsConsoleEnabled && (
                   <li>
                     <DesktopTopRowItem
@@ -770,29 +737,6 @@ const MobileBottomNavigation = ({
       >
         <ul className="flex w-fit gap-2 justify-between items-center px-2 pt-5 pb-2 mx-auto">
           <li>
-            <NavigationSideItem
-              target="_blank"
-              to="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-              aria-label="GitHub"
-              title="GitHub"
-            >
-              <FaGithub className="text-2xl text-[#24292e] dark:text-white" />
-            </NavigationSideItem>
-          </li>
-          <li>
-            <NavigationSideItem
-              target="_blank"
-              to="https://discord.com/invite/Ep7NKVXUZA"
-              aria-label="Discord"
-              title="Discord"
-            >
-              <FaDiscord className="text-2xl text-[#7289da]" />
-            </NavigationSideItem>
-          </li>
-          <li>
-            <Separator orientation="vertical" />
-          </li>
-          <li>
             <AdventuresNavigationItem />
           </li>
           <li>
@@ -868,7 +812,7 @@ const MobileBottomNavigation = ({
 
 const PageFallback = () => {
   return (
-    <div className="flex items-center justify-center h-[calc(100vh-12rem)] lg:h-[calc(100vh-4.75rem)]">
+    <div className="flex items-center justify-center h-full min-h-[50vh]">
       <Spinner className="size-16" />
     </div>
   );
@@ -895,19 +839,28 @@ const GameLayout = memo<Route.ComponentProps>(
     const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
     const { isOpen, toggleModal } = useDialog();
 
+    useEffect(() => {
+      document.body.classList.add('game-layout-active');
+      return () => {
+        document.body.classList.remove('game-layout-active');
+      };
+    }, []);
+
     return (
-      <div className="[-webkit-touch-callout:none]">
+      <div className="[-webkit-touch-callout:none] h-dvh flex flex-col overflow-hidden">
         <VillageSlugProvider villageSlug={villageSlug!}>
           <CurrentVillageStateProvider>
             <CurrentVillageBuildingQueueContextProvider>
               <Tooltip id="general-tooltip" />
               <TopNavigation onDeveloperToolsToggle={toggleModal} />
-              <TroopMovements />
-              <Suspense fallback={<PageFallback />}>
-                <Outlet />
-              </Suspense>
-              <ConstructionQueue />
-              <TroopList />
+              <div className="flex-1 overflow-y-auto pb-24 lg:pb-0">
+                <TroopMovements />
+                <Suspense fallback={<PageFallback />}>
+                  <Outlet />
+                </Suspense>
+                <ConstructionQueue />
+                <TroopList />
+              </div>
               {!isWiderThanLg && (
                 <MobileBottomNavigation onDeveloperToolsToggle={toggleModal} />
               )}
