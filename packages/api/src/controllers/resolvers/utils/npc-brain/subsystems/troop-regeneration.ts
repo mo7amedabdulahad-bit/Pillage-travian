@@ -182,7 +182,7 @@ export const processTroopRegenBatch = (
   if (troopInserts.length > 0) {
     // Build a single INSERT with subqueries for unit_id
     const valuesClauses: string[] = [];
-    const bind: Record<string, number> = {};
+    const bind: Record<string, number | string> = {};
 
     troopInserts.forEach(([unitId, amount, tileId, sourceTileId], i) => {
       const uk = `$u${i}`;
@@ -192,7 +192,7 @@ export const processTroopRegenBatch = (
       valuesClauses.push(
         `((SELECT id FROM unit_ids WHERE unit = ${uk}), ${ak}, ${tk}, ${sk})`,
       );
-      bind[uk] = unitId as unknown as number;
+      bind[uk] = unitId;
       bind[ak] = amount;
       bind[tk] = tileId;
       bind[sk] = sourceTileId;
@@ -202,7 +202,7 @@ export const processTroopRegenBatch = (
       sql: `
         INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
         VALUES ${valuesClauses.join(',')}
-        ON CONFLICT (unit_id, tile_id, source_tile_id) DO NOTHING;
+        ON CONFLICT (unit_id, tile_id, source_tile_id) DO UPDATE SET amount = amount + excluded.amount;
       `,
       bind,
     });
@@ -210,10 +210,23 @@ export const processTroopRegenBatch = (
 
   // ─── Batch UPDATE existing troop rows ───
   if (troopUpdates.length > 0) {
-    const caseClauses: string[] = [];
-    const bind: Record<string, number> = {};
+    // Deduplicate: merge amounts for same (tileId, unitId) to avoid CASE collision
+    const deduped = new Map<string, (typeof troopUpdates)[0]>();
+    for (const u of troopUpdates) {
+      const key = `${u.tileId}:${u.unitId}`;
+      const existing = deduped.get(key);
+      if (existing) {
+        existing.amount += u.amount;
+      } else {
+        deduped.set(key, { ...u });
+      }
+    }
+    const uniqueTroopUpdates = [...deduped.values()];
 
-    troopUpdates.forEach((u, i) => {
+    const caseClauses: string[] = [];
+    const bind: Record<string, number | string> = {};
+
+    uniqueTroopUpdates.forEach((u, i) => {
       const tk = `$t${i}`;
       const uk = `$u${i}`;
       const ak = `$a${i}`;
@@ -222,14 +235,16 @@ export const processTroopRegenBatch = (
         `WHEN tile_id = ${tk} AND unit_id = (SELECT id FROM unit_ids WHERE unit = ${uk}) THEN CASE WHEN amount + ${ak} > ${mk} THEN ${mk} ELSE amount + ${ak} END`,
       );
       bind[tk] = u.tileId;
-      bind[uk] = u.unitId as unknown as number;
+      bind[uk] = u.unitId;
       bind[ak] = u.amount;
       bind[mk] = u.maxTroops;
     });
 
-    const tileIdPlaceholders = troopUpdates.map((_, i) => `$tid${i}`).join(',');
+    const tileIdPlaceholders = uniqueTroopUpdates
+      .map((_, i) => `$tid${i}`)
+      .join(',');
     const tileIdBinds: Record<string, number> = {};
-    troopUpdates.forEach((u, i) => {
+    uniqueTroopUpdates.forEach((u, i) => {
       tileIdBinds[`$tid${i}`] = u.tileId;
     });
 

@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { type ComponentProps, use, useMemo, useState } from 'react';
+import { type ComponentProps, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VscTerminal } from 'react-icons/vsc';
 import {
@@ -20,7 +19,6 @@ import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-villa
 import { useDeveloperSettings } from 'app/(game)/(village-slug)/hooks/use-developer-settings';
 import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero.ts';
 import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
-import { ApiContext } from 'app/(game)/providers/api-provider';
 import { ResourceIcon } from 'app/components/resource-icon';
 import { Text } from 'app/components/text.tsx';
 import { Button } from 'app/components/ui/button';
@@ -613,133 +611,8 @@ export const DeveloperToolsConsole = ({
               </Button>
             </div>
           </SectionContent>
-
-          <Separator orientation="horizontal" />
-
-          <NpcBrainSection />
         </Section>
       </DialogContent>
     </Dialog>
-  );
-};
-
-const NpcBrainSection = () => {
-  const { t } = useTranslation();
-  const { fetcher } = use(ApiContext);
-  const [selectedVillageId, setSelectedVillageId] = useState<string | null>(
-    null,
-  );
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const { data: npcVillages } = useQuery({
-    queryKey: ['npc-villages-list', searchTerm],
-    queryFn: async () => {
-      const params = searchTerm
-        ? `?search=${encodeURIComponent(searchTerm)}`
-        : '';
-      const response = await fetcher<
-        {
-          villageId: number;
-          villageName: string;
-          factionKey: string;
-          x: number;
-          y: number;
-          aggressionLevel: number;
-          currentLoot: number;
-          maxLoot: number;
-          simulationTier: number;
-          needsTick: number;
-        }[]
-      >(`/developer-settings/npc-villages${params}`);
-      return response.data;
-    },
-  });
-
-  const { data: debugInfo } = useQuery({
-    queryKey: ['npc-village-debug', selectedVillageId],
-    queryFn: async () => {
-      const response = await fetcher<Record<string, unknown>>(
-        `/developer-settings/npc-villages/${selectedVillageId}`,
-      );
-      return response.data;
-    },
-    enabled: !!selectedVillageId,
-  });
-
-  const selectedVillage = npcVillages?.find(
-    (v) => String(v.villageId) === selectedVillageId,
-  );
-
-  return (
-    <SectionContent>
-      <Text as="h3">{t('NPC Brain')}</Text>
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{npcVillages?.length ?? 0} NPC villages</span>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label>{t('Search NPC Villages')}</Label>
-          <Input
-            placeholder="Search by name, faction, or ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label>{t('Select NPC Village')}</Label>
-          <Select
-            value={selectedVillageId ?? undefined}
-            onValueChange={(value) => setSelectedVillageId(value)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={t('Select a village')} />
-            </SelectTrigger>
-            <SelectContent>
-              {npcVillages?.map((v) => (
-                <SelectItem
-                  key={v.villageId}
-                  value={String(v.villageId)}
-                >
-                  [{v.villageId}] {v.villageName} ({v.factionKey}) [{v.x},{v.y}]
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {selectedVillage && (
-          <div className="p-3 bg-muted/50 rounded-md border text-sm space-y-2">
-            <div className="font-semibold">
-              {selectedVillage.villageName} ({selectedVillage.factionKey})
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <span className="text-muted-foreground">Position:</span>
-              <span>
-                ({selectedVillage.x}, {selectedVillage.y})
-              </span>
-              <span className="text-muted-foreground">Aggression:</span>
-              <span>{selectedVillage.aggressionLevel}</span>
-              <span className="text-muted-foreground">Loot:</span>
-              <span>
-                {Math.round(selectedVillage.currentLoot * 100)}% /{' '}
-                {selectedVillage.maxLoot}
-              </span>
-              <span className="text-muted-foreground">Tier:</span>
-              <span>{selectedVillage.simulationTier}</span>
-              <span className="text-muted-foreground">Needs tick:</span>
-              <span>{selectedVillage.needsTick ? 'Yes' : 'No'}</span>
-            </div>
-          </div>
-        )}
-
-        {debugInfo && (
-          <div className="p-3 bg-muted/50 rounded-md border text-xs font-mono overflow-auto max-h-64">
-            <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-          </div>
-        )}
-      </div>
-    </SectionContent>
   );
 };

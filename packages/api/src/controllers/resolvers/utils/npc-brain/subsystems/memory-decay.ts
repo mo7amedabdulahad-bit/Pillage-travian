@@ -27,8 +27,11 @@ export const processMemoryDecayBatch = (
 
   nonPermanentFactions.forEach((factionKey, i) => {
     const profile = FACTION_PROFILES[factionKey];
+    if (profile.memoryDurationHours === null) {
+      return;
+    }
     const thresholdMs = adjustForSpeed(
-      profile.memoryDurationHours! * 3_600_000,
+      profile.memoryDurationHours * 3_600_000,
       speed,
     );
     const fk = `$fk${i}`;

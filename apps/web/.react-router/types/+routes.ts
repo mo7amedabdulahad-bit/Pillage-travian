@@ -158,6 +158,12 @@ type Pages = {
       "villageSlug": string;
     };
   };
+  "/game/:serverSlug/:villageSlug/npc-dashboard": {
+    params: {
+      "serverSlug": string;
+      "villageSlug": string;
+    };
+  };
   "/game/:serverSlug/:villageSlug/players": {
     params: {
       "serverSlug": string;
@@ -179,7 +185,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/:locale?" | "/:locale?/get-involved" | "/:locale?/frequently-asked-questions" | "/:locale?/latest-updates" | "/:locale?/game-worlds" | "/:locale?/game-worlds/create" | "/:locale?/game-worlds/import" | "/:locale?/*" | "/game/:serverSlug/not-allowed" | "/game/:serverSlug/not-found" | "/game/:serverSlug/:villageSlug" | "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug" | "/__spa-preload";
+    page: "/" | "/:locale?" | "/:locale?/get-involved" | "/:locale?/frequently-asked-questions" | "/:locale?/latest-updates" | "/:locale?/game-worlds" | "/:locale?/game-worlds/create" | "/:locale?/game-worlds/import" | "/:locale?/*" | "/game/:serverSlug/not-allowed" | "/game/:serverSlug/not-found" | "/game/:serverSlug/:villageSlug" | "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/npc-dashboard" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug" | "/__spa-preload";
   };
   "(public)/layout.tsx": {
     id: "(public)/layout";
@@ -227,15 +233,15 @@ type RouteFiles = {
   };
   "(game)/(village-slug)/page.tsx": {
     id: "(game)/(village-slug)/page";
-    page: "/game/:serverSlug/:villageSlug" | "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
+    page: "/game/:serverSlug/:villageSlug" | "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/npc-dashboard" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
   };
   "(game)/layout.tsx": {
     id: "(game)/layout";
-    page: "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
+    page: "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/npc-dashboard" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
   };
   "(game)/(village-slug)/layout.tsx": {
     id: "(game)/(village-slug)/layout";
-    page: "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
+    page: "/game/:serverSlug/:villageSlug/resources" | "/game/:serverSlug/:villageSlug/village" | "/game/:serverSlug/:villageSlug/map" | "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/npc-dashboard" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
   };
   "(game)/(village-slug)/(village)/page.tsx": {
     id: "resources-page";
@@ -250,7 +256,7 @@ type RouteFiles = {
   };
   "(game)/(village-slug)/fixed-width-layout.tsx": {
     id: "(game)/(village-slug)/fixed-width-layout";
-    page: "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
+    page: "/game/:serverSlug/:villageSlug/resources/:buildingFieldId" | "/game/:serverSlug/:villageSlug/village/:buildingFieldId" | "/game/:serverSlug/:villageSlug/production-overview" | "/game/:serverSlug/:villageSlug/hero" | "/game/:serverSlug/:villageSlug/preferences" | "/game/:serverSlug/:villageSlug/statistics" | "/game/:serverSlug/:villageSlug/overview" | "/game/:serverSlug/:villageSlug/quests" | "/game/:serverSlug/:villageSlug/reports" | "/game/:serverSlug/:villageSlug/reports/:reportId" | "/game/:serverSlug/:villageSlug/oasis-bonus-finder" | "/game/:serverSlug/:villageSlug/npc-dashboard" | "/game/:serverSlug/:villageSlug/players" | "/game/:serverSlug/:villageSlug/players/:playerSlug";
   };
   "(game)/(village-slug)/(village)/(...building-field-id)/page.tsx": {
     id: "resource-building-field-id-page";
@@ -294,6 +300,10 @@ type RouteFiles = {
   "(game)/(village-slug)/(oasis-bonus-finder)/page.tsx": {
     id: "(game)/(village-slug)/(oasis-bonus-finder)/page";
     page: "/game/:serverSlug/:villageSlug/oasis-bonus-finder";
+  };
+  "(game)/(village-slug)/(npc-dashboard)/page.tsx": {
+    id: "(game)/(village-slug)/(npc-dashboard)/page";
+    page: "/game/:serverSlug/:villageSlug/npc-dashboard";
   };
   "(game)/(village-slug)/(players)/page.tsx": {
     id: "(game)/(village-slug)/(players)/page";
@@ -340,6 +350,7 @@ type RouteModules = {
   "(game)/(village-slug)/(reports)/page": typeof import("./app/(game)/(village-slug)/(reports)/page.tsx");
   "(game)/(village-slug)/(reports)/(...report-id)/page": typeof import("./app/(game)/(village-slug)/(reports)/(...report-id)/page.tsx");
   "(game)/(village-slug)/(oasis-bonus-finder)/page": typeof import("./app/(game)/(village-slug)/(oasis-bonus-finder)/page.tsx");
+  "(game)/(village-slug)/(npc-dashboard)/page": typeof import("./app/(game)/(village-slug)/(npc-dashboard)/page.tsx");
   "(game)/(village-slug)/(players)/page": typeof import("./app/(game)/(village-slug)/(players)/page.tsx");
   "(game)/(village-slug)/(players)/(...player-slug)/page": typeof import("./app/(game)/(village-slug)/(players)/(...player-slug)/page.tsx");
   "(internal)/(spa-preload)/page": typeof import("./app/(internal)/(spa-preload)/page.tsx");

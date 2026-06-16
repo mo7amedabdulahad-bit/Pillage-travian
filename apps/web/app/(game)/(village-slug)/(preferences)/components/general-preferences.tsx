@@ -1,5 +1,6 @@
 import { use } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import type {
   BuildingConstructionViewMode,
   SkinVariant,
@@ -12,7 +13,7 @@ import {
 } from 'app/(game)/(village-slug)/components/building-layout';
 import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
 import { Text } from 'app/components/text';
-import { Button } from 'app/components/ui/button';
+import { Button, buttonVariants } from 'app/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -344,6 +345,23 @@ export const GeneralPreferences = () => {
               }
               checked={preferences.isDeveloperToolsConsoleEnabled}
             />
+          </div>
+        </div>
+        <Separator orientation="horizontal" />
+        <div className="flex gap-2">
+          <Text className="flex flex-4 gap-1 flex-col">
+            <span className="font-medium">{t('NPC Brain Dashboard')}</span>
+            <span>
+              {t('Monitor and manage all NPC village activity in real time.')}
+            </span>
+          </Text>
+          <div className="flex flex-1 justify-end items-center">
+            <Link
+              to="../npc-dashboard"
+              className={buttonVariants()}
+            >
+              {t('Open Dashboard')}
+            </Link>
           </div>
         </div>
       </SectionContent>

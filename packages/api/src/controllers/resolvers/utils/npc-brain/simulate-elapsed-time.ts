@@ -78,14 +78,14 @@ export const simulateElapsedTime = async (
 
   const allRetaliations: RetaliationResolution[] = [];
   const allAggressionChanges: AggressionChange[] = [];
-  let totalVillagesGrown = 0;
+  let totalFieldsLeveled = 0;
   let totalTroopsRegenerated = 0;
 
   for (let i = 0; i < totalChunks; i++) {
     const result = processNPCTick(db, chunkMs, speed);
     allRetaliations.push(...result.retaliationsResolved);
     allAggressionChanges.push(...result.aggressionChanges);
-    totalVillagesGrown += result.villagesGrown;
+    totalFieldsLeveled += result.villagesGrown;
     totalTroopsRegenerated += result.troopsRegenerated;
 
     if (i % NPC_BRAIN_CONSTANTS.YIELD_EVERY_N_CHUNKS === 0) {
@@ -98,7 +98,7 @@ export const simulateElapsedTime = async (
     const result = processNPCTick(db, remainder, speed);
     allRetaliations.push(...result.retaliationsResolved);
     allAggressionChanges.push(...result.aggressionChanges);
-    totalVillagesGrown += result.villagesGrown;
+    totalFieldsLeveled += result.villagesGrown;
     totalTroopsRegenerated += result.troopsRegenerated;
   }
 
@@ -108,7 +108,7 @@ export const simulateElapsedTime = async (
     db,
     {
       retaliationsResolved: allRetaliations,
-      villagesGrown: totalVillagesGrown,
+      villagesGrown: totalFieldsLeveled,
       troopsRegenerated: totalTroopsRegenerated,
       aggressionChanges: allAggressionChanges,
     } satisfies Pick<
@@ -123,7 +123,7 @@ export const simulateElapsedTime = async (
 
   return {
     retaliationsResolved: allRetaliations,
-    villagesGrown: totalVillagesGrown,
+    villagesGrown: totalFieldsLeveled,
     troopsRegenerated: totalTroopsRegenerated,
     aggressionChanges: allAggressionChanges,
     offlineSummary,
@@ -191,6 +191,7 @@ export const processNPCTick = (
     simulationTier: number;
     nextSimulationDue: number;
     revengeIntentTarget: number | null;
+    calculatedTier: number;
   })[];
 
   // ─── Tier assignment and gating ───
@@ -229,7 +230,7 @@ export const processNPCTick = (
       }
     }
 
-    (v as any).calculatedTier = tier;
+    v.calculatedTier = tier;
   }
 
   // Filter by next_simulation_due (skip if not yet due)
@@ -312,6 +313,26 @@ export const processNPCTick = (
     mapSize,
   );
 
+  // ─── Recompute fieldLevelSums after growth (loot recovery needs updated values) ───
+  if (growth.fieldsLeveled > 0) {
+    const refreshedFields = db.selectObjects({
+      sql: `
+        SELECT village_id AS villageId, field_id AS fieldId, level
+        FROM building_fields
+        WHERE village_id IN (${villageIdPlaceholders});
+      `,
+      bind: villageIdBinds,
+      schema: z.any(),
+    }) as unknown as BatchFieldLevelRow[];
+    fieldLevelSums.clear();
+    for (const fl of refreshedFields) {
+      fieldLevelSums.set(
+        fl.villageId,
+        (fieldLevelSums.get(fl.villageId) ?? 0) + fl.level,
+      );
+    }
+  }
+
   // ─── 4.2b Build Decisions (batched, after growth) ───
   processBuildDecisions(db, allVillages, allFieldLevels, chunkMs, speed);
 
@@ -328,6 +349,28 @@ export const processNPCTick = (
     mapSize,
   );
 
+  // ─── Re-query troops after regen (revenge intent needs fresh counts) ───
+  let freshTroops = allTroops;
+  if (regen.totalTroopsAdded > 0) {
+    freshTroops = db.selectObjects({
+      sql: `
+        SELECT
+          v.id AS villageId,
+          u.unit AS unitId,
+          t.amount,
+          t.tile_id AS tileId
+        FROM troops t
+        JOIN unit_ids u ON u.id = t.unit_id
+        JOIN villages v ON v.tile_id = t.source_tile_id
+        WHERE v.id IN (${villageIdPlaceholders})
+          AND t.amount > 0
+          AND t.tile_id = t.source_tile_id;
+      `,
+      bind: villageIdBinds,
+      schema: z.any(),
+    }) as unknown as BatchTroopRow[];
+  }
+
   // ─── 4.5 Aggression Decay (batched) ───
   const decayResult = processAggressionDecayBatch(
     db,
@@ -341,7 +384,7 @@ export const processNPCTick = (
     db,
     currentTimeMs,
     speed,
-    allTroops,
+    freshTroops,
     allVillages,
   );
 
@@ -359,7 +402,7 @@ export const processNPCTick = (
   const tierBind: Record<string, number> = {};
 
   for (const village of allVillages) {
-    const tier = (village as any).calculatedTier ?? 2;
+    const tier = village.calculatedTier ?? 2;
     const due = currentTimeMs + (TIER_INTERVALS[tier] ?? 300_000);
     const vk = `$tv${village.villageId}`;
     const dk = `$td${village.villageId}`;

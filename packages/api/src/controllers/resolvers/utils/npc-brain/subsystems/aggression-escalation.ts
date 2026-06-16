@@ -65,7 +65,8 @@ export const calculateAggressionResponse = (
     );
   }
 
-  scheduleRetaliation(db, villageId, factionKey, effectiveTier);
+  const gameSpeed = getGameSpeed(db);
+  scheduleRetaliation(db, villageId, factionKey, effectiveTier, gameSpeed);
 
   if (effectiveTier >= 4) {
     callRegionalReinforcements(db, villageId, factionKey, effectiveTier);
@@ -82,6 +83,7 @@ const scheduleRetaliation = (
   villageId: number,
   factionKey: FactionKey,
   tier: number,
+  speed?: number,
 ): void => {
   const troopPercentage =
     NPC_BRAIN_CONSTANTS.AGGRESSION_TROOP_PERCENTAGES[tier];
@@ -116,9 +118,9 @@ const scheduleRetaliation = (
   );
 
   const slowestSpeed = 3;
-  const speed = getGameSpeed(db);
+  const gameSpeed = speed ?? getGameSpeed(db);
   const travelTimeMs = Math.ceil(
-    (distance / (slowestSpeed * speed)) * 3_600_000,
+    (distance / (slowestSpeed * gameSpeed)) * 3_600_000,
   );
 
   const variance =
@@ -203,6 +205,8 @@ const callRegionalReinforcements = (
     return;
   }
 
+  const gameSpeed = getGameSpeed(db);
+
   // Batch query aggression levels for all neighbors
   const neighborIds = neighbors.map((v) => v.villageId);
   const neighborPlaceholders = neighborIds.map((_, i) => `$nv${i}`).join(',');
@@ -240,7 +244,7 @@ const callRegionalReinforcements = (
       bind: { $villageId: neighbor.villageId },
     });
 
-    scheduleRetaliation(db, neighbor.villageId, factionKey, 2);
+    scheduleRetaliation(db, neighbor.villageId, factionKey, 2, gameSpeed);
   }
 };
 
@@ -308,8 +312,9 @@ export const processAggressionDecayBatch = (
 
   for (const village of decayCandidates) {
     const newLevel = Math.max(0, village.aggressionLevel - 1);
-    const vk = `$v${decayCandidates.indexOf(village)}`;
-    const nk = `$n${decayCandidates.indexOf(village)}`;
+    const idx = decayCandidates.indexOf(village);
+    const vk = `$dc${idx}`;
+    const nk = `$dn${idx}`;
     caseClauses.push(`WHEN village_id = ${vk} THEN ${nk}`);
     bind[vk] = village.villageId;
     bind[nk] = newLevel;

@@ -753,6 +753,38 @@ export const paths = {
       },
     },
   },
+  '/admin/npc-dashboard/overview': {
+    get: {
+      summary: 'NPC Brain admin dashboard overview',
+      responses: {
+        '200': { description: 'Overview stats' },
+      },
+    },
+  },
+  '/admin/npc-dashboard/factions': {
+    get: {
+      summary: 'NPC Brain faction breakdown',
+      responses: {
+        '200': { description: 'Faction stats' },
+      },
+    },
+  },
+  '/admin/npc-dashboard/villages': {
+    get: {
+      summary: 'All NPC villages with state',
+      responses: {
+        '200': { description: 'Village list' },
+      },
+    },
+  },
+  '/admin/npc-dashboard/activity': {
+    get: {
+      summary: 'Recent NPC activity',
+      responses: {
+        '200': { description: 'Activity feed' },
+      },
+    },
+  },
   '/players/:playerId/farm-lists': {
     get: {
       summary: 'Get farm lists',

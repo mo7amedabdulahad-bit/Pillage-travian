@@ -1,5 +1,11 @@
 import { match } from 'path-to-regexp';
 import {
+  getAdminDashboardActivity,
+  getAdminDashboardFactions,
+  getAdminDashboardOverview,
+  getAdminDashboardVillages,
+} from '../controllers/admin-dashboard-controller';
+import {
   getBookmarks,
   updateBookmark,
 } from '../controllers/bookmark-controllers';
@@ -124,6 +130,12 @@ const apiRoutes: Route[] = [
   // NPC Brain Debug
   createRoute(getNpcVillagesList),
   createRoute(getNpcVillageDebug),
+
+  // Admin Dashboard
+  createRoute(getAdminDashboardOverview),
+  createRoute(getAdminDashboardFactions),
+  createRoute(getAdminDashboardVillages),
+  createRoute(getAdminDashboardActivity),
 
   // Auctions
   // createRoute(getAuctions),

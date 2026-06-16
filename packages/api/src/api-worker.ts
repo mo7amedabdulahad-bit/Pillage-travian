@@ -114,25 +114,35 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
 
         try {
           const lastSimTimestamp = getLastSimulationTimestamp(dbFacade);
-          const elapsedMs = Date.now() - lastSimTimestamp;
 
-          if (elapsedMs > NPC_BRAIN_CONSTANTS.MIN_SIMULATION_ELAPSED_MS) {
-            const simulationSummary = await simulateElapsedTime(
-              dbFacade,
-              elapsedMs,
-            );
+          // Brand new world — skip simulation, just set timestamp to now
+          if (lastSimTimestamp === 0) {
             setLastSimulationTimestamp(dbFacade, Date.now());
-
-            globalThis.postMessage({
-              eventKey: 'event:npc-simulation-complete',
-              summary: simulationSummary,
-            });
-          } else {
-            // No simulation needed — still fire complete so UI unblocks
             globalThis.postMessage({
               eventKey: 'event:npc-simulation-complete',
               summary: null,
             });
+          } else {
+            const elapsedMs = Date.now() - lastSimTimestamp;
+
+            if (elapsedMs > NPC_BRAIN_CONSTANTS.MIN_SIMULATION_ELAPSED_MS) {
+              const simulationSummary = await simulateElapsedTime(
+                dbFacade,
+                elapsedMs,
+              );
+              setLastSimulationTimestamp(dbFacade, Date.now());
+
+              globalThis.postMessage({
+                eventKey: 'event:npc-simulation-complete',
+                summary: simulationSummary,
+              });
+            } else {
+              // No simulation needed — still fire complete so UI unblocks
+              globalThis.postMessage({
+                eventKey: 'event:npc-simulation-complete',
+                summary: null,
+              });
+            }
           }
         } catch (_simError) {
           globalThis.postMessage({

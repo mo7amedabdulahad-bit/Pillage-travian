@@ -341,6 +341,7 @@ export const processBuildDecisions = (
 
     // ─── Record NPC builds in building_level_change_history ───
     const historyRows: [number, number, number, number, number, number][] = [];
+    const timestampSeconds = Math.floor(now / 1000);
     for (const u of uniqueUpdates) {
       historyRows.push([
         u.villageId,
@@ -348,7 +349,7 @@ export const processBuildDecisions = (
         u.buildingId,
         u.previousLevel,
         u.newLevel,
-        now,
+        timestampSeconds,
       ]);
     }
 
@@ -406,31 +407,62 @@ export const processBuildDecisions = (
         }
 
         // Update building-specific effects
+        const isNewBuilding = u.previousLevel === 0;
         for (const { effectId, valuesPerLevel, type } of buildingDef.effects) {
           const effectValue = valuesPerLevel[u.newLevel] ?? 0;
-          db.exec({
-            sql: updateBuildingEffectQuery,
-            bind: {
-              $effect_id: effectId,
-              $value: effectValue,
-              $type: type,
-              $village_id: u.villageId,
-              $source_specifier: u.fieldId,
-            },
-          });
+          if (isNewBuilding) {
+            // INSERT effect rows for new buildings
+            db.exec({
+              sql: `
+                INSERT INTO effects (effect_id, value, type, scope, source, village_id, source_specifier)
+                VALUES ((SELECT id FROM effect_ids WHERE effect = $effect_id), $value, $type, 'village', 'building',
+                        $village_id, $source_specifier);
+              `,
+              bind: {
+                $effect_id: effectId,
+                $value: effectValue,
+                $type: type,
+                $village_id: u.villageId,
+                $source_specifier: u.fieldId,
+              },
+            });
+          } else {
+            // UPDATE effect rows for existing buildings
+            db.exec({
+              sql: updateBuildingEffectQuery,
+              bind: {
+                $effect_id: effectId,
+                $value: effectValue,
+                $type: type,
+                $village_id: u.villageId,
+                $source_specifier: u.fieldId,
+              },
+            });
+          }
         }
-      } catch (_e) {
-        // Building definition not found or effect update failed — skip silently
+      } catch (e) {
+        // biome-ignore lint/suspicious/noConsole: NPC brain error logging is intentional
+        console.warn(
+          `[NPC Brain] Effect update failed for village ${u.villageId}, building ${u.buildingKey}:`,
+          e,
+        );
       }
     }
   }
 
   // ─── Batch UPDATE max_loot_capacity for storage upgrades ───
   if (lootCapacityUpdates.length > 0) {
+    // Deduplicate: keep only the LAST entry per villageId to avoid CASE collision
+    const deduped = new Map<number, (typeof lootCapacityUpdates)[0]>();
+    for (const u of lootCapacityUpdates) {
+      deduped.set(u.villageId, u);
+    }
+    const uniqueLootUpdates = [...deduped.values()];
+
     const caseClauses: string[] = [];
     const bind: Record<string, number> = {};
 
-    lootCapacityUpdates.forEach((u, i) => {
+    uniqueLootUpdates.forEach((u, i) => {
       const vk = `$lv${i}`;
       const lk = `$ll${i}`;
       caseClauses.push(`WHEN village_id = ${vk} THEN ${lk}`);
@@ -438,9 +470,7 @@ export const processBuildDecisions = (
       bind[lk] = u.newMaxLoot;
     });
 
-    const villageIds = [
-      ...new Set(lootCapacityUpdates.map((u) => u.villageId)),
-    ];
+    const villageIds = [...new Set(uniqueLootUpdates.map((u) => u.villageId))];
     const villageIdPlaceholders = villageIds
       .map((_, i) => `$lvid${i}`)
       .join(',');

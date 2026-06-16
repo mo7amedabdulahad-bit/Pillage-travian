@@ -65,7 +65,6 @@ export const processGrowthBatch = (
     const growthIncrement = chunkMs / growthCycleMs;
 
     let newAccumulator = village.accumulator + growthIncrement;
-    let _fieldsLeveled = 0;
 
     // Sort fields by level ascending, then fieldId ascending
     const sortedFields = [...fields]
@@ -85,7 +84,6 @@ export const processGrowthBatch = (
           fieldId: fieldToLevel.fieldId,
           newLevel: fieldToLevel.level,
         });
-        _fieldsLeveled++;
         totalFieldsLeveled++;
       } else {
         newAccumulator = 0;

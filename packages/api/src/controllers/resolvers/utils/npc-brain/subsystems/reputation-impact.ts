@@ -4,7 +4,6 @@ import { getFactionProfile } from '../faction-profiles';
 import type { FactionKey } from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 import { calculateAggressionResponse } from './aggression-escalation';
-import { resetRestState } from './loot-recovery';
 
 /**
  * Reputation Impact Subsystem (Section 4.7)
@@ -97,6 +96,38 @@ const ensureNpcVillageState = (
     // Table might not have faction_key column yet
   }
 
+  // Re-query to get actual values after INSERT
+  try {
+    const state = db.selectObject({
+      sql: `
+        SELECT
+          nvs.faction_key AS factionKey,
+          nvs.max_loot_capacity AS maxLoot,
+          nvs.current_loot_available AS lootAvailable,
+          nvs.rest_state AS restState
+        FROM npc_village_state nvs
+        WHERE nvs.village_id = $villageId;
+      `,
+      bind: { $villageId: npcVillageId },
+      schema: z.object({
+        factionKey: z.string(),
+        maxLoot: z.number(),
+        lootAvailable: z.number(),
+        restState: z.number(),
+      }),
+    });
+    if (state) {
+      return state as {
+        factionKey: FactionKey;
+        maxLoot: number;
+        lootAvailable: number;
+        restState: number;
+      };
+    }
+  } catch (_e) {
+    // Fall through to default values
+  }
+
   return {
     factionKey,
     maxLoot: 500,
@@ -163,18 +194,30 @@ export const applyRaidReputationConsequences = (
   });
 
   if (factionId != null) {
-    db.exec({
+    // Get player's faction_id for source_faction_id
+    const playerFactionId = db.selectValue({
       sql: `
-        UPDATE faction_reputation
-        SET reputation = MAX(0, reputation - $loss)
-        WHERE source_faction_id = 1
-          AND target_faction_id = $factionId;
+        SELECT p.faction_id FROM players p WHERE p.id = $playerId;
       `,
-      bind: {
-        $loss: scaledLoss,
-        $factionId: factionId,
-      },
+      bind: { $playerId: 1 },
+      schema: z.any(),
     });
+
+    if (playerFactionId != null) {
+      db.exec({
+        sql: `
+          UPDATE faction_reputation
+          SET reputation = MAX(0, reputation - $loss)
+          WHERE source_faction_id = $playerFactionId
+            AND target_faction_id = $factionId;
+        `,
+        bind: {
+          $loss: scaledLoss,
+          $playerFactionId: playerFactionId,
+          $factionId: factionId,
+        },
+      });
+    }
   }
 
   // Record raid in npc_raid_history
@@ -231,11 +274,6 @@ export const applyRaidReputationConsequences = (
   } catch (_e) {
     // Columns might not exist yet
   }
-
-  // Reset rest state
-  try {
-    resetRestState(db, npcVillageId);
-  } catch (_e) {}
 
   // Trigger aggression check
   try {

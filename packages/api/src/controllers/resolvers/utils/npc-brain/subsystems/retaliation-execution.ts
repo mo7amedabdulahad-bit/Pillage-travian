@@ -61,13 +61,21 @@ export const processRetaliations = (
   const npcTroopMultiplier = getNpcTroopMultiplier(worldThreatLevel);
 
   for (const retaliation of dueRetaliations) {
-    const resolution = executeRetaliation(db, retaliation, npcTroopMultiplier);
+    try {
+      const resolution = executeRetaliation(
+        db,
+        retaliation,
+        npcTroopMultiplier,
+      );
 
-    if (resolution) {
-      resolutions.push(resolution);
+      if (resolution) {
+        resolutions.push(resolution);
+      }
+    } catch (_e) {
+      // Malformed troopsJson or other error — skip this retaliation
     }
 
-    // Remove from queue
+    // Remove from queue regardless of success
     db.exec({
       sql: 'DELETE FROM npc_retaliation_queue WHERE id = $id;',
       bind: { $id: retaliation.id },

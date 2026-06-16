@@ -67,7 +67,6 @@ export const processLootRecoveryBatch = (
 
   // ─── Batch UPDATE ───
   const lootCase: string[] = [];
-  const _restCase: string[] = [];
   const restUpdates: typeof updates = [];
   const bind: Record<string, number> = {};
 
