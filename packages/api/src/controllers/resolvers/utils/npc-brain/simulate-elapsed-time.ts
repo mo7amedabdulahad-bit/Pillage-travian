@@ -5,7 +5,6 @@ import {
   getGameSpeed,
   getMapSize,
   getPlayerVillageCoords,
-  getVillageSize,
   mapDistance,
   scaleTroops,
 } from './helpers';
@@ -399,48 +398,6 @@ export const processNPCTick = (
       `,
       bind: { ...tierBind, ...villageIdBinds },
     });
-
-    // ─── Clear needs_tick for fully-stocked villages ───
-    // A village can skip ticks when: full loot, troops ≥ defence floor, aggression = 0, at field cap
-    const needsTickClearIds: number[] = [];
-    for (const village of allVillages) {
-      if (
-        village.currentLoot >= 1.0 &&
-        village.aggressionLevel === 0 &&
-        (village as any).revengeIntentTarget === null
-      ) {
-        const villageSize = getVillageSize(mapSize, village.x, village.y);
-        const defenceFloor =
-          NPC_BRAIN_CONSTANTS.DEFENCE_FLOOR_BY_SIZE[villageSize] ?? 50;
-        // Check troop count from the batch data
-        const villageTroops = allTroops.filter(
-          (t) => t.villageId === village.villageId,
-        );
-        const totalTroops = villageTroops.reduce((sum, t) => sum + t.amount, 0);
-        if (totalTroops >= defenceFloor) {
-          needsTickClearIds.push(village.villageId);
-        }
-      }
-    }
-
-    if (needsTickClearIds.length > 0) {
-      const clearPlaceholders = needsTickClearIds
-        .map((_, i) => `$cv${i}`)
-        .join(',');
-      const clearBinds: Record<string, number> = {};
-      needsTickClearIds.forEach((vid, i) => {
-        clearBinds[`$cv${i}`] = vid;
-      });
-
-      db.exec({
-        sql: `
-          UPDATE npc_village_state
-          SET needs_tick = 0
-          WHERE village_id IN (${clearPlaceholders});
-        `,
-        bind: clearBinds,
-      });
-    }
   }
 
   return {

@@ -328,4 +328,11 @@ export const upgradeDb = (database: DbFacade): void => {
       `,
     });
   } catch (_e) {}
+
+  // ─── NPC Brain: Reset needs_tick for all villages (was being cleared too aggressively) ───
+  try {
+    database.exec({
+      sql: 'UPDATE npc_village_state SET needs_tick = 1 WHERE needs_tick = 0;',
+    });
+  } catch (_e) {}
 };
