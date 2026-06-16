@@ -591,7 +591,7 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
   const { preferences } = usePreferences();
 
   return (
-    <header className="flex flex-col w-full p-2 pt-0 lg:p-0 relative z-50 bg-linear-to-r from-gray-200 via-white to-gray-200 dark:from-muted/60 dark:via-card dark:to-muted/60">
+    <header className="flex flex-col flex-shrink-0 w-full p-2 pt-0 lg:p-0 relative z-50 bg-linear-to-r from-gray-200 via-white to-gray-200 dark:from-muted/60 dark:via-card dark:to-muted/60">
       {isWiderThanLg && (
         <div className="flex-col hidden lg:flex shadow-sm bg-card">
           <div className="hidden lg:flex w-full bg-muted py-1 px-2">
@@ -702,7 +702,7 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
           <HeroNavigationItem />
         </div>
       )}
-      <div className="flex relative rounded-md px-2 lg:absolute top-full lg:-bottom-16 left-1/2 -translate-x-1/2 bg-card max-w-xl w-full lg:z-5 shadow-lg">
+      <div className="flex relative rounded-md px-2 lg:absolute lg:top-full lg:-bottom-16 left-1/2 -translate-x-1/2 bg-card max-w-xl w-full lg:z-5 shadow-lg">
         <ResourceCounters />
       </div>
     </header>
@@ -847,13 +847,13 @@ const GameLayout = memo<Route.ComponentProps>(
     }, []);
 
     return (
-      <div className="[-webkit-touch-callout:none] h-dvh flex flex-col overflow-hidden">
+      <div className="[-webkit-touch-callout:none] h-dvh flex flex-col">
         <VillageSlugProvider villageSlug={villageSlug!}>
           <CurrentVillageStateProvider>
             <CurrentVillageBuildingQueueContextProvider>
               <Tooltip id="general-tooltip" />
               <TopNavigation onDeveloperToolsToggle={toggleModal} />
-              <div className="flex-1 overflow-y-auto pb-24 lg:pb-0">
+              <div className="flex-1 overflow-y-auto pb-40 lg:pb-0">
                 <TroopMovements />
                 <Suspense fallback={<PageFallback />}>
                   <Outlet />
