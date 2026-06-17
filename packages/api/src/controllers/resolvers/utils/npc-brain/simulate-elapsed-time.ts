@@ -18,7 +18,8 @@ import { processDueRetaliations } from './subsystems/retaliation-execution';
 import { processTroopRegenBatch } from './subsystems/troop-regeneration';
 import { calculateWorldThreatLevel } from './world-threat-level';
 
-const MAX_OFFLINE_MS = 12 * 3_600_000;
+// Speed-aware cap: 12 game-hours of offline catch-up
+const MAX_OFFLINE_GAME_HOURS = 12;
 
 /**
  * Single-pass NPC Brain reconciliation.
@@ -263,8 +264,12 @@ export const simulateElapsedTime = async (
   elapsedMs: number,
   onProgress?: (fraction: number) => void,
 ): Promise<SimulationResult> => {
-  const cappedElapsedMs = Math.min(elapsedMs, MAX_OFFLINE_MS);
   const speed = getGameSpeed(db);
+  // Cap at 12 game-hours: at x1 speed = 12 real hours, at x10 = 1.2 real hours
+  const cappedElapsedMs = Math.min(
+    elapsedMs,
+    (MAX_OFFLINE_GAME_HOURS * 3_600_000) / speed,
+  );
 
   const result = reconcileNpcBrain(db, cappedElapsedMs, speed, 20);
 
@@ -285,6 +290,24 @@ export const simulateElapsedTime = async (
     ...result,
     offlineSummary,
   };
+};
+
+/**
+ * Live tick: lightweight single-pass reconciliation for a short interval.
+ *
+ * Advances NPC state by a small elapsed window (typically 60s) with a
+ * reduced build cap suitable for live play. Processes due retaliations inline.
+ *
+ * @param elapsedMs - Real milliseconds since last live tick.
+ * @param maxBuilds - Max build actions per village per tick (default 3).
+ */
+export const processNPCTick = (
+  db: DbFacade,
+  elapsedMs: number,
+  speed: number,
+  maxBuilds = 3,
+): ReconciliationResult => {
+  return reconcileNpcBrain(db, elapsedMs, speed, maxBuilds);
 };
 
 /**

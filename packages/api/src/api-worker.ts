@@ -23,7 +23,7 @@ import {
   getGameSpeed,
   getLastSimulationTimestamp,
   NPC_BRAIN_CONSTANTS,
-  reconcileNpcBrain,
+  processNPCTick,
   setLastSimulationTimestamp,
   simulateElapsedTime,
 } from './controllers/resolvers/utils/npc-brain/index.ts';
@@ -161,7 +161,7 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
           }
           try {
             const speed = getGameSpeed(dbFacade);
-            reconcileNpcBrain(dbFacade, LIVE_TICK_INTERVAL_MS, speed, 3);
+            processNPCTick(dbFacade, LIVE_TICK_INTERVAL_MS, speed);
             setLastSimulationTimestamp(dbFacade, Date.now());
             globalThis.postMessage({
               eventKey: 'event:npc-live-tick',

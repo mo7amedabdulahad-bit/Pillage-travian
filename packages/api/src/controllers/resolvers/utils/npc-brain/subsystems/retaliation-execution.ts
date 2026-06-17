@@ -90,10 +90,11 @@ export const processDueRetaliations = (
       if (resolution) {
         resolutions.push(resolution);
       }
+      // Only mark as processed if execution succeeded
+      processedQueueIds.push(item.id);
     } catch (_e) {
-      // Malformed data — skip
+      // Malformed data — skip (queue item preserved for retry)
     }
-    processedQueueIds.push(item.id);
   }
 
   // Batch delete processed queue items
@@ -214,13 +215,14 @@ export const processDueRetaliations = (
               defenderTroopsLost: 0,
               timestamp: Math.floor(executeAtMs),
             });
+
+            // Only clear intent on successful event creation
+            clearedVillageIds.push(intent.villageId);
           } catch (_e) {
-            // Event creation failed — clear intent to avoid infinite retry
+            // Event creation failed — leave intent armed for retry
           }
         }
       }
-
-      clearedVillageIds.push(intent.villageId);
     }
     // If not enough troops, leave intent armed for next pass
   }

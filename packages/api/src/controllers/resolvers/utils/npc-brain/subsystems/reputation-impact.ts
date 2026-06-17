@@ -337,6 +337,12 @@ const callRegionalReinforcements = (
     return (aggressionMap.get(v.villageId) ?? 0) < 3;
   });
 
+  // Fetch player coords once (was previously inside per-neighbor loop)
+  const playerCoords = getPlayerVillageCoords(db);
+  if (!playerCoords) {
+    return;
+  }
+
   for (const neighbor of lowAggressionNeighbors) {
     // Bump aggression
     db.exec({
@@ -375,27 +381,24 @@ const callRegionalReinforcements = (
     const retaliationTroops = scaleTroops(troopMap, 0.25); // Tier 2 = 25%
 
     if (Object.keys(retaliationTroops).length > 0) {
-      const playerCoords = getPlayerVillageCoords(db);
-      if (playerCoords) {
-        const distance = mapDistance(
-          { x: neighbor.x, y: neighbor.y },
-          playerCoords,
-        );
-        const slowestSpeed = 3;
-        const travelTimeMs = Math.ceil(
-          (distance / (slowestSpeed * speed)) * 3_600_000,
-        );
-        const executeAtMs = Date.now() + travelTimeMs;
+      const distance = mapDistance(
+        { x: neighbor.x, y: neighbor.y },
+        playerCoords,
+      );
+      const slowestSpeed = 3;
+      const travelTimeMs = Math.ceil(
+        (distance / (slowestSpeed * speed)) * 3_600_000,
+      );
+      const executeAtMs = Date.now() + travelTimeMs;
 
-        queueRetaliation(
-          db,
-          neighbor.villageId,
-          factionKey as FactionKey,
-          2,
-          JSON.stringify(retaliationTroops),
-          executeAtMs,
-        );
-      }
+      queueRetaliation(
+        db,
+        neighbor.villageId,
+        factionKey as FactionKey,
+        2,
+        JSON.stringify(retaliationTroops),
+        executeAtMs,
+      );
     }
   }
 };

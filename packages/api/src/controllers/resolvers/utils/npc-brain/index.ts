@@ -16,6 +16,7 @@ export { NPC_BRAIN_CONSTANTS } from './npc-brain-types';
 export { buildOfflineSummary } from './offline-summary';
 export {
   getLastSimulationTimestamp,
+  processNPCTick,
   reconcileNpcBrain,
   setLastSimulationTimestamp,
   simulateElapsedTime,

@@ -224,10 +224,9 @@ describe('NPC Brain Reconciliation Architecture', () => {
   });
 
   describe('no old path usage', () => {
-    it('should not export processNPCTick', async () => {
-      // processNPCTick was removed - reconcileNpcBrain replaces it
+    it('should export processNPCTick for live tick use', async () => {
       const mod = await import('../simulate-elapsed-time');
-      expect((mod as any).processNPCTick).toBeUndefined();
+      expect(typeof mod.processNPCTick).toBe('function');
     });
 
     it('should export reconcileNpcBrain', async () => {
