@@ -222,8 +222,6 @@ export const getAdminDashboardVillages = createController(
           nvs.aggression_level AS aggressionLevel,
           nvs.current_loot_available AS currentLoot,
           nvs.max_loot_capacity AS maxLoot,
-          COALESCE(nvs.simulation_tier, 2) AS simulationTier,
-          nvs.needs_tick AS needsTick,
           COALESCE(troopSums.totalTroops, 0) AS totalTroops,
           COALESCE(fieldSums.fieldLevelSum, 0) AS fieldLevelSum,
           COALESCE(popEffects.totalPopulation, 0) AS population
@@ -264,8 +262,6 @@ export const getAdminDashboardVillages = createController(
         aggressionLevel: z.number(),
         currentLoot: z.number(),
         maxLoot: z.number(),
-        simulationTier: z.number(),
-        needsTick: z.number(),
         totalTroops: z.number(),
         fieldLevelSum: z.number(),
         population: z.number(),

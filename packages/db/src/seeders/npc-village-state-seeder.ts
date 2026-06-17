@@ -194,7 +194,6 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
       0, // last_aggression_decay_ms
       0, // last_raided_ms
       factionKey, // faction_key
-      1, // needs_tick
     ]);
   }
 
@@ -225,7 +224,6 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
       'last_aggression_decay_ms',
       'last_raided_ms',
       'faction_key',
-      'needs_tick',
     ],
     rows,
   );

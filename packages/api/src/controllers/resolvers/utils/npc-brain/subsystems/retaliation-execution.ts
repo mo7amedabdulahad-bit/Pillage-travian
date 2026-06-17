@@ -3,33 +3,44 @@ import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../../../utils/create-event.ts';
-import type { FactionKey, RetaliationResolution } from '../npc-brain-types';
+import { getPlayerVillageCoords, mapDistance, scaleTroops } from '../helpers';
+import type {
+  BatchTroopRow,
+  BatchVillageRow,
+  FactionKey,
+  RetaliationResolution,
+} from '../npc-brain-types';
+import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 import { getNpcTroopMultiplier } from '../world-threat-level';
 
 /**
- * Retaliation Execution Subsystem (Section 4.6)
+ * Unified Retaliation Execution
  *
- * Processes pending retaliation events whose executeAtMs has passed.
- * Creates troopMovementAttack events in the existing event system.
+ * Single pipeline for ALL retaliation processing:
+ * 1. Queue-based retaliations (from npc_retaliation_queue)
+ * 2. Revenge intents (from npc_village_state.revenge_intent_* columns)
  *
- * Game design intent: Retaliations use the same combat system as the player,
- * ensuring fair and consistent resolution. The world threat multiplier
- * scales NPC strength dynamically — as the player grows stronger, NPCs
- * become proportionally more dangerous.
+ * Both offline reconciliation and live tick call this same function.
+ * No split between immediate vs queued paths.
  */
 
 /**
- * Process all due retaliations across all NPC villages.
- * Returns an array of resolution results for the offline summary.
+ * Process all due retaliations: queue items + revenge intents.
+ * Called by reconcileNpcBrain for both offline and live modes.
  */
-export const processRetaliations = (
+export const processDueRetaliations = (
   db: DbFacade,
   currentTimeMs: number,
+  speed: number,
   worldThreatLevel: number,
+  allTroops: BatchTroopRow[],
+  allVillages: BatchVillageRow[],
 ): RetaliationResolution[] => {
   const resolutions: RetaliationResolution[] = [];
+  const npcTroopMultiplier = getNpcTroopMultiplier(worldThreatLevel);
 
-  const dueRetaliations = db.selectObjects({
+  // ─── Part 1: Process queue-based retaliations ───
+  const dueQueueItems = db.selectObjects({
     sql: `
       SELECT
         rq.id,
@@ -46,51 +57,8 @@ export const processRetaliations = (
       ORDER BY rq.execute_at_ms ASC;
     `,
     bind: { $currentTime: currentTimeMs },
-    schema: z.object({
-      id: z.number(),
-      villageId: z.number(),
-      executeAtMs: z.number(),
-      tier: z.number(),
-      factionKey: z.string(),
-      troopsJson: z.string(),
-      villageName: z.string(),
-      tileId: z.number(),
-    }),
-  });
-
-  const npcTroopMultiplier = getNpcTroopMultiplier(worldThreatLevel);
-
-  for (const retaliation of dueRetaliations) {
-    try {
-      const resolution = executeRetaliation(
-        db,
-        retaliation,
-        npcTroopMultiplier,
-      );
-
-      if (resolution) {
-        resolutions.push(resolution);
-      }
-    } catch (_e) {
-      // Malformed troopsJson or other error — skip this retaliation
-    }
-
-    // Remove from queue regardless of success
-    db.exec({
-      sql: 'DELETE FROM npc_retaliation_queue WHERE id = $id;',
-      bind: { $id: retaliation.id },
-    });
-  }
-
-  return resolutions;
-};
-
-/**
- * Execute a single retaliation: schedule an attack event against the player.
- */
-const executeRetaliation = (
-  db: DbFacade,
-  retaliation: {
+    schema: z.any(),
+  }) as unknown as {
     id: number;
     villageId: number;
     executeAtMs: number;
@@ -99,11 +67,203 @@ const executeRetaliation = (
     troopsJson: string;
     villageName: string;
     tileId: number;
+  }[];
+
+  const processedQueueIds: number[] = [];
+
+  for (const item of dueQueueItems) {
+    try {
+      const resolution = executeRetaliationAttack(
+        db,
+        {
+          villageId: item.villageId,
+          villageName: item.villageName,
+          factionKey: item.factionKey,
+          tier: item.tier,
+          tileId: item.tileId,
+          troopsJson: item.troopsJson,
+          executeAtMs: item.executeAtMs,
+        },
+        npcTroopMultiplier,
+        speed,
+      );
+      if (resolution) {
+        resolutions.push(resolution);
+      }
+    } catch (_e) {
+      // Malformed data — skip
+    }
+    processedQueueIds.push(item.id);
+  }
+
+  // Batch delete processed queue items
+  if (processedQueueIds.length > 0) {
+    const placeholders = processedQueueIds.map((_, i) => `$d${i}`).join(',');
+    const bind: Record<string, number> = {};
+    processedQueueIds.forEach((id, i) => {
+      bind[`$d${i}`] = id;
+    });
+    db.exec({
+      sql: `DELETE FROM npc_retaliation_queue WHERE id IN (${placeholders});`,
+      bind,
+    });
+  }
+
+  // ─── Part 2: Process revenge intents ───
+  const armedIntents = db.selectObjects({
+    sql: `
+      SELECT
+        nvs.village_id AS villageId,
+        nvs.revenge_intent_target_village_id AS targetVillageId,
+        nvs.faction_key AS factionKey,
+        v.tile_id AS tileId,
+        v.name AS villageName,
+        t.x,
+        t.y
+      FROM npc_village_state nvs
+      JOIN villages v ON v.id = nvs.village_id
+      JOIN tiles t ON t.id = v.tile_id
+      WHERE nvs.revenge_intent_target_village_id IS NOT NULL
+        AND nvs.revenge_intent_armed_at_ms <= $now;
+    `,
+    bind: { $now: currentTimeMs },
+    schema: z.any(),
+  }) as unknown as {
+    villageId: number;
+    targetVillageId: number;
+    factionKey: string;
+    tileId: number;
+    villageName: string;
+    x: number;
+    y: number;
+  }[];
+
+  const clearedVillageIds: number[] = [];
+
+  for (const intent of armedIntents) {
+    const homeTroops = allTroops.filter((t) => t.tileId === intent.tileId);
+    const totalUnits = homeTroops.reduce((sum, t) => sum + t.amount, 0);
+
+    if (totalUnits >= NPC_BRAIN_CONSTANTS.MIN_TROOPS_FOR_RETALIATION) {
+      const troopMap: Record<string, number> = {};
+      for (const troop of homeTroops) {
+        troopMap[troop.unitId] = troop.amount;
+      }
+
+      const villageState = allVillages.find(
+        (v) => v.villageId === intent.villageId,
+      );
+      const tier = villageState?.aggressionLevel ?? 1;
+      const troopPercentage =
+        NPC_BRAIN_CONSTANTS.AGGRESSION_TROOP_PERCENTAGES[Math.min(5, tier)];
+      const retaliationTroops = scaleTroops(troopMap, troopPercentage);
+
+      if (Object.keys(retaliationTroops).length > 0) {
+        const playerCoords = getPlayerVillageCoords(db);
+        if (playerCoords) {
+          const distance = mapDistance(
+            { x: intent.x, y: intent.y },
+            playerCoords,
+          );
+          const slowestSpeed = 3;
+          const travelTimeMs = Math.ceil(
+            (distance / (slowestSpeed * speed)) * 3_600_000,
+          );
+          const variance =
+            (Math.random() * 2 * NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE -
+              NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE) *
+            travelTimeMs;
+          const executeAtMs = currentTimeMs + travelTimeMs + variance;
+
+          // Apply world-threat multiplier to intent troops
+          const scaledTroops: {
+            unitId: UnitId;
+            amount: number;
+            tileId: number;
+            source: number;
+          }[] = [];
+          for (const [unitId, amount] of Object.entries(retaliationTroops)) {
+            const scaledAmount = Math.max(
+              1,
+              Math.floor(amount * npcTroopMultiplier),
+            );
+            scaledTroops.push({
+              unitId: unitId as UnitId,
+              amount: scaledAmount,
+              tileId: intent.tileId,
+              source: intent.tileId,
+            });
+          }
+
+          try {
+            createEvents<'troopMovementAttack'>(db, {
+              type: 'troopMovementAttack',
+              villageId: intent.villageId,
+              targetId: intent.targetVillageId,
+              troops: scaledTroops as any,
+              startsAt: Math.floor(executeAtMs),
+            });
+
+            resolutions.push({
+              villageId: intent.villageId,
+              villageName: intent.villageName,
+              factionKey: intent.factionKey as FactionKey,
+              tier,
+              attackerWins: false,
+              attackerTroopsLost: 0,
+              defenderTroopsLost: 0,
+              timestamp: Math.floor(executeAtMs),
+            });
+          } catch (_e) {
+            // Event creation failed — clear intent to avoid infinite retry
+          }
+        }
+      }
+
+      clearedVillageIds.push(intent.villageId);
+    }
+    // If not enough troops, leave intent armed for next pass
+  }
+
+  // Batch clear resolved intents
+  if (clearedVillageIds.length > 0) {
+    const placeholders = clearedVillageIds.map((_, i) => `$c${i}`).join(',');
+    const bind: Record<string, number> = {};
+    clearedVillageIds.forEach((vid, i) => {
+      bind[`$c${i}`] = vid;
+    });
+    db.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET revenge_intent_target_village_id = NULL,
+            revenge_intent_armed_at_ms = NULL
+        WHERE village_id IN (${placeholders});
+      `,
+      bind,
+    });
+  }
+
+  return resolutions;
+};
+
+/**
+ * Execute a single retaliation attack event.
+ */
+const executeRetaliationAttack = (
+  db: DbFacade,
+  retaliation: {
+    villageId: number;
+    villageName: string;
+    factionKey: string;
+    tier: number;
+    tileId: number;
+    troopsJson: string;
+    executeAtMs: number;
   },
   npcTroopMultiplier: number,
+  _speed: number,
 ): RetaliationResolution | null => {
   const troops = JSON.parse(retaliation.troopsJson) as Record<string, number>;
-
   if (Object.keys(troops).length === 0) {
     return null;
   }
@@ -132,11 +292,9 @@ const executeRetaliation = (
   // Get player village ID
   const playerVillageId = db.selectValue({
     sql: `
-      SELECT v.id
-      FROM villages v
+      SELECT v.id FROM villages v
       JOIN players p ON p.id = v.player_id
-      WHERE p.id = $playerId
-      LIMIT 1;
+      WHERE p.id = $playerId LIMIT 1;
     `,
     bind: { $playerId: PLAYER_ID },
     schema: z.number(),
@@ -146,7 +304,6 @@ const executeRetaliation = (
     return null;
   }
 
-  // Schedule the attack event
   try {
     createEvents<'troopMovementAttack'>(db, {
       type: 'troopMovementAttack',
@@ -156,7 +313,6 @@ const executeRetaliation = (
       startsAt: retaliation.executeAtMs,
     });
   } catch (_e) {
-    // If event creation fails (e.g., player village gone), skip silently
     return null;
   }
 
@@ -165,45 +321,75 @@ const executeRetaliation = (
     villageName: retaliation.villageName,
     factionKey: retaliation.factionKey as FactionKey,
     tier: retaliation.tier,
-    attackerWins: false, // Will be determined when event resolves
-    attackerTroopsLost: 0, // Will be determined when event resolves
+    attackerWins: false,
+    attackerTroopsLost: 0,
     defenderTroopsLost: 0,
     timestamp: retaliation.executeAtMs,
   };
 };
 
 /**
- * Get all pending retaliations for display/reporting.
+ * Queue a retaliation for future execution.
+ * Called by reputation-impact.ts when a raid triggers retaliation.
  */
-export const getPendingRetaliations = (
+export const queueRetaliation = (
   db: DbFacade,
-): {
-  villageId: number;
-  executeAtMs: number;
-  tier: number;
-  factionKey: string;
-}[] => {
-  return db.selectObjects({
+  villageId: number,
+  factionKey: FactionKey,
+  tier: number,
+  troopsJson: string,
+  executeAtMs: number,
+): void => {
+  try {
+    db.exec({
+      sql: `
+        INSERT INTO npc_retaliation_queue
+          (village_id, scheduled_at_ms, execute_at_ms, aggression_tier, faction_key, troops_json)
+        VALUES
+          ($villageId, $scheduledAt, $executeAt, $tier, $factionKey, $troopsJson);
+      `,
+      bind: {
+        $villageId: villageId,
+        $scheduledAt: Date.now(),
+        $executeAt: Math.floor(executeAtMs),
+        $tier: tier,
+        $factionKey: factionKey,
+        $troopsJson: troopsJson,
+      },
+    });
+  } catch (_e) {
+    // Queue insert failed — non-critical
+  }
+};
+
+/**
+ * Arm a revenge intent for deferred retaliation when troops are insufficient.
+ * Stored in npc_village_state columns for fast lookup during reconciliation.
+ */
+export const armRevengeIntent = (
+  db: DbFacade,
+  villageId: number,
+  targetVillageId: number,
+  speed: number,
+): void => {
+  const armedAtMs = Date.now() + Math.ceil(3_600_000 / speed);
+  db.exec({
     sql: `
-      SELECT
-        village_id AS villageId,
-        execute_at_ms AS executeAtMs,
-        aggression_tier AS tier,
-        faction_key AS factionKey
-      FROM npc_retaliation_queue
-      ORDER BY execute_at_ms ASC;
+      UPDATE npc_village_state
+      SET revenge_intent_target_village_id = $targetId,
+          revenge_intent_armed_at_ms = $armedAtMs
+      WHERE village_id = $villageId;
     `,
-    schema: z.object({
-      villageId: z.number(),
-      executeAtMs: z.number(),
-      tier: z.number(),
-      factionKey: z.string(),
-    }),
+    bind: {
+      $targetId: targetVillageId,
+      $armedAtMs: armedAtMs,
+      $villageId: villageId,
+    },
   });
 };
 
 /**
- * Get the next scheduled retaliation (for "next threatened by" display).
+ * Get the next scheduled retaliation (for offline summary display).
  */
 export const getNextRetaliation = (
   db: DbFacade,

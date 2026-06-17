@@ -84,11 +84,14 @@ export interface NPCVillageState {
 // Simulation Result
 // ───────────────────────────────────────────────────────────────
 
-export interface SimulationResult {
+export interface ReconciliationResult {
   readonly retaliationsResolved: RetaliationResolution[];
   readonly villagesGrown: number;
   readonly troopsRegenerated: number;
   readonly aggressionChanges: AggressionChange[];
+}
+
+export interface SimulationResult extends ReconciliationResult {
   readonly offlineSummary: OfflineSummary;
 }
 
@@ -172,7 +175,6 @@ export interface BatchVillageRow {
   readonly lastDecayMs: number;
   readonly lastGrowthTickMs: number;
   readonly lastTroopRegenMs: number;
-  readonly needsTick: number;
   readonly buildingBudget: number;
 }
 
@@ -262,16 +264,10 @@ export const NPC_BRAIN_CONSTANTS = {
   NPC_TROOP_MULTIPLIER_MIN: 0.2,
   NPC_TROOP_MULTIPLIER_MAX: 2.0,
 
-  /** Simulation chunk size: 1 simulated hour in ms at 1x */
-  SIMULATION_CHUNK_MS: 3_600_000,
-
-  /** Yield to event loop every N chunks */
-  YIELD_EVERY_N_CHUNKS: 10,
-
-  /** Minimum elapsed ms to trigger simulation */
+  /** Minimum elapsed ms to trigger offline simulation */
   MIN_SIMULATION_ELAPSED_MS: 60_000,
 
-  /** Defence floor by village size — minimum troop count before needs_tick can be 0 */
+  /** Defence floor by village size — minimum troop count for accelerated regen */
   DEFENCE_FLOOR_BY_SIZE: {
     xxs: 20,
     xs: 50,

@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import type { BatchVillageRow } from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
@@ -12,11 +11,11 @@ export const processLootRecoveryBatch = (
   db: DbFacade,
   allVillages: BatchVillageRow[],
   allFieldLevels: Map<number, number>, // villageId -> field level sum
-  chunkMs: number,
+  elapsedMs: number,
   speed: number,
 ): void => {
   const now = Date.now();
-  const elapsedHours = chunkMs / 3_600_000;
+  const elapsedHours = elapsedMs / 3_600_000;
 
   const updates: { villageId: number; newLoot: number; restState?: number }[] =
     [];
@@ -113,40 +112,4 @@ export const processLootRecoveryBatch = (
     `,
     bind: { ...bind, ...villageIdBinds },
   });
-};
-
-/**
- * Reset rest state when a village is raided.
- */
-export const resetRestState = (db: DbFacade, villageId: number): void => {
-  db.exec({
-    sql: `
-      UPDATE npc_village_state
-      SET rest_state = 0
-      WHERE village_id = $villageId;
-    `,
-    bind: { $villageId: villageId },
-  });
-};
-
-/**
- * Get the rest stockpile bonus multiplier for a village.
- * Returns 0 if not in rest state.
- */
-export const getRestBonus = (db: DbFacade, villageId: number): number => {
-  const state = db.selectObject({
-    sql: `
-      SELECT rest_state AS restState, rest_stockpile_bonus AS bonus
-      FROM npc_village_state
-      WHERE village_id = $villageId;
-    `,
-    bind: { $villageId: villageId },
-    schema: z.any(),
-  }) as { restState: number; bonus: number } | undefined;
-
-  if (!state || state.restState === 0) {
-    return 0;
-  }
-
-  return state.bonus;
 };

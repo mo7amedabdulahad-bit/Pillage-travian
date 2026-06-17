@@ -37,9 +37,6 @@ export interface NpcVillageDebugInfo {
     targetVillageId: number | null;
     armedAtMs: number | null;
   };
-  simulationTier: number;
-  nextSimulationDue: number;
-  needsTick: boolean;
   lastBuildDecisions: string[];
 }
 
@@ -212,9 +209,6 @@ export const getNpcVillageDebugInfo = (
       targetVillageId: state.revenge_intent_target_village_id as number | null,
       armedAtMs: state.revenge_intent_armed_at_ms as number | null,
     },
-    simulationTier: (state.simulation_tier as number) ?? 2,
-    nextSimulationDue: (state.next_simulation_due as number) ?? 0,
-    needsTick: (state.needs_tick as number) === 1,
     lastBuildDecisions: recentBuilds.map(
       (b) => `${b.buildingKey} → level ${b.newLevel}`,
     ),

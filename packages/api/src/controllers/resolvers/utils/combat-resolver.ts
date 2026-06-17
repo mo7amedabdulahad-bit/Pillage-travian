@@ -30,8 +30,8 @@ import {
   updateWallLevel,
 } from './combat';
 import { onHeroDeath } from './hero';
-import { handleNpcRetaliation, regenerateNpcTroops } from './npc';
 import { applyRaidReputationConsequences } from './npc-brain/subsystems/reputation-impact';
+import { regenerateNpcTroopsForVillage } from './npc-brain/subsystems/troop-regeneration';
 import {
   calculateWorldThreatLevel,
   getNpcTroopMultiplier,
@@ -1686,7 +1686,7 @@ export const resolveTroopMovementCombat = (
   })!;
 
   // 3. NPC processing (regeneration)
-  regenerateNpcTroops(database, targetId, resolvesAt);
+  regenerateNpcTroopsForVillage(database, targetId, resolvesAt);
 
   // 4. Gather combat data
   const attackerTroops = getAttackerTroopsWithSmithy(
@@ -2054,10 +2054,7 @@ export const resolveTroopMovementCombat = (
     }
   }
 
-  // 12. NPC Retaliation
-  handleNpcRetaliation(database, targetId, villageId, resolvesAt);
-
-  // 13. NPC Brain: Apply reputation and aggression consequences for raids on NPC villages
+  // 12. NPC Brain: Apply all raid consequences (reputation, aggression, retaliation)
   if (isRaid && attackerVillage.playerId === PLAYER_ID) {
     const npcState = database.selectObject({
       sql: `
@@ -2073,7 +2070,7 @@ export const resolveTroopMovementCombat = (
         0,
       );
 
-      applyRaidReputationConsequences(database, targetId, {
+      applyRaidReputationConsequences(database, targetId, villageId, {
         lootWood: lootToApply[0],
         lootClay: lootToApply[1],
         lootIron: lootToApply[2],

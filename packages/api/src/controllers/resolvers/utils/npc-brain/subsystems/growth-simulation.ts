@@ -26,7 +26,7 @@ export const processGrowthBatch = (
   db: DbFacade,
   allVillages: BatchVillageRow[],
   allFieldLevels: BatchFieldLevelRow[],
-  chunkMs: number,
+  elapsedMs: number,
   speed: number,
   mapSize: number,
 ): GrowthTickResult => {
@@ -62,7 +62,7 @@ export const processGrowthBatch = (
     const growthHours =
       NPC_BRAIN_CONSTANTS.BASE_GROWTH_HOURS / profile.growthRateMultiplier;
     const growthCycleMs = adjustForSpeed(growthHours * 3_600_000, speed);
-    const growthIncrement = chunkMs / growthCycleMs;
+    const growthIncrement = elapsedMs / growthCycleMs;
 
     let newAccumulator = village.accumulator + growthIncrement;
 

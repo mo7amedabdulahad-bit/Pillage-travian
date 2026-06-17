@@ -7,6 +7,7 @@ export type {
   NPCVillageState,
   OfflineSummary,
   RaidEvent,
+  ReconciliationResult,
   RetaliationEvent,
   SimulationResult,
   WorldThreatState,
@@ -15,7 +16,7 @@ export { NPC_BRAIN_CONSTANTS } from './npc-brain-types';
 export { buildOfflineSummary } from './offline-summary';
 export {
   getLastSimulationTimestamp,
-  processNPCTick,
+  reconcileNpcBrain,
   setLastSimulationTimestamp,
   simulateElapsedTime,
 } from './simulate-elapsed-time';

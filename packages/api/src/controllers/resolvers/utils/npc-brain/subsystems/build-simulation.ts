@@ -48,8 +48,9 @@ export const processBuildDecisions = (
   db: DbFacade,
   allVillages: BatchVillageRow[],
   allFieldLevels: BatchFieldLevelRow[],
-  chunkMs: number,
+  elapsedMs: number,
   speed: number,
+  maxBuildsPerVillage = 20,
 ): BuildResult => {
   const now = Date.now();
 
@@ -141,12 +142,11 @@ export const processBuildDecisions = (
     // Calculate economy budget — accumulate across ticks
     const fieldSum = resourceFieldSumByVillage.get(village.villageId) ?? 0;
     const productionPerHour = fieldSum * 10;
-    const tickFraction = chunkMs / 3_600_000;
+    const tickFraction = elapsedMs / 3_600_000;
     const tickProduction =
       productionPerHour * tickFraction * spendingRate * speed;
     let remainingBudget = village.buildingBudget + tickProduction;
     let buildsThisTick = 0;
-    const maxBuildsPerTick = 5;
 
     // Conditional overrides
     const overrides: BuildPriorityEntry[] = [];
@@ -169,7 +169,7 @@ export const processBuildDecisions = (
     const buildQueue = [...overrides, ...factionPriorities];
 
     for (const entry of buildQueue) {
-      if (buildsThisTick >= maxBuildsPerTick) {
+      if (buildsThisTick >= maxBuildsPerVillage) {
         break;
       }
       if (remainingBudget <= 0) {

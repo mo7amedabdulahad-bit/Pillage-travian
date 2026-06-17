@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
+import { addTroops } from '../../troops';
+import { getFactionProfile } from '../faction-profiles';
 import {
   getMaxTroopsPerType,
   getPreferredTroopComposition,
@@ -11,7 +13,10 @@ import type {
   BatchVillageRow,
   FactionKey,
 } from '../npc-brain-types';
-import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
+import {
+  NPC_BRAIN_CONSTANTS,
+  VILLAGE_SIZE_REGEN_RATE,
+} from '../npc-brain-types';
 
 interface TroopRegenResult {
   totalTroopsAdded: number;
@@ -26,11 +31,11 @@ export const processTroopRegenBatch = (
   db: DbFacade,
   allVillages: BatchVillageRow[],
   allTroops: BatchTroopRow[],
-  chunkMs: number,
+  elapsedMs: number,
   speed: number,
   mapSize: number,
 ): TroopRegenResult => {
-  const elapsedHours = (chunkMs / 3_600_000) * speed;
+  const elapsedHours = (elapsedMs / 3_600_000) * speed;
   if (elapsedHours <= 0) {
     return { totalTroopsAdded: 0 };
   }
@@ -286,27 +291,6 @@ export const processTroopRegenBatch = (
 };
 
 /**
- * Get current home troops for a village (troops stationed at their home tile).
- */
-export const getHomeTroops = (
-  db: DbFacade,
-  tileId: number,
-): { unitId: string; amount: number }[] => {
-  return db.selectObjects({
-    sql: `
-      SELECT u.unit AS unitId, t.amount
-      FROM troops t
-      JOIN unit_ids u ON u.id = t.unit_id
-      WHERE t.tile_id = $tileId
-        AND t.source_tile_id = $tileId
-        AND t.amount > 0;
-    `,
-    bind: { $tileId: tileId },
-    schema: z.any(),
-  }) as { unitId: string; amount: number }[];
-};
-
-/**
  * Get total troop count for a village.
  */
 export const getTotalTroopCount = (db: DbFacade, tileId: number): number => {
@@ -321,4 +305,107 @@ export const getTotalTroopCount = (db: DbFacade, tileId: number): number => {
     schema: z.any(),
   });
   return (result as number) ?? 0;
+};
+
+/**
+ * Pre-combat troop regeneration for a single NPC village.
+ *
+ * Called by combat-resolver.ts before resolving combat against an NPC village.
+ * Regenerates troops based on elapsed time since last interaction, using
+ * faction-specific rates and compositions.
+ *
+ * This replaces the old regenerateNpcTroops() from npc.ts.
+ */
+export const regenerateNpcTroopsForVillage = (
+  db: DbFacade,
+  villageId: number,
+  timestamp: number,
+): void => {
+  const state = db.selectObject({
+    sql: `
+      SELECT
+        nvs.village_id,
+        nvs.last_interacted_at,
+        nvs.faction_key,
+        v.tile_id,
+        ti.tribe
+      FROM npc_village_state nvs
+      JOIN villages v ON nvs.village_id = v.id
+      JOIN players p ON v.player_id = p.id
+      JOIN tribe_ids ti ON p.tribe_id = ti.id
+      WHERE nvs.village_id = $villageId;
+    `,
+    bind: { $villageId: villageId },
+    schema: z.any(),
+  }) as
+    | {
+        village_id: number;
+        last_interacted_at: number;
+        faction_key: string;
+        tile_id: number;
+        tribe: string;
+      }
+    | undefined;
+
+  if (!state) {
+    return;
+  }
+
+  // Update interaction timestamp
+  db.exec({
+    sql: 'UPDATE npc_village_state SET last_interacted_at = $timestamp WHERE village_id = $villageId',
+    bind: { $timestamp: timestamp, $villageId: villageId },
+  });
+
+  const lastInteractedAt = state.last_interacted_at;
+  if (lastInteractedAt === 0) {
+    return;
+  }
+
+  const elapsedMilliseconds = timestamp - lastInteractedAt;
+  const elapsedHours = elapsedMilliseconds / (1000 * 3600);
+  if (elapsedHours <= 0) {
+    return;
+  }
+
+  const factionKey = state.faction_key as FactionKey;
+  const profile = getFactionProfile(factionKey);
+  const composition = getPreferredTroopComposition(state.tribe, factionKey);
+  if (composition.length === 0) {
+    return;
+  }
+
+  // Get village size for base regen rate
+  const { x, y } = db.selectObject({
+    sql: 'SELECT x, y FROM tiles WHERE id = $tile_id',
+    bind: { $tile_id: state.tile_id },
+    schema: z.object({ x: z.number(), y: z.number() }),
+  })!;
+
+  const { mapSize } = db.selectObject({
+    sql: 'SELECT map_size as mapSize FROM servers LIMIT 1',
+    schema: z.object({ mapSize: z.number() }),
+  })!;
+
+  const villageSize = getVillageSize(mapSize, x, y);
+  const baseRegenRate = VILLAGE_SIZE_REGEN_RATE[villageSize] ?? 20;
+  const regenRate = baseRegenRate * profile.troopRegenRateMultiplier;
+  const totalRegen = Math.floor(elapsedHours * regenRate);
+
+  if (totalRegen <= 0) {
+    return;
+  }
+
+  const troopsToAdd = composition
+    .map(({ unitId, weight }) => ({
+      unitId: unitId as any,
+      amount: Math.floor(totalRegen * weight),
+      tileId: state.tile_id,
+      source: state.tile_id,
+    }))
+    .filter((t) => t.amount > 0);
+
+  if (troopsToAdd.length > 0) {
+    addTroops(db, troopsToAdd as any);
+  }
 };

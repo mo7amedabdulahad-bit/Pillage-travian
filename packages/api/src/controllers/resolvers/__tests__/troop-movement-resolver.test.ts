@@ -15,7 +15,7 @@ import {
   findNewVillageMovementResolver,
   raidMovementResolver,
 } from '../troop-movement-resolver';
-import { regenerateNpcTroops } from '../utils/npc';
+import { regenerateNpcTroopsForVillage } from '../utils/npc-brain/subsystems/troop-regeneration';
 
 describe(adventureMovementResolver, () => {
   test('should handle hero surviving adventure', async () => {
@@ -376,7 +376,7 @@ describe('attackMovementResolver', () => {
   });
 });
 
-describe('regenerateNpcTroops', () => {
+describe('regenerateNpcTroopsForVillage', () => {
   test('should treat timestamps as milliseconds, not seconds', async () => {
     const database = await prepareTestDatabase();
     const npcVillage = database.selectObject({
@@ -401,7 +401,7 @@ describe('regenerateNpcTroops', () => {
       },
     });
 
-    regenerateNpcTroops(database, npcVillage.id, 3_600_000);
+    regenerateNpcTroopsForVillage(database, npcVillage.id, 3_600_000);
 
     const totalTroops = database.selectValue({
       sql: 'SELECT COALESCE(SUM(amount), 0) FROM troops WHERE tile_id = $tileId;',
@@ -419,7 +419,7 @@ describe('regenerateNpcTroops', () => {
       },
     });
 
-    regenerateNpcTroops(database, npcVillage.id, 3_600_001);
+    regenerateNpcTroopsForVillage(database, npcVillage.id, 3_600_001);
 
     const regeneratedTroops = database.selectValue({
       sql: 'SELECT COALESCE(SUM(amount), 0) FROM troops WHERE tile_id = $tileId;',

@@ -238,9 +238,7 @@ export const getNpcVillagesList = createController(
           t.y,
           nvs.aggression_level AS aggressionLevel,
           nvs.current_loot_available AS currentLoot,
-          nvs.max_loot_capacity AS maxLoot,
-          COALESCE(nvs.simulation_tier, 2) AS simulationTier,
-          nvs.needs_tick AS needsTick
+          nvs.max_loot_capacity AS maxLoot
         FROM npc_village_state nvs
         JOIN villages v ON v.id = nvs.village_id
         JOIN tiles t ON t.id = v.tile_id
@@ -257,8 +255,6 @@ export const getNpcVillagesList = createController(
         aggressionLevel: z.number(),
         currentLoot: z.number(),
         maxLoot: z.number(),
-        simulationTier: z.number(),
-        needsTick: z.number(),
       }),
     });
   } catch (e) {
