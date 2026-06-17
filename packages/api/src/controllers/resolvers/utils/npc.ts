@@ -367,12 +367,19 @@ export const handleNpcRetaliation = (
             travelTimeMs;
           const executeAtMs = Date.now() + travelTimeMs + variance;
 
+          const troopArray = Object.entries(retaliationTroops).map(
+            ([unitId, amount]) => ({
+              unitId: unitId as UnitId,
+              amount,
+              tileId: villageInfo.tile_id,
+              source: villageInfo.tile_id,
+            }),
+          );
           createEvents<'troopMovementAttack'>(database, {
             type: 'troopMovementAttack',
             villageId: villageId,
             targetId: attackerVillageId,
-            // biome-ignore lint/suspicious/noExplicitAny: Unit IDs from DB are strings but match UnitId union
-            troops: retaliationTroops as any,
+            troops: troopArray,
             startsAt: Math.floor(executeAtMs),
           });
         }

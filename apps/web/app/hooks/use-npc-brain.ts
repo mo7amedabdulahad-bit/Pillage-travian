@@ -101,6 +101,11 @@ export const useNPCBrain = (apiWorker: Worker | null): NPCBrainState => {
 
     apiWorker.addEventListener('message', handleMessage);
 
+    // Tell the worker we're ready to receive simulation events.
+    // This completes the handshake: worker fires database-init-success,
+    // UI mounts and attaches listener, then signals back.
+    apiWorker.postMessage({ type: 'WORKER_READY_FOR_SIMULATION' });
+
     return () => {
       apiWorker.removeEventListener('message', handleMessage);
     };

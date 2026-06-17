@@ -42,6 +42,53 @@ let database: OpfsSAHPoolDatabase | null = null;
 let dbFacade: DbFacade | null = null;
 let liveTickInterval: ReturnType<typeof setInterval> | null = null;
 
+const runOfflineSimulation = async () => {
+  if (!dbFacade) {
+    return;
+  }
+
+  globalThis.postMessage({
+    eventKey: 'event:npc-simulation-start',
+  });
+
+  try {
+    const lastSimTimestamp = getLastSimulationTimestamp(dbFacade);
+
+    if (lastSimTimestamp === 0) {
+      setLastSimulationTimestamp(dbFacade, Date.now());
+      globalThis.postMessage({
+        eventKey: 'event:npc-simulation-complete',
+        summary: null,
+      });
+    } else {
+      const elapsedMs = Date.now() - lastSimTimestamp;
+
+      if (elapsedMs > NPC_BRAIN_CONSTANTS.MIN_SIMULATION_ELAPSED_MS) {
+        const simulationSummary = await simulateElapsedTime(
+          dbFacade,
+          elapsedMs,
+        );
+        setLastSimulationTimestamp(dbFacade, Date.now());
+
+        globalThis.postMessage({
+          eventKey: 'event:npc-simulation-complete',
+          summary: simulationSummary,
+        });
+      } else {
+        globalThis.postMessage({
+          eventKey: 'event:npc-simulation-complete',
+          summary: null,
+        });
+      }
+    }
+  } catch (_simError) {
+    globalThis.postMessage({
+      eventKey: 'event:npc-simulation-complete',
+      summary: null,
+    });
+  }
+};
+
 const LIVE_TICK_INTERVAL_MS = 60_000;
 
 globalThis.addEventListener('message', async (event: MessageEvent) => {
@@ -129,56 +176,11 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         scheduleNextEvent(dataSource);
 
         // ─── Signal UI that database is ready ───
-        // This must fire BEFORE the simulation so NPCBrainGate mounts first
+        // NPCBrainGate will send WORKER_READY_FOR_SIMULATION back
+        // once its listener is attached, then we run the simulation.
         globalThis.postMessage({
           eventKey: 'event:database-initialization-success',
         } satisfies ApiNotificationEvent);
-
-        // ─── NPC Brain: Offline catch-up simulation ───
-        // Fire start event AFTER database-init-success so the UI has time to
-        // mount NPCBrainGate and attach its event listener.
-        globalThis.postMessage({
-          eventKey: 'event:npc-simulation-start',
-        });
-
-        try {
-          const lastSimTimestamp = getLastSimulationTimestamp(dbFacade);
-
-          // Brand new world — skip simulation, just set timestamp to now
-          if (lastSimTimestamp === 0) {
-            setLastSimulationTimestamp(dbFacade, Date.now());
-            globalThis.postMessage({
-              eventKey: 'event:npc-simulation-complete',
-              summary: null,
-            });
-          } else {
-            const elapsedMs = Date.now() - lastSimTimestamp;
-
-            if (elapsedMs > NPC_BRAIN_CONSTANTS.MIN_SIMULATION_ELAPSED_MS) {
-              const simulationSummary = await simulateElapsedTime(
-                dbFacade,
-                elapsedMs,
-              );
-              setLastSimulationTimestamp(dbFacade, Date.now());
-
-              globalThis.postMessage({
-                eventKey: 'event:npc-simulation-complete',
-                summary: simulationSummary,
-              });
-            } else {
-              // No simulation needed — still fire complete so UI unblocks
-              globalThis.postMessage({
-                eventKey: 'event:npc-simulation-complete',
-                summary: null,
-              });
-            }
-          }
-        } catch (_simError) {
-          globalThis.postMessage({
-            eventKey: 'event:npc-simulation-complete',
-            summary: null,
-          });
-        }
         break;
       } catch (error) {
         const safeError =
@@ -192,6 +194,10 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         } satisfies DatabaseInitializationErrorEvent);
         break;
       }
+    }
+    case 'WORKER_READY_FOR_SIMULATION': {
+      runOfflineSimulation();
+      break;
     }
     case 'WORKER_MESSAGE': {
       const { data, ports } = event;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../../utils/create-event.ts';
 import {
@@ -539,11 +540,19 @@ const processRevengeIntentBatch = (
           const executeAtMs = currentTimeMs + travelTimeMs + variance;
 
           try {
+            const troopArray = Object.entries(retaliationTroops).map(
+              ([unitId, amount]) => ({
+                unitId: unitId as UnitId,
+                amount,
+                tileId: intent.tileId,
+                source: intent.tileId,
+              }),
+            );
             createEvents<'troopMovementAttack'>(db, {
               type: 'troopMovementAttack',
               villageId: intent.villageId,
               targetId: intent.targetVillageId,
-              troops: retaliationTroops as any,
+              troops: troopArray,
               startsAt: Math.floor(executeAtMs),
             });
 
