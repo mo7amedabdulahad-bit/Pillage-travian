@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 
 /**
  * Types matching the NPC Brain simulation result from the Web Worker.
@@ -59,7 +59,7 @@ export const useNPCBrain = (apiWorker: Worker | null): NPCBrainState => {
     null,
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!apiWorker) {
       return;
     }
