@@ -106,8 +106,37 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
 
         upgradeDb(dbFacade);
 
+        // ─── NPC Brain: Start live heartbeat ───
+        // Runs every 60 real seconds while the player is in-game
+        liveTickInterval = setInterval(() => {
+          if (!dbFacade) {
+            return;
+          }
+          try {
+            const speed = getGameSpeed(dbFacade);
+            processNPCTick(dbFacade, LIVE_TICK_INTERVAL_MS, speed);
+            setLastSimulationTimestamp(dbFacade, Date.now());
+            globalThis.postMessage({
+              eventKey: 'event:npc-live-tick',
+              timestamp: Date.now(),
+            });
+          } catch (_tickError) {}
+        }, LIVE_TICK_INTERVAL_MS);
+
+        const dataSource = createSchedulerDataSource(dbFacade);
+
+        initScheduler(dataSource);
+        scheduleNextEvent(dataSource);
+
+        // ─── Signal UI that database is ready ───
+        // This must fire BEFORE the simulation so NPCBrainGate mounts first
+        globalThis.postMessage({
+          eventKey: 'event:database-initialization-success',
+        } satisfies ApiNotificationEvent);
+
         // ─── NPC Brain: Offline catch-up simulation ───
-        // Fire start event so the UI can show the loading screen
+        // Fire start event AFTER database-init-success so the UI has time to
+        // mount NPCBrainGate and attach its event listener.
         globalThis.postMessage({
           eventKey: 'event:npc-simulation-start',
         });
@@ -150,32 +179,6 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             summary: null,
           });
         }
-
-        // ─── NPC Brain: Start live heartbeat ───
-        // Runs every 60 real seconds while the player is in-game
-        liveTickInterval = setInterval(() => {
-          if (!dbFacade) {
-            return;
-          }
-          try {
-            const speed = getGameSpeed(dbFacade);
-            processNPCTick(dbFacade, LIVE_TICK_INTERVAL_MS, speed);
-            setLastSimulationTimestamp(dbFacade, Date.now());
-            globalThis.postMessage({
-              eventKey: 'event:npc-live-tick',
-              timestamp: Date.now(),
-            });
-          } catch (_tickError) {}
-        }, LIVE_TICK_INTERVAL_MS);
-
-        const dataSource = createSchedulerDataSource(dbFacade);
-
-        initScheduler(dataSource);
-        scheduleNextEvent(dataSource);
-
-        globalThis.postMessage({
-          eventKey: 'event:database-initialization-success',
-        } satisfies ApiNotificationEvent);
         break;
       } catch (error) {
         const safeError =
