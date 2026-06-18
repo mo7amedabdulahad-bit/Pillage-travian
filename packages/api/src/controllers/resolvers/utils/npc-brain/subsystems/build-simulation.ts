@@ -21,6 +21,7 @@ import type {
   FactionKey,
 } from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
+import { calculateCurrentLoot } from './loot-recovery';
 
 interface BuildResult {
   villagesBuilt: number;
@@ -61,6 +62,10 @@ export const processBuildDecisions = (
   batchSize = Number.POSITIVE_INFINITY,
 ): BuildResult => {
   const now = Date.now();
+
+  // Schedule delay helper: divide by speed so villages cycle faster at higher speeds
+  const scheduleDelay = (baseMs: number) =>
+    Math.max(10_000, Math.round(baseMs / speed));
 
   // Filter to villages due for a build check, sorted oldest-due-first
   const dueVillages = (
@@ -149,14 +154,15 @@ export const processBuildDecisions = (
 
   for (const village of dueVillages) {
     // ─── Alert state check: villages recently raided skip building ───
+    // Alert duration scales with server speed — at x10, 2 game-hours = 12 real minutes
     if (
       village.lastRaidedMs > 0 &&
-      now - village.lastRaidedMs < NPC_BRAIN_CONSTANTS.ALERT_DURATION_MS
+      now - village.lastRaidedMs < NPC_BRAIN_CONSTANTS.ALERT_DURATION_MS / speed
     ) {
-      // In alert state — skip building, re-check in 5 minutes
+      // In alert state — skip building, re-check soon
       scheduleUpdates.push({
         villageId: village.villageId,
-        nextCheckMs: now + 5 * 60_000,
+        nextCheckMs: now + scheduleDelay(5 * 60_000),
       });
       continue;
     }
@@ -182,7 +188,18 @@ export const processBuildDecisions = (
     // Conditional overrides
     const overrides: BuildPriorityEntry[] = [];
 
-    if (village.lootAtLastRaid >= 0.9) {
+    // Use computed current loot (not stale post-raid value) for storage urgency
+    const resourceFieldSum =
+      resourceFieldSumByVillage.get(village.villageId) ?? 0;
+    const computedLoot = calculateCurrentLoot(
+      village.lootAtLastRaid,
+      village.lastRaidedMs,
+      village.maxLoot,
+      resourceFieldSum,
+      speed,
+    );
+
+    if (computedLoot >= 0.9) {
       overrides.push(
         { buildingId: 'WAREHOUSE', maxLevel: 20, priority: 'mandatory' },
         { buildingId: 'GRANARY', maxLevel: 20, priority: 'mandatory' },
@@ -326,16 +343,16 @@ export const processBuildDecisions = (
     // Schedule next build check based on what happened
     const buildsDone = buildsThisTick;
     if (buildsDone > 0) {
-      // Build occurred — check again in 10 real minutes
+      // Build occurred — check again sooner at higher speeds
       scheduleUpdates.push({
         villageId: village.villageId,
-        nextCheckMs: now + 10 * 60_000,
+        nextCheckMs: now + scheduleDelay(10 * 60_000),
       });
     } else {
-      // No build possible — check again in 30 real minutes
+      // No build possible — check again later (budget needs time to accumulate)
       scheduleUpdates.push({
         villageId: village.villageId,
-        nextCheckMs: now + 30 * 60_000,
+        nextCheckMs: now + scheduleDelay(30 * 60_000),
       });
     }
   }

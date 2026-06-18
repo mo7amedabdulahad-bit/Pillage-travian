@@ -11,6 +11,7 @@ import {
   NPC_BRAIN_CONSTANTS,
   VILLAGE_SIZE_REGEN_RATE,
 } from '../npc-brain-types';
+import { calculateCurrentLoot } from './loot-recovery';
 
 /**
  * On-demand troop materialization for a single NPC village.
@@ -267,6 +268,43 @@ export const materializeNpcTroops = (
     sql: 'UPDATE npc_village_state SET last_troop_regen_ms = $now WHERE village_id = $villageId;',
     bind: { $now: now, $villageId: villageId },
   });
+
+  // 9. Check rest_state: reset to 1 if village is fully recovered
+  const restRow = db.selectObject({
+    sql: `
+      SELECT loot_at_last_raid, last_raided_ms, rest_state, rest_threshold_ms, max_loot_capacity
+      FROM npc_village_state WHERE village_id = $villageId;
+    `,
+    bind: { $villageId: villageId },
+    schema: z.any(),
+  }) as
+    | {
+        loot_at_last_raid: number;
+        last_raided_ms: number;
+        rest_state: number;
+        rest_threshold_ms: number;
+        max_loot_capacity: number;
+      }
+    | undefined;
+
+  if (restRow && restRow.rest_state === 0 && restRow.last_raided_ms > 0) {
+    const computedLoot = calculateCurrentLoot(
+      restRow.loot_at_last_raid,
+      restRow.last_raided_ms,
+      restRow.max_loot_capacity,
+      0,
+      speed,
+    );
+    if (
+      computedLoot >= 1.0 &&
+      now - restRow.last_raided_ms >= restRow.rest_threshold_ms
+    ) {
+      db.exec({
+        sql: 'UPDATE npc_village_state SET rest_state = 1 WHERE village_id = $villageId;',
+        bind: { $villageId: villageId },
+      });
+    }
+  }
 };
 
 /**

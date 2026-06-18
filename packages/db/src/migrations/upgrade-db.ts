@@ -150,7 +150,6 @@ export const upgradeDb = (database: DbFacade): void => {
     ['rest_threshold_ms', 'INTEGER NOT NULL DEFAULT 172800000'],
     ['rest_stockpile_bonus', 'REAL NOT NULL DEFAULT 0.15'],
     ['last_troop_regen_ms', 'INTEGER NOT NULL DEFAULT 0'],
-    ['current_loot_available', 'REAL NOT NULL DEFAULT 1.0'],
     ['loot_at_last_raid', 'REAL NOT NULL DEFAULT 1.0'],
     ['max_loot_capacity', 'INTEGER NOT NULL DEFAULT 500'],
     ['loot_recovery_rate', 'REAL NOT NULL DEFAULT 0.08'],
