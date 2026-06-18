@@ -14,7 +14,12 @@ import {
   FACTION_BUILD_PRIORITIES,
   FACTION_SPENDING_RATE,
 } from '../faction-build-priorities';
-import { calculateMaxLootCapacityFromBuildings } from '../helpers';
+import {
+  calculateMaxLootCapacityFromBuildings,
+  getMapSize,
+  getPlayerVillageCoords,
+  mapDistance,
+} from '../helpers';
 import type {
   BatchFieldLevelRow,
   BatchVillageRow,
@@ -67,13 +72,45 @@ export const processBuildDecisions = (
   const scheduleDelay = (baseMs: number) =>
     Math.max(10_000, Math.round(baseMs / speed));
 
-  // Filter to villages due for a build check, sorted oldest-due-first
+  // Proximity helper: nearby villages get re-checked sooner
+  const proximityMultiplier = (dist: number, maxDist: number): number => {
+    const ratio = dist / maxDist;
+    if (ratio <= 0.2) {
+      return 0.25;
+    }
+    if (ratio <= 0.5) {
+      return 0.5;
+    }
+    return 1.0;
+  };
+
+  // Player coords for proximity sorting (live tick only)
+  const isLiveTick = batchSize !== Number.POSITIVE_INFINITY;
+  const playerCoords = isLiveTick
+    ? (getPlayerVillageCoords(db) ?? { x: 0, y: 0 })
+    : { x: 0, y: 0 };
+  const mapSize = isLiveTick ? getMapSize(db) : 400;
+  const MAX_DIST = mapSize / 2;
+
+  // Filter to villages due for a build check, sorted by composite score (overdue + proximity)
   const dueVillages = (
     batchSize === Number.POSITIVE_INFINITY
       ? allVillages
       : allVillages
           .filter((v) => v.nextBuildCheckMs <= now)
-          .sort((a, b) => a.nextBuildCheckMs - b.nextBuildCheckMs)
+          .sort((a, b) => {
+            const overdueA = now - a.nextBuildCheckMs;
+            const overdueB = now - b.nextBuildCheckMs;
+            const distA = mapDistance({ x: a.x, y: a.y }, playerCoords);
+            const distB = mapDistance({ x: b.x, y: b.y }, playerCoords);
+            const overdueScoreA = Math.min(1, overdueA / (30 * 60_000));
+            const overdueScoreB = Math.min(1, overdueB / (30 * 60_000));
+            const proxScoreA = 1 - Math.min(1, distA / MAX_DIST);
+            const proxScoreB = 1 - Math.min(1, distB / MAX_DIST);
+            const compositeA = overdueScoreA * 0.5 + proxScoreA * 0.5;
+            const compositeB = overdueScoreB * 0.5 + proxScoreB * 0.5;
+            return compositeB - compositeA;
+          })
   ).slice(0, batchSize === Number.POSITIVE_INFINITY ? undefined : batchSize);
 
   // Fetch building key mapping
@@ -153,16 +190,22 @@ export const processBuildDecisions = (
   let totalBuilt = 0;
 
   for (const village of dueVillages) {
+    // Proximity distance for this village (used for schedule multiplier)
+    const villageDist = isLiveTick
+      ? mapDistance({ x: village.x, y: village.y }, playerCoords)
+      : 0;
+    const pMult = isLiveTick ? proximityMultiplier(villageDist, MAX_DIST) : 1;
+
     // ─── Alert state check: villages recently raided skip building ───
     // Alert duration scales with server speed — at x10, 2 game-hours = 12 real minutes
     if (
       village.lastRaidedMs > 0 &&
       now - village.lastRaidedMs < NPC_BRAIN_CONSTANTS.ALERT_DURATION_MS / speed
     ) {
-      // In alert state — skip building, re-check soon
+      // In alert state — skip building, re-check soon (shorter for nearby villages)
       scheduleUpdates.push({
         villageId: village.villageId,
-        nextCheckMs: now + scheduleDelay(5 * 60_000),
+        nextCheckMs: now + Math.round(scheduleDelay(5 * 60_000) * pMult),
       });
       continue;
     }
@@ -343,16 +386,17 @@ export const processBuildDecisions = (
     // Schedule next build check based on what happened
     const buildsDone = buildsThisTick;
     if (buildsDone > 0) {
-      // Build occurred — check again sooner at higher speeds
+      // Build occurred — check again sooner at higher speeds, even sooner for nearby villages
       scheduleUpdates.push({
         villageId: village.villageId,
-        nextCheckMs: now + scheduleDelay(10 * 60_000),
+        nextCheckMs: now + Math.round(scheduleDelay(10 * 60_000) * pMult),
       });
     } else {
       // No build possible — check again later (budget needs time to accumulate)
+      // Nearby villages still re-checked sooner
       scheduleUpdates.push({
         villageId: village.villageId,
-        nextCheckMs: now + scheduleDelay(30 * 60_000),
+        nextCheckMs: now + Math.round(scheduleDelay(30 * 60_000) * pMult),
       });
     }
   }
