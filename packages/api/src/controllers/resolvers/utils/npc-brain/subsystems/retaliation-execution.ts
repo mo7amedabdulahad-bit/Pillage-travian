@@ -3,15 +3,16 @@ import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../../../utils/create-event.ts';
-import { getPlayerVillageCoords, mapDistance, scaleTroops } from '../helpers';
-import type {
-  BatchTroopRow,
-  BatchVillageRow,
-  FactionKey,
-  RetaliationResolution,
-} from '../npc-brain-types';
+import {
+  getMapSize,
+  getPlayerVillageCoords,
+  mapDistance,
+  scaleTroops,
+} from '../helpers';
+import type { FactionKey, RetaliationResolution } from '../npc-brain-types';
 import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 import { getNpcTroopMultiplier } from '../world-threat-level';
+import { materializeNpcTroops } from './troop-regeneration';
 
 /**
  * Unified Retaliation Execution
@@ -33,8 +34,6 @@ export const processDueRetaliations = (
   currentTimeMs: number,
   speed: number,
   worldThreatLevel: number,
-  allTroops: BatchTroopRow[],
-  allVillages: BatchVillageRow[],
 ): RetaliationResolution[] => {
   const resolutions: RetaliationResolution[] = [];
   const npcTroopMultiplier = getNpcTroopMultiplier(worldThreatLevel);
@@ -117,13 +116,18 @@ export const processDueRetaliations = (
         nvs.village_id AS villageId,
         nvs.revenge_intent_target_village_id AS targetVillageId,
         nvs.faction_key AS factionKey,
+        nvs.aggression_level AS aggressionLevel,
         v.tile_id AS tileId,
         v.name AS villageName,
         t.x,
-        t.y
+        t.y,
+        COALESCE(vt.tribe, pt.tribe) AS tribe
       FROM npc_village_state nvs
       JOIN villages v ON v.id = nvs.village_id
       JOIN tiles t ON t.id = v.tile_id
+      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+      LEFT JOIN players p ON p.id = v.player_id
+      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
       WHERE nvs.revenge_intent_target_village_id IS NOT NULL
         AND nvs.revenge_intent_armed_at_ms <= $now;
     `,
@@ -133,16 +137,45 @@ export const processDueRetaliations = (
     villageId: number;
     targetVillageId: number;
     factionKey: string;
+    aggressionLevel: number;
     tileId: number;
     villageName: string;
     x: number;
     y: number;
+    tribe: string;
   }[];
 
   const clearedVillageIds: number[] = [];
+  const mapSize = getMapSize(db);
 
   for (const intent of armedIntents) {
-    const homeTroops = allTroops.filter((t) => t.tileId === intent.tileId);
+    // Materialize troops on-demand for this village
+    materializeNpcTroops(
+      db,
+      intent.villageId,
+      intent.tileId,
+      intent.factionKey as FactionKey,
+      intent.tribe,
+      mapSize,
+      intent.x,
+      intent.y,
+      speed,
+    );
+
+    // Query troops directly from DB
+    const homeTroops = db.selectObjects({
+      sql: `
+        SELECT u.unit AS unitId, t.amount
+        FROM troops t
+        JOIN unit_ids u ON u.id = t.unit_id
+        WHERE t.tile_id = $tileId
+          AND t.source_tile_id = $tileId
+          AND t.amount > 0;
+      `,
+      bind: { $tileId: intent.tileId },
+      schema: z.any(),
+    }) as { unitId: string; amount: number }[];
+
     const totalUnits = homeTroops.reduce((sum, t) => sum + t.amount, 0);
 
     if (totalUnits >= NPC_BRAIN_CONSTANTS.MIN_TROOPS_FOR_RETALIATION) {
@@ -151,10 +184,7 @@ export const processDueRetaliations = (
         troopMap[troop.unitId] = troop.amount;
       }
 
-      const villageState = allVillages.find(
-        (v) => v.villageId === intent.villageId,
-      );
-      const tier = villageState?.aggressionLevel ?? 1;
+      const tier = intent.aggressionLevel ?? 1;
       const troopPercentage =
         NPC_BRAIN_CONSTANTS.AGGRESSION_TROOP_PERCENTAGES[Math.min(5, tier)];
       const retaliationTroops = scaleTroops(troopMap, troopPercentage);

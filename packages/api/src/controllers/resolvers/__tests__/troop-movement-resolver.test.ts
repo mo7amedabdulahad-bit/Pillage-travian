@@ -15,7 +15,8 @@ import {
   findNewVillageMovementResolver,
   raidMovementResolver,
 } from '../troop-movement-resolver';
-import { regenerateNpcTroopsForVillage } from '../utils/npc-brain/subsystems/troop-regeneration';
+import type { FactionKey } from '../utils/npc-brain/npc-brain-types';
+import { materializeNpcTroops } from '../utils/npc-brain/subsystems/troop-regeneration';
 
 describe(adventureMovementResolver, () => {
   test('should handle hero surviving adventure', async () => {
@@ -376,17 +377,29 @@ describe('attackMovementResolver', () => {
   });
 });
 
-describe('regenerateNpcTroopsForVillage', () => {
-  test('should treat timestamps as milliseconds, not seconds', async () => {
+describe('materializeNpcTroops', () => {
+  test('should initialize last_troop_regen_ms on first call and regen on subsequent calls', async () => {
     const database = await prepareTestDatabase();
     const npcVillage = database.selectObject({
       sql: `
-        SELECT v.id, v.tile_id AS tileId
+        SELECT v.id, v.tile_id AS tileId, nvs.faction_key AS factionKey,
+               t.x, t.y, COALESCE(vt.tribe, pt.tribe) AS tribe
         FROM npc_village_state nvs
         JOIN villages v ON v.id = nvs.village_id
+        JOIN tiles t ON t.id = v.tile_id
+        LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+        LEFT JOIN players p ON p.id = v.player_id
+        LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
         LIMIT 1;
       `,
-      schema: z.strictObject({ id: z.number(), tileId: z.number() }),
+      schema: z.strictObject({
+        id: z.number(),
+        tileId: z.number(),
+        factionKey: z.string(),
+        x: z.number(),
+        y: z.number(),
+        tribe: z.string(),
+      }),
     })!;
 
     database.exec({
@@ -394,14 +407,22 @@ describe('regenerateNpcTroopsForVillage', () => {
       bind: { $tileId: npcVillage.tileId },
     });
     database.exec({
-      sql: 'UPDATE npc_village_state SET last_interacted_at = $lastInteractedAt WHERE village_id = $villageId;',
-      bind: {
-        $lastInteractedAt: 0,
-        $villageId: npcVillage.id,
-      },
+      sql: 'UPDATE npc_village_state SET last_troop_regen_ms = 0 WHERE village_id = $villageId;',
+      bind: { $villageId: npcVillage.id },
     });
 
-    regenerateNpcTroopsForVillage(database, npcVillage.id, 3_600_000);
+    // First call: should initialize timestamp and return without regenerating
+    materializeNpcTroops(
+      database,
+      npcVillage.id,
+      npcVillage.tileId,
+      npcVillage.factionKey as FactionKey,
+      npcVillage.tribe,
+      400,
+      npcVillage.x,
+      npcVillage.y,
+      1,
+    );
 
     const totalTroops = database.selectValue({
       sql: 'SELECT COALESCE(SUM(amount), 0) FROM troops WHERE tile_id = $tileId;',
@@ -411,15 +432,26 @@ describe('regenerateNpcTroopsForVillage', () => {
 
     expect(totalTroops).toBe(0);
 
+    // Set last_troop_regen_ms to a past time and call again
     database.exec({
-      sql: 'UPDATE npc_village_state SET last_interacted_at = $lastInteractedAt WHERE village_id = $villageId;',
+      sql: 'UPDATE npc_village_state SET last_troop_regen_ms = $ts WHERE village_id = $villageId;',
       bind: {
-        $lastInteractedAt: 1,
+        $ts: Date.now() - 3_600_000, // 1 hour ago
         $villageId: npcVillage.id,
       },
     });
 
-    regenerateNpcTroopsForVillage(database, npcVillage.id, 3_600_001);
+    materializeNpcTroops(
+      database,
+      npcVillage.id,
+      npcVillage.tileId,
+      npcVillage.factionKey as FactionKey,
+      npcVillage.tribe,
+      400,
+      npcVillage.x,
+      npcVillage.y,
+      1,
+    );
 
     const regeneratedTroops = database.selectValue({
       sql: 'SELECT COALESCE(SUM(amount), 0) FROM troops WHERE tile_id = $tileId;',
@@ -427,6 +459,7 @@ describe('regenerateNpcTroopsForVillage', () => {
       schema: z.number(),
     })!;
 
+    expect(regeneratedTroops).toBeGreaterThan(0);
     expect(regeneratedTroops).toBeLessThan(1000);
   });
 });

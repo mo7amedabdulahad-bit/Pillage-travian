@@ -16,7 +16,7 @@ CREATE TABLE npc_village_state
   last_troop_regen_ms INTEGER NOT NULL DEFAULT 0,
 
   -- Loot recovery
-  current_loot_available REAL NOT NULL DEFAULT 1.0,
+  loot_at_last_raid REAL NOT NULL DEFAULT 1.0,
   max_loot_capacity INTEGER NOT NULL DEFAULT 500,
   loot_recovery_rate REAL NOT NULL DEFAULT 0.08,
 
@@ -43,6 +43,9 @@ CREATE TABLE npc_village_state
 
   -- Build budget: accumulated resources for building decisions
   building_budget REAL NOT NULL DEFAULT 0,
+
+  -- Build scheduling: next time this village is eligible for a build check
+  next_build_check_ms INTEGER NOT NULL DEFAULT 0,
 
   FOREIGN KEY (village_id) REFERENCES villages (id) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;

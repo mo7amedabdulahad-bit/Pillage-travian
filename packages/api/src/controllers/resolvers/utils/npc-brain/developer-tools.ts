@@ -202,7 +202,7 @@ export const getNpcVillageDebugInfo = (
     defenceFloor,
     storageLevels: { warehouse: warehouseLevel, granary: granaryLevel },
     storageVsLoot: {
-      currentLoot: state.current_loot_available as number,
+      currentLoot: state.loot_at_last_raid as number,
       maxLoot: state.max_loot_capacity as number,
     },
     revengeIntent: {

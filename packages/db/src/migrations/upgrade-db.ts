@@ -151,6 +151,7 @@ export const upgradeDb = (database: DbFacade): void => {
     ['rest_stockpile_bonus', 'REAL NOT NULL DEFAULT 0.15'],
     ['last_troop_regen_ms', 'INTEGER NOT NULL DEFAULT 0'],
     ['current_loot_available', 'REAL NOT NULL DEFAULT 1.0'],
+    ['loot_at_last_raid', 'REAL NOT NULL DEFAULT 1.0'],
     ['max_loot_capacity', 'INTEGER NOT NULL DEFAULT 500'],
     ['loot_recovery_rate', 'REAL NOT NULL DEFAULT 0.08'],
     ['aggression_level', 'INTEGER NOT NULL DEFAULT 0'],
@@ -170,6 +171,21 @@ export const upgradeDb = (database: DbFacade): void => {
     } catch (_e) {
       // Column might already exist
     }
+  }
+
+  // ─── NPC Brain: Sync loot_at_last_raid from current_loot_available for existing rows ───
+  // Existing databases have loot values in current_loot_available. The new loot_at_last_raid
+  // column defaults to 1.0, which would incorrectly make all villages appear fully stocked.
+  try {
+    database.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET loot_at_last_raid = current_loot_available
+        WHERE loot_at_last_raid = 1.0 AND current_loot_available != 1.0;
+      `,
+    });
+  } catch (_e) {
+    // Columns may not exist yet
   }
 
   // ─── NPC Brain: npc_raid_history table ───
@@ -240,15 +256,15 @@ export const upgradeDb = (database: DbFacade): void => {
           village_id, last_interacted_at, times_attacked,
           field_growth_accumulator, last_growth_tick_ms, population_growth_rate,
           rest_state, rest_threshold_ms, rest_stockpile_bonus,
-          last_troop_regen_ms, current_loot_available, max_loot_capacity,
+          last_troop_regen_ms, current_loot_available, loot_at_last_raid, max_loot_capacity,
           loot_recovery_rate, aggression_level, aggression_decay_timer,
           regional_alert_active, last_aggression_decay_ms, last_raided_ms,
-          faction_key, needs_tick
+          faction_key, needs_tick, next_build_check_ms
         )
         SELECT
           v.id, 0, 0, 0, 0, 2.0, 0, 172800000, 0.15,
-          0, 1.0, 500, 0.08, 0, 0, 0, 0, 0,
-          COALESCE(fi.faction, 'npc1'), 1
+          0, 1.0, 1.0, 500, 0.08, 0, 0, 0, 0, 0,
+          COALESCE(fi.faction, 'npc1'), 1, 0
         FROM villages v
         JOIN players p ON v.player_id = p.id
         LEFT JOIN faction_ids fi ON fi.id = p.faction_id
@@ -307,6 +323,15 @@ export const upgradeDb = (database: DbFacade): void => {
   try {
     database.exec({
       sql: 'ALTER TABLE npc_village_state ADD COLUMN building_budget REAL NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  // ─── NPC Brain: next_build_check_ms for rotating build queue ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN next_build_check_ms INTEGER NOT NULL DEFAULT 0;',
     });
   } catch (_e) {
     // Column might already exist

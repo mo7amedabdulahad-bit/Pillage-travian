@@ -237,7 +237,7 @@ export const getNpcVillagesList = createController(
           t.x,
           t.y,
           nvs.aggression_level AS aggressionLevel,
-          nvs.current_loot_available AS currentLoot,
+          nvs.loot_at_last_raid AS currentLoot,
           nvs.max_loot_capacity AS maxLoot
         FROM npc_village_state nvs
         JOIN villages v ON v.id = nvs.village_id

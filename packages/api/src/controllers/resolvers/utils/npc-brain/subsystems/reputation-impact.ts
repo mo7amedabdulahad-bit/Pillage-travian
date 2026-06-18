@@ -53,7 +53,7 @@ export const applyRaidReputationConsequences = (
       SELECT
         nvs.faction_key AS factionKey,
         nvs.max_loot_capacity AS maxLoot,
-        nvs.current_loot_available AS lootAvailable,
+        nvs.loot_at_last_raid AS lootAvailable,
         nvs.rest_state AS restState,
         v.tile_id AS tileId,
         t.x,
@@ -171,7 +171,7 @@ export const applyRaidReputationConsequences = (
         times_attacked = times_attacked + 1,
         last_raided_ms = $now,
         last_interacted_at = $now,
-        current_loot_available = $newLoot,
+        loot_at_last_raid = $newLoot,
         rest_state = 0
       WHERE village_id = $villageId;
     `,

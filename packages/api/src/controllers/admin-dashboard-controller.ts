@@ -220,7 +220,7 @@ export const getAdminDashboardVillages = createController(
           t.x,
           t.y,
           nvs.aggression_level AS aggressionLevel,
-          nvs.current_loot_available AS currentLoot,
+          nvs.loot_at_last_raid AS currentLoot,
           nvs.max_loot_capacity AS maxLoot,
           COALESCE(troopSums.totalTroops, 0) AS totalTroops,
           COALESCE(fieldSums.fieldLevelSum, 0) AS fieldLevelSum,

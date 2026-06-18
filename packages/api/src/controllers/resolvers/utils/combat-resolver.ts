@@ -30,8 +30,10 @@ import {
   updateWallLevel,
 } from './combat';
 import { onHeroDeath } from './hero';
+import { getGameSpeed, getMapSize } from './npc-brain/helpers';
+import type { FactionKey } from './npc-brain/npc-brain-types';
 import { applyRaidReputationConsequences } from './npc-brain/subsystems/reputation-impact';
-import { regenerateNpcTroopsForVillage } from './npc-brain/subsystems/troop-regeneration';
+import { materializeNpcTroops } from './npc-brain/subsystems/troop-regeneration';
 import {
   calculateWorldThreatLevel,
   getNpcTroopMultiplier,
@@ -1685,8 +1687,36 @@ export const resolveTroopMovementCombat = (
     }),
   })!;
 
-  // 3. NPC processing (regeneration)
-  regenerateNpcTroopsForVillage(database, targetId, resolvesAt);
+  // 3. NPC processing: materialize troops on-demand before combat
+  const npcVillageData = database.selectObject({
+    sql: `
+      SELECT nvs.faction_key AS factionKey, t.x, t.y, COALESCE(vt.tribe, pt.tribe) AS tribe
+      FROM npc_village_state nvs
+      JOIN villages v ON v.id = nvs.village_id
+      JOIN tiles t ON t.id = v.tile_id
+      LEFT JOIN tribe_ids vt ON vt.id = v.tribe_id
+      LEFT JOIN players p ON p.id = v.player_id
+      LEFT JOIN tribe_ids pt ON pt.id = p.tribe_id
+      WHERE nvs.village_id = $villageId;
+    `,
+    bind: { $villageId: targetId },
+    schema: z.any(),
+  }) as { factionKey: string; x: number; y: number; tribe: string } | undefined;
+
+  if (npcVillageData) {
+    const mapSize = getMapSize(database);
+    materializeNpcTroops(
+      database,
+      targetId,
+      targetVillage.tileId,
+      npcVillageData.factionKey as FactionKey,
+      npcVillageData.tribe,
+      mapSize,
+      npcVillageData.x,
+      npcVillageData.y,
+      getGameSpeed(database),
+    );
+  }
 
   // 4. Gather combat data
   const attackerTroops = getAttackerTroopsWithSmithy(

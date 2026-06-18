@@ -20,6 +20,7 @@ import type {
   BatchVillageRow,
   FactionKey,
 } from '../npc-brain-types';
+import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 
 interface BuildResult {
   villagesBuilt: number;
@@ -39,10 +40,16 @@ const TRIBE_WALL_MAP: Record<string, BuildingId> = {
 };
 
 /**
- * Process build decisions for all NPC villages.
+ * Process build decisions for NPC villages.
  * Evaluates conditional overrides, picks from faction priority script,
  * applies multiple builds per tick if budget allows.
  * After warehouse/granary upgrades, recalculates max_loot_capacity.
+ *
+ * Uses a rotating priority queue: only villages whose next_build_check_ms <= now
+ * are processed, up to batchSize villages. After processing, each village's
+ * next_build_check_ms is updated based on what happened.
+ *
+ * @param batchSize - Max villages to process per call. Use 50 for live tick, Infinity for offline.
  */
 export const processBuildDecisions = (
   db: DbFacade,
@@ -51,8 +58,18 @@ export const processBuildDecisions = (
   elapsedMs: number,
   speed: number,
   maxBuildsPerVillage = 20,
+  batchSize = Number.POSITIVE_INFINITY,
 ): BuildResult => {
   const now = Date.now();
+
+  // Filter to villages due for a build check, sorted oldest-due-first
+  const dueVillages = (
+    batchSize === Number.POSITIVE_INFINITY
+      ? allVillages
+      : allVillages
+          .filter((v) => v.nextBuildCheckMs <= now)
+          .sort((a, b) => a.nextBuildCheckMs - b.nextBuildCheckMs)
+  ).slice(0, batchSize === Number.POSITIVE_INFINITY ? undefined : batchSize);
 
   // Fetch building key mapping
   const buildingIdRows = db.selectObjects({
@@ -127,9 +144,23 @@ export const processBuildDecisions = (
   }[] = [];
   const lootCapacityUpdates: { villageId: number; newMaxLoot: number }[] = [];
   const budgetUpdates: { villageId: number; remaining: number }[] = [];
+  const scheduleUpdates: { villageId: number; nextCheckMs: number }[] = [];
   let totalBuilt = 0;
 
-  for (const village of allVillages) {
+  for (const village of dueVillages) {
+    // ─── Alert state check: villages recently raided skip building ───
+    if (
+      village.lastRaidedMs > 0 &&
+      now - village.lastRaidedMs < NPC_BRAIN_CONSTANTS.ALERT_DURATION_MS
+    ) {
+      // In alert state — skip building, re-check in 5 minutes
+      scheduleUpdates.push({
+        villageId: village.villageId,
+        nextCheckMs: now + 5 * 60_000,
+      });
+      continue;
+    }
+
     const factionKey = village.factionKey as FactionKey;
     const factionPriorities = FACTION_BUILD_PRIORITIES[factionKey];
     if (!factionPriorities) {
@@ -151,7 +182,7 @@ export const processBuildDecisions = (
     // Conditional overrides
     const overrides: BuildPriorityEntry[] = [];
 
-    if (village.currentLoot >= 0.9) {
+    if (village.lootAtLastRaid >= 0.9) {
       overrides.push(
         { buildingId: 'WAREHOUSE', maxLevel: 20, priority: 'mandatory' },
         { buildingId: 'GRANARY', maxLevel: 20, priority: 'mandatory' },
@@ -291,6 +322,22 @@ export const processBuildDecisions = (
       villageId: village.villageId,
       remaining: remainingBudget,
     });
+
+    // Schedule next build check based on what happened
+    const buildsDone = buildsThisTick;
+    if (buildsDone > 0) {
+      // Build occurred — check again in 10 real minutes
+      scheduleUpdates.push({
+        villageId: village.villageId,
+        nextCheckMs: now + 10 * 60_000,
+      });
+    } else {
+      // No build possible — check again in 30 real minutes
+      scheduleUpdates.push({
+        villageId: village.villageId,
+        nextCheckMs: now + 30 * 60_000,
+      });
+    }
   }
 
   // ─── Batch UPDATE building_fields ───
@@ -520,6 +567,41 @@ export const processBuildDecisions = (
         SET building_budget = CASE
           ${caseClauses.join('\n')}
           ELSE building_budget
+        END
+        WHERE village_id IN (${villageIdPlaceholders});
+      `,
+      bind: { ...bind, ...villageIdBinds },
+    });
+  }
+
+  // ─── Batch UPDATE next_build_check_ms (rotating queue scheduling) ───
+  if (scheduleUpdates.length > 0) {
+    const caseClauses: string[] = [];
+    const bind: Record<string, number> = {};
+
+    scheduleUpdates.forEach((u, i) => {
+      const vk = `$sv${i}`;
+      const sk = `$ss${i}`;
+      caseClauses.push(`WHEN village_id = ${vk} THEN ${sk}`);
+      bind[vk] = u.villageId;
+      bind[sk] = u.nextCheckMs;
+    });
+
+    const villageIds = [...new Set(scheduleUpdates.map((u) => u.villageId))];
+    const villageIdPlaceholders = villageIds
+      .map((_, i) => `$svid${i}`)
+      .join(',');
+    const villageIdBinds: Record<string, number> = {};
+    villageIds.forEach((vid, i) => {
+      villageIdBinds[`$svid${i}`] = vid;
+    });
+
+    db.exec({
+      sql: `
+        UPDATE npc_village_state
+        SET next_build_check_ms = CASE
+          ${caseClauses.join('\n')}
+          ELSE next_build_check_ms
         END
         WHERE village_id IN (${villageIdPlaceholders});
       `,

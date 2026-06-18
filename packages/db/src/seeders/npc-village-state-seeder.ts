@@ -166,8 +166,8 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
     const granaryCapacity = storageCapacityForLevel(bl?.granary ?? 0);
     const maxLootCapacity = warehouseCapacity + granaryCapacity;
 
-    // current_loot_available = 60% of max
-    const currentLootAvailable = 0.6;
+    // loot_at_last_raid = 60% of max
+    const lootAtLastRaid = 0.6;
 
     // rest_threshold_ms = restThresholdHours * 3_600_000 / speed
     const restThresholdMs = Math.floor(
@@ -185,7 +185,7 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
       restThresholdMs, // rest_threshold_ms
       factionValues.restStockpileBonus, // rest_stockpile_bonus
       0, // last_troop_regen_ms
-      currentLootAvailable, // current_loot_available
+      lootAtLastRaid, // loot_at_last_raid
       maxLootCapacity, // max_loot_capacity
       0.08, // loot_recovery_rate
       0, // aggression_level
@@ -194,6 +194,7 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
       0, // last_aggression_decay_ms
       0, // last_raided_ms
       factionKey, // faction_key
+      0, // next_build_check_ms
     ]);
   }
 
@@ -215,7 +216,7 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
       'rest_threshold_ms',
       'rest_stockpile_bonus',
       'last_troop_regen_ms',
-      'current_loot_available',
+      'loot_at_last_raid',
       'max_loot_capacity',
       'loot_recovery_rate',
       'aggression_level',
@@ -224,6 +225,7 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
       'last_aggression_decay_ms',
       'last_raided_ms',
       'faction_key',
+      'next_build_check_ms',
     ],
     rows,
   );

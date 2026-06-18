@@ -3,7 +3,6 @@ import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { getGameSpeed, getMapSize } from './helpers';
 import type {
   BatchFieldLevelRow,
-  BatchTroopRow,
   BatchVillageRow,
   ReconciliationResult,
   SimulationResult,
@@ -12,14 +11,12 @@ import { buildOfflineSummary } from './offline-summary';
 import { processAggressionDecayBatch } from './subsystems/aggression-escalation';
 import { processBuildDecisions } from './subsystems/build-simulation';
 import { processGrowthBatch } from './subsystems/growth-simulation';
-import { processLootRecoveryBatch } from './subsystems/loot-recovery';
 import { processMemoryDecayBatch } from './subsystems/memory-decay';
 import { processDueRetaliations } from './subsystems/retaliation-execution';
-import { processTroopRegenBatch } from './subsystems/troop-regeneration';
 import { calculateWorldThreatLevel } from './world-threat-level';
 
-// Speed-aware cap: 12 game-hours of offline catch-up
-const MAX_OFFLINE_GAME_HOURS = 12;
+// Flat real-time cap: 3 real days of offline catch-up (regardless of game speed)
+const MAX_OFFLINE_REAL_MS = 72 * 3_600_000;
 
 /**
  * Single-pass NPC Brain reconciliation.
@@ -77,13 +74,14 @@ export const reconcileNpcBrain = (
         nvs.rest_state AS restState,
         nvs.rest_threshold_ms AS restThresholdMs,
         nvs.rest_stockpile_bonus AS restBonus,
-        nvs.current_loot_available AS currentLoot,
+        nvs.loot_at_last_raid AS lootAtLastRaid,
         nvs.max_loot_capacity AS maxLoot,
         nvs.aggression_level AS aggressionLevel,
         nvs.last_aggression_decay_ms AS lastDecayMs,
         nvs.last_growth_tick_ms AS lastGrowthTickMs,
         nvs.last_troop_regen_ms AS lastTroopRegenMs,
-        nvs.building_budget AS buildingBudget
+        nvs.building_budget AS buildingBudget,
+        nvs.next_build_check_ms AS nextBuildCheckMs
       FROM npc_village_state nvs
       JOIN villages v ON v.id = nvs.village_id
       JOIN tiles t ON t.id = v.tile_id
@@ -120,34 +118,6 @@ export const reconcileNpcBrain = (
     schema: z.any(),
   }) as unknown as BatchFieldLevelRow[];
 
-  // Pre-compute field level sums per village (for loot recovery)
-  const fieldLevelSums = new Map<number, number>();
-  for (const fl of allFieldLevels) {
-    fieldLevelSums.set(
-      fl.villageId,
-      (fieldLevelSums.get(fl.villageId) ?? 0) + fl.level,
-    );
-  }
-
-  // ─── Bulk fetch: all troop data ───
-  const allTroops = db.selectObjects({
-    sql: `
-      SELECT
-        v.id AS villageId,
-        u.unit AS unitId,
-        t.amount,
-        t.tile_id AS tileId
-      FROM troops t
-      JOIN unit_ids u ON u.id = t.unit_id
-      JOIN villages v ON v.tile_id = t.source_tile_id
-      WHERE v.id IN (${villageIdPlaceholders})
-        AND t.amount > 0
-        AND t.tile_id = t.source_tile_id;
-    `,
-    bind: villageIdBinds,
-    schema: z.any(),
-  }) as unknown as BatchTroopRow[];
-
   // ─── 1. Memory Decay (one DELETE) ───
   processMemoryDecayBatch(db, now, speed);
 
@@ -161,27 +131,9 @@ export const reconcileNpcBrain = (
     mapSize,
   );
 
-  // Recompute field level sums after growth (build + loot need updated values)
-  if (growth.fieldsLeveled > 0) {
-    const refreshedFields = db.selectObjects({
-      sql: `
-        SELECT village_id AS villageId, field_id AS fieldId, level
-        FROM building_fields
-        WHERE village_id IN (${villageIdPlaceholders});
-      `,
-      bind: villageIdBinds,
-      schema: z.any(),
-    }) as unknown as BatchFieldLevelRow[];
-    fieldLevelSums.clear();
-    for (const fl of refreshedFields) {
-      fieldLevelSums.set(
-        fl.villageId,
-        (fieldLevelSums.get(fl.villageId) ?? 0) + fl.level,
-      );
-    }
-  }
-
   // ─── 3. Build Decisions (supports multiple upgrades per village) ───
+  // Offline: process all villages. Live: process up to 50 due villages.
+  const buildBatchSize = maxBuilds >= 20 ? Number.POSITIVE_INFINITY : 50;
   processBuildDecisions(
     db,
     allVillages,
@@ -189,60 +141,24 @@ export const reconcileNpcBrain = (
     elapsedMs,
     speed,
     maxBuilds,
+    buildBatchSize,
   );
 
-  // ─── 4. Loot Recovery ───
-  processLootRecoveryBatch(db, allVillages, fieldLevelSums, elapsedMs, speed);
-
-  // ─── 5. Troop Regeneration ───
-  const regen = processTroopRegenBatch(
-    db,
-    allVillages,
-    allTroops,
-    elapsedMs,
-    speed,
-    mapSize,
-  );
-
-  // Re-query troops after regen (retaliation needs fresh counts)
-  let freshTroops = allTroops;
-  if (regen.totalTroopsAdded > 0) {
-    freshTroops = db.selectObjects({
-      sql: `
-        SELECT
-          v.id AS villageId,
-          u.unit AS unitId,
-          t.amount,
-          t.tile_id AS tileId
-        FROM troops t
-        JOIN unit_ids u ON u.id = t.unit_id
-        JOIN villages v ON v.tile_id = t.source_tile_id
-        WHERE v.id IN (${villageIdPlaceholders})
-          AND t.amount > 0
-          AND t.tile_id = t.source_tile_id;
-      `,
-      bind: villageIdBinds,
-      schema: z.any(),
-    }) as unknown as BatchTroopRow[];
-  }
-
-  // ─── 6. Aggression Decay ───
+  // ─── 4. Aggression Decay ───
   const decayResult = processAggressionDecayBatch(db, allVillages, now, speed);
 
-  // ─── 7. Process all due retaliations (unified queue + revenge intents) ───
+  // ─── 5. Process all due retaliations (unified queue + revenge intents) ───
   const resolvedRetaliations = processDueRetaliations(
     db,
     now,
     speed,
     worldThreatLevel,
-    freshTroops,
-    allVillages,
   );
 
   return {
     retaliationsResolved: resolvedRetaliations,
     villagesGrown: growth.fieldsLeveled,
-    troopsRegenerated: regen.totalTroopsAdded,
+    troopsRegenerated: 0,
     aggressionChanges: decayResult.changedVillages.map((v) => ({
       villageId: v.villageId,
       factionKey: v.factionKey,
@@ -265,11 +181,8 @@ export const simulateElapsedTime = async (
   onProgress?: (fraction: number) => void,
 ): Promise<SimulationResult> => {
   const speed = getGameSpeed(db);
-  // Cap at 12 game-hours: at x1 speed = 12 real hours, at x10 = 1.2 real hours
-  const cappedElapsedMs = Math.min(
-    elapsedMs,
-    (MAX_OFFLINE_GAME_HOURS * 3_600_000) / speed,
-  );
+  // Cap at 3 real days regardless of game speed
+  const cappedElapsedMs = Math.min(elapsedMs, MAX_OFFLINE_REAL_MS);
 
   const result = reconcileNpcBrain(db, cappedElapsedMs, speed, 20);
 

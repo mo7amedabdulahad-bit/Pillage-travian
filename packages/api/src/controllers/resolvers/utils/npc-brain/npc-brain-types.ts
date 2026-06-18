@@ -69,7 +69,7 @@ export interface NPCVillageState {
   readonly restThresholdMs: number;
   readonly restStockpileBonus: number;
   readonly lastTroopRegenMs: number;
-  readonly currentLootAvailable: number;
+  readonly lootAtLastRaid: number;
   readonly maxLootCapacity: number;
   readonly lootRecoveryRate: number;
   readonly aggressionLevel: number;
@@ -78,6 +78,7 @@ export interface NPCVillageState {
   readonly lastAggressionDecayMs: number;
   readonly lastRaidedMs: number;
   readonly factionKey: FactionKey;
+  readonly nextBuildCheckMs: number;
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -169,26 +170,20 @@ export interface BatchVillageRow {
   readonly restState: number;
   readonly restThresholdMs: number;
   readonly restBonus: number;
-  readonly currentLoot: number;
+  readonly lootAtLastRaid: number;
   readonly maxLoot: number;
   readonly aggressionLevel: number;
   readonly lastDecayMs: number;
   readonly lastGrowthTickMs: number;
   readonly lastTroopRegenMs: number;
   readonly buildingBudget: number;
+  readonly nextBuildCheckMs: number;
 }
 
 export interface BatchFieldLevelRow {
   villageId: number;
   fieldId: number;
   level: number;
-}
-
-export interface BatchTroopRow {
-  readonly villageId: number;
-  readonly unitId: string;
-  readonly amount: number;
-  readonly tileId: number;
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -266,6 +261,9 @@ export const NPC_BRAIN_CONSTANTS = {
 
   /** Minimum elapsed ms to trigger offline simulation */
   MIN_SIMULATION_ELAPSED_MS: 60_000,
+
+  /** Alert duration: villages recently raided skip building for this long */
+  ALERT_DURATION_MS: 2 * 3_600_000,
 
   /** Defence floor by village size — minimum troop count for accelerated regen */
   DEFENCE_FLOOR_BY_SIZE: {
