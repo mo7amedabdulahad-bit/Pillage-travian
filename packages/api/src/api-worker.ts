@@ -359,15 +359,6 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             }
             if (msg.type === 'BUILD_RESULT' && dbFacade) {
               try {
-                const r = msg.result;
-                // biome-ignore lint/suspicious/noConsole: Build worker diagnostic
-                console.log(
-                  '[NPC Build] Applied',
-                  r.buildUpdates?.length ?? 0,
-                  'builds,',
-                  r.budgetUpdates?.length ?? 0,
-                  'budgets',
-                );
                 applyFormulaBuildResult(dbFacade, msg.result);
               } catch (writeErr) {
                 // biome-ignore lint/suspicious/noConsole: Background worker error logging
