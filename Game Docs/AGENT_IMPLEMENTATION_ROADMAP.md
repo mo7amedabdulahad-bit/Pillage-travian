@@ -26,15 +26,15 @@
 ## PHASE 1 — Server Configuration Defaults & Map Size System
 
 ### Goal
-Remove the 200×200 map option, make 100×100 the default map, make ×10 the default speed, make Teutons the default tribe, and implement a proper NPC count scaling system tied to map size.
+Remove the 200×200 map option, make 100×100 the default map, make ×10 the default speed, make Teutons the default tribe, and implement a proper faction count scaling system tied to map size. The number of NPC villages per faction is NOT changed — it must continue to use the game's existing NPC village scaling logic.
 
 ### Pre-implementation checklist
 - [ ] Read `create-new-game-world-form.tsx` fully — find every hardcoded map size, speed, and tribe default
 - [ ] Read `tiles-seeder.ts` fully — understand how tiles are generated for different map sizes
 - [ ] Read `world-items-seeder.ts` fully — understand how NPC villages, oases, and world items are placed
-- [ ] Read `npc.ts` and any NPC seeder files — understand how many NPC villages are created and how
+- [ ] Read `npc.ts` and any NPC seeder files — understand how many NPC villages are created and how, and what controls the number of factions
 - [ ] Search the entire codebase for `200` as a map size value and catalog every occurrence before changing anything
-- [ ] Search for any existing map-size-to-NPC-count relationship and document it
+- [ ] Search for any existing map-size-to-faction-count or map-size-to-NPC-count relationship and document it
 
 ### Implementation tasks
 
@@ -52,21 +52,24 @@ Remove the 200×200 map option, make 100×100 the default map, make ×10 the def
 - Ensure all four sizes are selectable in the server creation form
 - Validate that tile generation, coordinate math, and map rendering work correctly for 25×25 and 50×50 (these are the new small sizes)
 
-#### 1.4 NPC count scaling by map size
-Implement a single `getNpcCountForMapSize(mapSize: number): number` utility function in `packages/api/src/utils/` (or extend the existing utils file if one exists there). Use the following scale:
+#### 1.4 Faction count scaling by map size
+
+> ⚠️ IMPORTANT DISTINCTION: This task controls the **number of factions** on the map, NOT the number of NPC villages per faction. The number of NPC villages each faction has is already handled by the game's existing NPC scaling logic — do NOT touch that logic. Only change how many factions are created.
+
+Implement a single `getFactionCountForMapSize(mapSize: number): number` utility function in `packages/api/src/utils/` (or extend the existing utils file if one exists there). Use the following scale:
 
 ```
-25×25  → 3 NPC villages per faction
-50×50  → 3 NPC villages per faction
-75×75  → 9 NPC villages per faction
-100×100 → 9 NPC villages per faction (existing default, do not break)
+25×25   → 3 factions total
+50×50   → 3 factions total
+75×75   → 9 factions total (existing default, do not break)
+100×100 → 9 factions total (existing default, do not break)
 ```
 
-- Replace any hardcoded NPC count in seeders with a call to this function
-- Do NOT change the faction count — only the village count per faction
+- Replace any hardcoded faction count in seeders with a call to this function
+- The number of NPC villages per faction must continue to use whatever scaling the game already applies based on map size — do NOT hardcode it here
 
 #### 1.5 Verify
-- Generate a test server for each map size and confirm tile count, NPC village count, and map rendering are correct
+- Generate a test server for each map size and confirm tile count, faction count, NPC village count (per the existing scaling), and map rendering are correct
 - Confirm no existing tests break
 
 ---
@@ -146,8 +149,8 @@ Add a new server type called "Blitz Mode" — a short, intense single-session ga
 Add `game_mode: 'standard' | 'blitz'` to the world/server settings. On creation:
 - Force map size to `25`
 - Force speed to `200`
-- Force NPC count to `3` per faction
-- Force faction count to `3` total
+- Force faction count to `3` total (use the `getFactionCountForMapSize` function from Phase 1 — a 25×25 map always has 3 factions)
+- The number of NPC villages per faction is NOT hardcoded — it must use the game's existing NPC village scaling logic for a 25×25 map, exactly as it does for any other 25×25 server
 - Present the three difficulty options: **Skirmish**, **Assault**, **Siege** (stored as the existing `difficulty` field from Phase 2)
 
 #### 3.2 Starting conditions
@@ -193,6 +196,7 @@ Create a full-screen modal/page component `BlitzResultScreen` in `apps/web/src/`
 
 #### 3.8 Verify
 - Create a Blitz server, verify starting conditions (Level 5 fields, 3 settlers)
+- Verify exactly 3 factions are present, each with the NPC village count that the game's existing scaling produces for a 25×25 map
 - Verify protection timer appears and NPCs do not attack during it
 - Verify NPCs attack after 30 minutes
 - Verify Victory screen triggers on Wonder Level 20
