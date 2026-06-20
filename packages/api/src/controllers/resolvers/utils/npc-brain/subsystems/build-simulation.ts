@@ -836,6 +836,19 @@ export const processFormulaBuild = (
       continue;
     }
 
+    // Alert state: skip building if recently raided
+    if (
+      village.lastRaidedMs > 0 &&
+      Date.now() - village.lastRaidedMs <
+        NPC_BRAIN_CONSTANTS.ALERT_DURATION_MS / speed
+    ) {
+      budgetUpdates.push({
+        villageId: village.villageId,
+        remaining: village.buildingBudget,
+      });
+      continue;
+    }
+
     const spendingRate = FACTION_SPENDING_RATE[factionKey] ?? 0.8;
     const villageBuildings = buildingIndex.get(village.villageId) ?? new Map();
 
