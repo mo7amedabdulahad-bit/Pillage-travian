@@ -867,9 +867,14 @@ export const computeFormulaBuild = (
     }
 
     const buildQueue = [...overrides, ...factionPriorities];
+    const maxBuildsPerVillage = 3;
+    let buildsThisVillage = 0;
 
     for (const entry of buildQueue) {
       if (remainingBudget <= 0) {
+        break;
+      }
+      if (buildsThisVillage >= maxBuildsPerVillage) {
         break;
       }
 
@@ -953,6 +958,7 @@ export const computeFormulaBuild = (
 
       remainingBudget -= totalCost;
       totalBuilt++;
+      buildsThisVillage++;
     }
 
     budgetUpdates.push({
@@ -1235,7 +1241,7 @@ export const applyFormulaBuildResult = (
     });
   }
 
-  // ─── Batch UPDATE building_budget ───
+  // ─── Batch UPDATE building_budget (persist accumulated budget for all villages) ───
   if (budgetUpdates.length > 0) {
     const caseClauses: string[] = [];
     const bind: Record<string, number | string> = {};

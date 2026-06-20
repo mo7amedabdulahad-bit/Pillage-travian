@@ -47,6 +47,8 @@ let database: OpfsSAHPoolDatabase | null = null;
 let dbFacade: DbFacade | null = null;
 let liveTickInterval: ReturnType<typeof setInterval> | null = null;
 let npcBuildWorker: Worker | null = null;
+let buildTickCounter = 0;
+const BUILD_TICK_INTERVAL = 5; // Send to build worker every 5 ticks (5 minutes)
 
 const runOfflineSimulation = async () => {
   if (!dbFacade) {
@@ -312,19 +314,23 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             processNPCTick(dbFacade, LIVE_TICK_INTERVAL_MS, speed);
             setLastSimulationTimestamp(dbFacade, Date.now());
 
-            // Send village data to background worker for building computation
+            // Send village data to background worker every 5 ticks (5 minutes)
             if (npcBuildWorker) {
-              const { villages, fieldLevels, buildingIdMap, buildingLevels } =
-                fetchBuildWorkerData(dbFacade);
-              npcBuildWorker.postMessage({
-                type: 'BUILD_BATCH',
-                villages,
-                fieldLevels,
-                buildingIdMap,
-                buildingLevels,
-                elapsedMs: LIVE_TICK_INTERVAL_MS,
-                speed,
-              });
+              buildTickCounter++;
+              if (buildTickCounter >= BUILD_TICK_INTERVAL) {
+                buildTickCounter = 0;
+                const { villages, fieldLevels, buildingIdMap, buildingLevels } =
+                  fetchBuildWorkerData(dbFacade);
+                npcBuildWorker.postMessage({
+                  type: 'BUILD_BATCH',
+                  villages,
+                  fieldLevels,
+                  buildingIdMap,
+                  buildingLevels,
+                  elapsedMs: LIVE_TICK_INTERVAL_MS * BUILD_TICK_INTERVAL,
+                  speed,
+                });
+              }
             }
 
             globalThis.postMessage({
