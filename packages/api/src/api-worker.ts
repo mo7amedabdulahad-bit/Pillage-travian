@@ -31,6 +31,7 @@ import type {
   FormulaFieldLevelData,
   FormulaVillageData,
 } from './controllers/resolvers/utils/npc-brain/subsystems/build-simulation';
+import { applyFormulaBuildResult } from './controllers/resolvers/utils/npc-brain/subsystems/build-simulation';
 import { OutdatedDatabaseSchemaError } from './errors';
 import { matchRoute } from './routes/route-matcher.ts';
 import {
@@ -98,11 +99,21 @@ const LIVE_TICK_INTERVAL_MS = 60_000;
 
 /**
  * Fetch village data needed by the background build worker.
- * Returns villages and resource field levels.
+ * Returns villages, resource field levels, building ID map, and building levels.
  */
 const fetchBuildWorkerData = (
   db: DbFacade,
-): { villages: FormulaVillageData[]; fieldLevels: FormulaFieldLevelData[] } => {
+): {
+  villages: FormulaVillageData[];
+  fieldLevels: FormulaFieldLevelData[];
+  buildingIdMap: Record<string, number>;
+  buildingLevels: {
+    villageId: number;
+    fieldId: number;
+    buildingKey: string;
+    level: number;
+  }[];
+} => {
   const villages = db.selectObjects({
     sql: `
       SELECT
@@ -126,7 +137,12 @@ const fetchBuildWorkerData = (
 
   const villageIds = villages.map((v) => v.villageId);
   if (villageIds.length === 0) {
-    return { villages: [], fieldLevels: [] };
+    return {
+      villages: [],
+      fieldLevels: [],
+      buildingIdMap: {},
+      buildingLevels: [],
+    };
   }
 
   const placeholders = villageIds.map((_, i) => `$v${i}`).join(',');
@@ -146,7 +162,39 @@ const fetchBuildWorkerData = (
     schema: z.any(),
   }) as unknown as FormulaFieldLevelData[];
 
-  return { villages, fieldLevels };
+  // Building ID map: name -> numeric id
+  const buildingIdRows = db.selectObjects({
+    sql: 'SELECT id, building FROM building_ids',
+    schema: z.any(),
+  }) as unknown as { id: number; building: string }[];
+  const buildingIdMap: Record<string, number> = {};
+  for (const row of buildingIdRows) {
+    buildingIdMap[row.building.toUpperCase()] = row.id;
+  }
+
+  // Building levels for all NPC villages (non-resource-field buildings)
+  const buildingLevels = db.selectObjects({
+    sql: `
+      SELECT
+        bf.village_id AS villageId,
+        bf.field_id AS fieldId,
+        bi.building AS buildingKey,
+        bf.level
+      FROM building_fields bf
+      JOIN building_ids bi ON bi.id = bf.building_id
+      JOIN villages v ON v.id = bf.village_id
+      WHERE v.player_id != 1
+        AND bf.field_id > 18;
+    `,
+    schema: z.any(),
+  }) as unknown as {
+    villageId: number;
+    fieldId: number;
+    buildingKey: string;
+    level: number;
+  }[];
+
+  return { villages, fieldLevels, buildingIdMap, buildingLevels };
 };
 
 globalThis.addEventListener('message', async (event: MessageEvent) => {
@@ -183,7 +231,7 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         dbFacade.exec({
           sql: `
           PRAGMA foreign_keys = ON;        -- keep referential integrity
-          PRAGMA locking_mode = NORMAL;    -- allow background worker to co-write
+          PRAGMA locking_mode = EXCLUSIVE; -- single-writer optimization
           PRAGMA journal_mode = OFF;       -- fastest; no rollback journal
           PRAGMA synchronous = OFF;        -- don't wait for OS to flush (fast, risky)
           PRAGMA temp_store = MEMORY;      -- temp tables + indices kept in RAM
@@ -224,23 +272,17 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
 
             // Send village data to background worker for building computation
             if (npcBuildWorker) {
-              const { villages, fieldLevels } = fetchBuildWorkerData(dbFacade);
-              // biome-ignore lint/suspicious/noConsole: Tick diagnostic
-              console.log(
-                '[NPC Tick] Sending',
-                villages.length,
-                'villages to build worker',
-              );
+              const { villages, fieldLevels, buildingIdMap, buildingLevels } =
+                fetchBuildWorkerData(dbFacade);
               npcBuildWorker.postMessage({
                 type: 'BUILD_BATCH',
                 villages,
                 fieldLevels,
+                buildingIdMap,
+                buildingLevels,
                 elapsedMs: LIVE_TICK_INTERVAL_MS,
                 speed,
               });
-            } else {
-              // biome-ignore lint/suspicious/noConsole: Tick diagnostic
-              console.warn('[NPC Tick] Build worker not available');
             }
 
             globalThis.postMessage({
@@ -263,17 +305,13 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
               // biome-ignore lint/suspicious/noConsole: Background worker error logging
               console.warn('[NPC Build Worker] Error:', msg.error);
             }
-            if (msg.type === 'BUILD_COMPLETE') {
-              // biome-ignore lint/suspicious/noConsole: Background worker diagnostic
-              console.log(
-                '[NPC Build Worker] Built:',
-                msg.villagesBuilt,
-                'buildings',
-              );
-            }
-            if (msg.type === 'WORKER_READY') {
-              // biome-ignore lint/suspicious/noConsole: Background worker diagnostic
-              console.log('[NPC Build Worker] Ready');
+            if (msg.type === 'BUILD_RESULT' && dbFacade) {
+              try {
+                applyFormulaBuildResult(dbFacade, msg.result);
+              } catch (writeErr) {
+                // biome-ignore lint/suspicious/noConsole: Background worker error logging
+                console.warn('[NPC Build Worker] Write failed:', writeErr);
+              }
             }
           });
 

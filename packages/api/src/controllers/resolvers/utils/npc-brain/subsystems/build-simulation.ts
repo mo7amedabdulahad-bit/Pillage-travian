@@ -742,62 +742,37 @@ const maxAffordableLevel = (currentLevel: number, budget: number): number => {
 };
 
 /**
- * Formula-based building computation.
+ * Pure formula-based building computation (no DB access).
  *
- * Computes building upgrades for all villages using a closed-form formula
- * instead of per-building iteration. Used by:
- * - Background worker (online ticks)
- * - Main worker (offline catch-up)
- *
- * This function is a pure computation — it returns the updates but does NOT
- * write to the database. The caller applies the writes.
+ * Takes all needed data as parameters. Can run in a background worker.
+ * Used by:
+ * - Background worker (online ticks) — receives data via postMessage
+ * - processFormulaBuild (offline catch-up) — called after DB fetch
  */
-export const processFormulaBuild = (
-  db: DbFacade,
+export const computeFormulaBuild = (
   villages: FormulaVillageData[],
   fieldLevels: FormulaFieldLevelData[],
-  elapsedMs: number,
-  speed: number,
-): FormulaBuildResult => {
-  // Fetch building key mapping
-  const buildingIdRows = db.selectObjects({
-    sql: 'SELECT id, building FROM building_ids',
-    schema: z.any(),
-  }) as unknown as { id: number; building: string }[];
-
-  const buildingKeyToId = new Map<string, number>();
-  for (const row of buildingIdRows) {
-    buildingKeyToId.set(row.building.toUpperCase(), row.id);
-  }
-
-  // Fetch all NPC building levels
-  const allBuildingLevels = db.selectObjects({
-    sql: `
-      SELECT
-        bf.village_id AS villageId,
-        bf.field_id AS fieldId,
-        bi.building AS buildingKey,
-        bf.level
-      FROM building_fields bf
-      JOIN building_ids bi ON bi.id = bf.building_id
-      JOIN villages v ON v.id = bf.village_id
-      WHERE v.player_id != 1
-        AND bf.field_id > 18;
-    `,
-    schema: z.any(),
-  }) as unknown as {
+  buildingIdMap: Record<string, number>,
+  buildingLevels: {
     villageId: number;
     fieldId: number;
     buildingKey: string;
     level: number;
-  }[];
+  }[],
+  elapsedMs: number,
+  speed: number,
+): FormulaBuildResult => {
+  const buildingKeyToId = new Map<string, number>();
+  for (const [key, id] of Object.entries(buildingIdMap)) {
+    buildingKeyToId.set(key, id);
+  }
 
   // Index: villageId -> buildingKey -> { level, fieldId }
   const buildingIndex = new Map<
     number,
     Map<string, { level: number; fieldId: number }>
   >();
-  for (const bl of allBuildingLevels) {
+  for (const bl of buildingLevels) {
     let villageMap = buildingIndex.get(bl.villageId);
     if (!villageMap) {
       villageMap = new Map();
@@ -992,6 +967,62 @@ export const processFormulaBuild = (
     budgetUpdates,
     villagesBuilt: totalBuilt,
   };
+};
+
+/**
+ * Formula-based building computation (with DB access).
+ *
+ * Fetches building data from DB, then delegates to computeFormulaBuild.
+ * Used by main worker for offline catch-up.
+ */
+export const processFormulaBuild = (
+  db: DbFacade,
+  villages: FormulaVillageData[],
+  fieldLevels: FormulaFieldLevelData[],
+  elapsedMs: number,
+  speed: number,
+): FormulaBuildResult => {
+  // Fetch building key mapping
+  const buildingIdRows = db.selectObjects({
+    sql: 'SELECT id, building FROM building_ids',
+    schema: z.any(),
+  }) as unknown as { id: number; building: string }[];
+
+  const buildingIdMap: Record<string, number> = {};
+  for (const row of buildingIdRows) {
+    buildingIdMap[row.building.toUpperCase()] = row.id;
+  }
+
+  // Fetch all NPC building levels
+  const allBuildingLevels = db.selectObjects({
+    sql: `
+      SELECT
+        bf.village_id AS villageId,
+        bf.field_id AS fieldId,
+        bi.building AS buildingKey,
+        bf.level
+      FROM building_fields bf
+      JOIN building_ids bi ON bi.id = bf.building_id
+      JOIN villages v ON v.id = bf.village_id
+      WHERE v.player_id != 1
+        AND bf.field_id > 18;
+    `,
+    schema: z.any(),
+  }) as unknown as {
+    villageId: number;
+    fieldId: number;
+    buildingKey: string;
+    level: number;
+  }[];
+
+  return computeFormulaBuild(
+    villages,
+    fieldLevels,
+    buildingIdMap,
+    allBuildingLevels,
+    elapsedMs,
+    speed,
+  );
 };
 
 /**
