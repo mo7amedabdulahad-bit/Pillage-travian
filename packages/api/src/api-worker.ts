@@ -197,6 +197,25 @@ const fetchBuildWorkerData = (
   return { villages, fieldLevels, buildingIdMap, buildingLevels };
 };
 
+// ─── Release OPFS handles when page closes ───
+// This prevents stale handles from blocking the next session.
+globalThis.addEventListener('beforeunload', () => {
+  if (dbFacade) {
+    dbFacade.close();
+    dbFacade = null;
+  }
+  if (database) {
+    database.close();
+    database = null;
+  }
+  if (opfsSahPool) {
+    try {
+      opfsSahPool.pauseVfs?.();
+    } catch (_e) {}
+    opfsSahPool = null;
+  }
+});
+
 globalThis.addEventListener('message', async (event: MessageEvent) => {
   const { data } = event;
   const { type } = data;
@@ -215,9 +234,32 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
           sqlite3 = await sqlite3InitModule();
         }
 
-        opfsSahPool = await sqlite3.installOpfsSAHPoolVfs({
-          directory: `/pillage-first-ask-questions-later/${serverSlug}`,
-        });
+        // Try to install OPFS SAHPool VFS with retry for stale handles
+        // Previous session's handle may still be held by the browser
+        let lastOpfsError: Error | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            opfsSahPool = await sqlite3.installOpfsSAHPoolVfs({
+              directory: `/pillage-first-ask-questions-later/${serverSlug}`,
+            });
+            lastOpfsError = null;
+            break;
+          } catch (e) {
+            lastOpfsError = e instanceof Error ? e : new Error(String(e));
+            // biome-ignore lint/suspicious/noConsole: OPFS retry diagnostic
+            console.warn(
+              `[API Worker] OPFS init attempt ${attempt + 1} failed, retrying...`,
+              lastOpfsError.message,
+            );
+            // Wait for stale handle to release
+            opfsSahPool = null;
+            await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          }
+        }
+
+        if (lastOpfsError || !opfsSahPool) {
+          throw new OutdatedDatabaseSchemaError();
+        }
 
         // Database doesn't exist, common when opening game worlds created before the engine rewrite or when opening a deleted game world
         if (opfsSahPool.getFileCount() === 0) {
