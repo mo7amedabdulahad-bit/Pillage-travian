@@ -48,6 +48,7 @@ let dbFacade: DbFacade | null = null;
 let liveTickInterval: ReturnType<typeof setInterval> | null = null;
 let npcBuildWorker: Worker | null = null;
 let buildTickCounter = 0;
+let buildPending = false;
 const BUILD_TICK_INTERVAL = 5; // Send to build worker every 5 ticks (5 minutes)
 
 const runOfflineSimulation = async () => {
@@ -315,10 +316,12 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             setLastSimulationTimestamp(dbFacade, Date.now());
 
             // Send village data to background worker every 5 ticks (5 minutes)
-            if (npcBuildWorker) {
+            // Only if the previous batch has been received and applied
+            if (npcBuildWorker && !buildPending) {
               buildTickCounter++;
               if (buildTickCounter >= BUILD_TICK_INTERVAL) {
                 buildTickCounter = 0;
+                buildPending = true;
                 const { villages, fieldLevels, buildingIdMap, buildingLevels } =
                   fetchBuildWorkerData(dbFacade);
                 npcBuildWorker.postMessage({
@@ -352,6 +355,7 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             if (msg.type === 'BUILD_ERROR') {
               // biome-ignore lint/suspicious/noConsole: Background worker error logging
               console.warn('[NPC Build Worker] Error:', msg.error);
+              buildPending = false;
             }
             if (msg.type === 'BUILD_RESULT' && dbFacade) {
               try {
@@ -369,12 +373,14 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
                 // biome-ignore lint/suspicious/noConsole: Background worker error logging
                 console.warn('[NPC Build Worker] Write failed:', writeErr);
               }
+              buildPending = false;
             }
           });
 
           npcBuildWorker.addEventListener('error', (e) => {
             console.error('[NPC Build Worker] Fatal error:', e.message);
             npcBuildWorker = null;
+            buildPending = false;
           });
 
           npcBuildWorker.postMessage({
