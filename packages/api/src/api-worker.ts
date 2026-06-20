@@ -356,40 +356,15 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             if (msg.type === 'BUILD_RESULT' && dbFacade) {
               try {
                 const r = msg.result;
+                // biome-ignore lint/suspicious/noConsole: Build worker diagnostic
+                console.log(
+                  '[NPC Build] Applied',
+                  r.buildUpdates?.length ?? 0,
+                  'builds,',
+                  r.budgetUpdates?.length ?? 0,
+                  'budgets',
+                );
                 applyFormulaBuildResult(dbFacade, msg.result);
-
-                // Diagnostic: check population effect values for villages that built
-                if (r.buildUpdates?.length > 0) {
-                  const villageIds = [
-                    ...new Set(
-                      r.buildUpdates.map(
-                        (u: { villageId: number }) => u.villageId,
-                      ),
-                    ),
-                  ].slice(0, 5); // check first 5
-                  for (const vid of villageIds) {
-                    const v = vid as number;
-                    const popEffect = dbFacade.selectValue({
-                      sql: `SELECT value FROM effects
-                            WHERE effect_id = (SELECT id FROM effect_ids WHERE effect = 'wheatProduction')
-                              AND type = 'base' AND scope = 'village' AND source = 'building'
-                              AND source_specifier = 0 AND village_id = $vid`,
-                      bind: { $vid: v },
-                      schema: z.any(),
-                    });
-                    const buildingLevels = dbFacade.selectObjects({
-                      sql: `SELECT bi.building, bf.level FROM building_fields bf
-                            JOIN building_ids bi ON bi.id = bf.building_id
-                            WHERE bf.village_id = $vid AND bf.level > 0 AND bf.field_id > 18`,
-                      bind: { $vid: v },
-                      schema: z.any(),
-                    }) as { building: string; level: number }[];
-                    // biome-ignore lint/suspicious/noConsole: NPC brain diagnostic
-                    console.log(
-                      `[NPC Build] Village ${vid}: effect=${popEffect}, buildings=${JSON.stringify(buildingLevels.map((b) => `${b.building}:${b.level}`))}`,
-                    );
-                  }
-                }
               } catch (writeErr) {
                 // biome-ignore lint/suspicious/noConsole: Background worker error logging
                 console.warn('[NPC Build Worker] Write failed:', writeErr);
