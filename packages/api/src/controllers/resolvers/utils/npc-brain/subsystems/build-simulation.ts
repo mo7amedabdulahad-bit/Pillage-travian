@@ -1150,6 +1150,10 @@ export const applyFormulaBuildResult = (
         const populationDifference = newData.population - prevData.population;
 
         if (populationDifference !== 0) {
+          // biome-ignore lint/suspicious/noConsole: NPC brain diagnostic
+          console.log(
+            `[NPC Build] Village ${u.villageId}: ${u.buildingKey} ${u.previousLevel}→${u.newLevel}, popDelta=${populationDifference}`,
+          );
           db.exec({
             sql: updatePopulationEffectQuery,
             bind: {
