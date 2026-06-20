@@ -51,7 +51,7 @@ const createServerFormSchema = z.strictObject({
       // fom completely breaks
       .overwrite((val) => Number.parseInt(val, 10)),
     mapSize: z
-      .enum(['100', '200'])
+      .enum(['25', '50', '75', '100'])
       // @ts-expect-error
       .overwrite((val) => Number.parseInt(val, 10)),
   }),
@@ -61,6 +61,8 @@ const createServerFormSchema = z.strictObject({
   }),
   gameplay: z.strictObject({
     areOfflineNpcAttacksEnabled: z.boolean(),
+    gameMode: z.enum(['standard', 'blitz']).optional(),
+    difficulty: z.enum(['skirmish', 'assault', 'siege']).optional(),
     startingFieldCombination: z
       .enum([
         '4446',
@@ -174,23 +176,30 @@ export const CreateNewGameWorldForm = () => {
       seed: '',
       name: '',
       configuration: {
-        speed: '1',
+        speed: '10',
         mapSize: '100',
       },
       playerConfiguration: {
         name: 'Player',
-        tribe: 'gauls',
+        tribe: 'teutons',
       },
       gameplay: {
         areOfflineNpcAttacksEnabled: true,
+        gameMode: 'standard',
+        difficulty: 'assault',
         startingFieldCombination: undefined,
       },
     },
   });
 
+  const gameMode = form.watch('gameplay.gameMode');
+
   const onSubmit = (values: z.infer<typeof createServerFormSchema>) => {
     const id = crypto.randomUUID();
     const slug = `s-${id.slice(0, 4)}`;
+
+    // Blitz mode forces specific settings
+    const isBlitz = values.gameplay.gameMode === 'blitz';
 
     const server = {
       id: window.crypto.randomUUID(),
@@ -198,6 +207,13 @@ export const CreateNewGameWorldForm = () => {
       version: env.VERSION,
       createdAt: Date.now(),
       ...values,
+      // Blitz mode overrides
+      configuration: {
+        speed: isBlitz ? ('200' as const) : values.configuration.speed,
+        mapSize: isBlitz ? ('25' as const) : values.configuration.mapSize,
+      },
+      gameMode: values.gameplay.gameMode ?? 'standard',
+      difficulty: values.gameplay.difficulty,
       startingFieldCombination: values.gameplay.startingFieldCombination,
     };
 
@@ -296,8 +312,10 @@ export const CreateNewGameWorldForm = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="25">25x25</SelectItem>
+                            <SelectItem value="50">50x50</SelectItem>
+                            <SelectItem value="75">75x75</SelectItem>
                             <SelectItem value="100">100x100</SelectItem>
-                            <SelectItem value="200">200x200</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -428,6 +446,81 @@ export const CreateNewGameWorldForm = () => {
                           </FormControl>
                         </div>
                       </div>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="gameplay.gameMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base">Game Mode</FormLabel>
+                      <Text>
+                        Standard mode is the classic experience. Blitz mode is a
+                        fast-paced 25x25 map at 200x speed with 30-minute
+                        protection.
+                      </Text>
+                      <Select
+                        disabled={isPending || isSuccess}
+                        onValueChange={field.onChange}
+                        value={field.value ?? 'standard'}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="standard">Standard</SelectItem>
+                          <SelectItem value="blitz">Blitz Mode</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {gameMode === 'blitz' && (
+                  <div className="rounded-md bg-muted p-3 text-sm">
+                    <Text className="font-medium">Blitz Mode Settings:</Text>
+                    <Text>- Map: 25x25</Text>
+                    <Text>- Speed: 200x</Text>
+                    <Text>- 30-minute protection period</Text>
+                    <Text>- Win condition: World Wonder Level 20</Text>
+                  </div>
+                )}
+                <FormField
+                  control={form.control}
+                  name="gameplay.difficulty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base">
+                        NPC Difficulty
+                      </FormLabel>
+                      <Text>
+                        Controls how aggressively NPC factions attack. Higher
+                        difficulty means more frequent and stronger attacks.
+                      </Text>
+                      <Select
+                        disabled={isPending || isSuccess}
+                        onValueChange={field.onChange}
+                        value={field.value ?? 'assault'}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="skirmish">
+                            Skirmish (Easy)
+                          </SelectItem>
+                          <SelectItem value="assault">
+                            Assault (Normal)
+                          </SelectItem>
+                          <SelectItem value="siege">Siege (Hard)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

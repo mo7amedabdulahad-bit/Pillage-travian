@@ -359,4 +359,39 @@ export const upgradeDb = (database: DbFacade): void => {
       sql: 'UPDATE npc_village_state SET needs_tick = 1 WHERE needs_tick = 0;',
     });
   } catch (_e) {}
+
+  // ─── Phase 2: Difficulty column on servers table ───
+  try {
+    database.exec({
+      sql: "ALTER TABLE servers ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'assault' CHECK (difficulty IN ('skirmish', 'assault', 'siege'));",
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  // ─── Phase 2: Proactive attack timestamp on npc_village_state ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN last_proactive_attack_ms INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  // ─── Phase 3: Game mode and blitz protection columns on servers table ───
+  try {
+    database.exec({
+      sql: "ALTER TABLE servers ADD COLUMN game_mode TEXT NOT NULL DEFAULT 'standard' CHECK (game_mode IN ('standard', 'blitz'));",
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
+
+  try {
+    database.exec({
+      sql: 'ALTER TABLE servers ADD COLUMN blitz_protection_ends_at INTEGER;',
+    });
+  } catch (_e) {
+    // Column might already exist
+  }
 };

@@ -95,7 +95,7 @@ export const migrateAndSeed = (
     buildingIdsSeeder(db);
 
     db.exec({ sql: createFactionIdsTable });
-    factionIdsSeeder(db);
+    factionIdsSeeder(db, server);
 
     db.exec({ sql: createTribeIdsTable });
     tribeIdsSeeder(db);

@@ -17,6 +17,7 @@ import {
 } from './subsystems/build-simulation';
 import { processGrowthBatch } from './subsystems/growth-simulation';
 import { processMemoryDecayBatch } from './subsystems/memory-decay';
+import { processProactiveAttacks } from './subsystems/proactive-attack';
 import { processDueRetaliations } from './subsystems/retaliation-execution';
 import { calculateWorldThreatLevel } from './world-threat-level';
 
@@ -26,7 +27,7 @@ const MAX_OFFLINE_REAL_MS = 72 * 3_600_000;
 /**
  * Single-pass NPC Brain reconciliation.
  *
- * Runs growth, memory decay, aggression decay, and retaliations.
+ * Runs growth, memory decay, aggression decay, retaliations, and proactive attacks.
  * Building is NOT handled here — it is handled by the background worker
  * (online) or by formula-based catch-up in simulateElapsedTime (offline).
  *
@@ -145,10 +146,18 @@ export const reconcileNpcBrain = (
     worldThreatLevel,
   );
 
+  // ─── 6. Process proactive attacks ───
+  const proactiveAttacks = processProactiveAttacks(
+    db,
+    now,
+    speed,
+    worldThreatLevel,
+  );
+
   return {
     retaliationsResolved: resolvedRetaliations,
     villagesGrown: growth.fieldsLeveled,
-    troopsRegenerated: 0,
+    troopsRegenerated: proactiveAttacks,
     aggressionChanges: decayResult.changedVillages.map((v) => ({
       villageId: v.villageId,
       factionKey: v.factionKey,

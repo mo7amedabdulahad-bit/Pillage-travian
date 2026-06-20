@@ -39,6 +39,7 @@ import {
   isFindNewVillageTroopMovementEvent,
   isHeroHealthRegenerationEvent,
   isHeroRevivalEvent,
+  isOasisLoyaltyRegenerationEvent,
   isOasisReleaseEvent,
   isReturnTroopMovementEvent,
   isScheduledBuildingEvent,
@@ -1068,6 +1069,16 @@ export const getEventDuration = (
     })!;
 
     return Math.ceil((6 * 60 * 60 * 1000) / speed);
+  }
+
+  if (isOasisLoyaltyRegenerationEvent(event)) {
+    const { speed } = database.selectObject({
+      sql: 'SELECT speed FROM servers LIMIT 1;',
+      schema: z.object({ speed: speedSchema }),
+    })!;
+
+    // OASIS_TICK_INTERVAL_MS = 5 * 60 * 1000 (5 minutes)
+    return Math.ceil((5 * 60 * 1000) / speed);
   }
 
   console.error('Missing duration calculation for event', event);

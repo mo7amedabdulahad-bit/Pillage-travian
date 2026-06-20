@@ -1,14 +1,38 @@
 import { factionSchema } from '@pillage-first/types/models/faction';
+import type { Server } from '@pillage-first/types/models/server';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { batchInsert } from '../utils/batch-insert';
 
-export const factionIdsSeeder = (database: DbFacade): void => {
-  const factionIds = factionSchema.options;
+/**
+ * Returns the number of NPC factions based on map size.
+ *
+ * Smaller maps get fewer factions to keep the game balanced:
+ * - 25x25 and 50x50: 3 NPC factions
+ * - 75x75 and 100x100: 9 NPC factions (existing default)
+ */
+const getFactionCountForMapSize = (mapSize: number): number => {
+  if (mapSize <= 50) {
+    return 3;
+  }
+  return 9;
+};
+
+export const factionIdsSeeder = (database: DbFacade, server: Server): void => {
+  const allFactions = factionSchema.options;
+  const npcFactionCount = getFactionCountForMapSize(
+    server.configuration.mapSize,
+  );
+
+  // Always include 'player', then add the appropriate number of NPC factions
+  const factionsToCreate = [
+    'player',
+    ...allFactions.filter((f) => f !== 'player').slice(0, npcFactionCount),
+  ];
 
   batchInsert(
     database,
     'faction_ids',
     ['faction'],
-    factionIds.map((faction) => [faction]),
+    factionsToCreate.map((faction) => [faction]),
   );
 };

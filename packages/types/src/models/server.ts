@@ -3,7 +3,7 @@ import { resourceFieldCompositionSchema } from './resource-field-composition';
 import { playableTribeSchema } from './tribe';
 
 export const mapSizeSchema = z
-  .union([z.literal(100), z.literal(200), z.literal(300)])
+  .union([z.literal(25), z.literal(50), z.literal(75), z.literal(100)])
   .meta({ id: 'ServerMapSize' });
 
 export const speedSchema = z
@@ -15,6 +15,18 @@ export const speedSchema = z
     z.literal(10),
   ])
   .meta({ id: 'ServerSpeed' });
+
+export const difficultySchema = z
+  .enum(['skirmish', 'assault', 'siege'])
+  .meta({ id: 'Difficulty' });
+
+export type Difficulty = z.infer<typeof difficultySchema>;
+
+export const gameModeSchema = z
+  .enum(['standard', 'blitz'])
+  .meta({ id: 'GameMode' });
+
+export type GameMode = z.infer<typeof gameModeSchema>;
 
 export const serverDbSchema = z
   .strictObject({
@@ -31,6 +43,8 @@ export const serverDbSchema = z
     starting_field_combination: resourceFieldCompositionSchema
       .nullable()
       .optional(),
+    difficulty: difficultySchema.optional(),
+    game_mode: gameModeSchema.optional(),
   })
   .transform((t) => {
     return {
@@ -49,6 +63,8 @@ export const serverDbSchema = z
         tribe: t.player_tribe,
       },
       startingFieldCombination: t.starting_field_combination ?? undefined,
+      difficulty: t.difficulty ?? 'assault',
+      gameMode: t.game_mode ?? 'standard',
     };
   })
   .meta({ id: 'ServerDb' });
@@ -70,6 +86,8 @@ export const serverSchema = z
       tribe: playableTribeSchema,
     }),
     startingFieldCombination: resourceFieldCompositionSchema.optional(),
+    difficulty: difficultySchema.optional(),
+    gameMode: gameModeSchema.optional(),
   })
   .meta({ id: 'Server' });
 

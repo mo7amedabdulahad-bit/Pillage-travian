@@ -12,17 +12,23 @@ export const serverSeeder = (database: DbFacade, server: Server): void => {
     configuration,
     playerConfiguration,
     startingFieldCombination,
+    difficulty,
+    gameMode,
   } = server;
   const { speed, mapSize } = configuration;
   const { name: playerName, tribe } = playerConfiguration;
+
+  // For Blitz mode, set protection to end 30 real-time minutes after creation
+  const blitzProtectionEndsAt =
+    gameMode === 'blitz' ? createdAt + 30 * 60 * 1000 : null;
 
   database.exec({
     sql: `
       INSERT INTO
         servers
-      (id, version, name, slug, created_at, seed, speed, map_size, player_name, player_tribe, starting_field_combination)
+      (id, version, name, slug, created_at, seed, speed, map_size, player_name, player_tribe, starting_field_combination, difficulty, game_mode, blitz_protection_ends_at)
       VALUES
-        ($id, $version, $name, $slug, $created_at, $seed, $speed, $map_size, $player_name, $player_tribe, $starting_field_combination);
+        ($id, $version, $name, $slug, $created_at, $seed, $speed, $map_size, $player_name, $player_tribe, $starting_field_combination, $difficulty, $game_mode, $blitz_protection_ends_at);
     `,
     bind: {
       $id: id,
@@ -36,6 +42,9 @@ export const serverSeeder = (database: DbFacade, server: Server): void => {
       $player_name: playerName,
       $player_tribe: tribe,
       $starting_field_combination: startingFieldCombination ?? null,
+      $difficulty: difficulty ?? 'assault',
+      $game_mode: gameMode ?? 'standard',
+      $blitz_protection_ends_at: blitzProtectionEndsAt,
     },
   });
 };
