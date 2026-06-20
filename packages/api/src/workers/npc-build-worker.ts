@@ -93,12 +93,31 @@ const processBuildBatch = (
   }
 
   try {
+    // biome-ignore lint/suspicious/noConsole: Build worker diagnostic
+    console.log(
+      '[Build Worker] Processing',
+      villages.length,
+      'villages, elapsedMs:',
+      elapsedMs,
+      'speed:',
+      speed,
+    );
+
     const result: FormulaBuildResult = processFormulaBuild(
       dbFacade,
       villages,
       fieldLevels,
       elapsedMs,
       speed,
+    );
+
+    // biome-ignore lint/suspicious/noConsole: Build worker diagnostic
+    console.log(
+      '[Build Worker] Computed',
+      result.buildUpdates.length,
+      'build updates,',
+      result.budgetUpdates.length,
+      'budget updates',
     );
 
     if (result.buildUpdates.length > 0 || result.budgetUpdates.length > 0) {

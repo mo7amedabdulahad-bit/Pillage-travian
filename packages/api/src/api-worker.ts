@@ -225,6 +225,12 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             // Send village data to background worker for building computation
             if (npcBuildWorker) {
               const { villages, fieldLevels } = fetchBuildWorkerData(dbFacade);
+              // biome-ignore lint/suspicious/noConsole: Tick diagnostic
+              console.log(
+                '[NPC Tick] Sending',
+                villages.length,
+                'villages to build worker',
+              );
               npcBuildWorker.postMessage({
                 type: 'BUILD_BATCH',
                 villages,
@@ -232,6 +238,9 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
                 elapsedMs: LIVE_TICK_INTERVAL_MS,
                 speed,
               });
+            } else {
+              // biome-ignore lint/suspicious/noConsole: Tick diagnostic
+              console.warn('[NPC Tick] Build worker not available');
             }
 
             globalThis.postMessage({
@@ -253,6 +262,18 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             if (msg.type === 'BUILD_ERROR') {
               // biome-ignore lint/suspicious/noConsole: Background worker error logging
               console.warn('[NPC Build Worker] Error:', msg.error);
+            }
+            if (msg.type === 'BUILD_COMPLETE') {
+              // biome-ignore lint/suspicious/noConsole: Background worker diagnostic
+              console.log(
+                '[NPC Build Worker] Built:',
+                msg.villagesBuilt,
+                'buildings',
+              );
+            }
+            if (msg.type === 'WORKER_READY') {
+              // biome-ignore lint/suspicious/noConsole: Background worker diagnostic
+              console.log('[NPC Build Worker] Ready');
             }
           });
 
