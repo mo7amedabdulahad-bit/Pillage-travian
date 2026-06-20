@@ -27,6 +27,10 @@ import {
   setLastSimulationTimestamp,
   simulateElapsedTime,
 } from './controllers/resolvers/utils/npc-brain/index.ts';
+import type {
+  FormulaFieldLevelData,
+  FormulaVillageData,
+} from './controllers/resolvers/utils/npc-brain/subsystems/build-simulation';
 import { OutdatedDatabaseSchemaError } from './errors';
 import { matchRoute } from './routes/route-matcher.ts';
 import {
@@ -41,6 +45,7 @@ let opfsSahPool: SAHPoolUtil | null = null;
 let database: OpfsSAHPoolDatabase | null = null;
 let dbFacade: DbFacade | null = null;
 let liveTickInterval: ReturnType<typeof setInterval> | null = null;
+let npcBuildWorker: Worker | null = null;
 
 const runOfflineSimulation = async () => {
   if (!dbFacade) {
@@ -91,6 +96,59 @@ const runOfflineSimulation = async () => {
 
 const LIVE_TICK_INTERVAL_MS = 60_000;
 
+/**
+ * Fetch village data needed by the background build worker.
+ * Returns villages and resource field levels.
+ */
+const fetchBuildWorkerData = (
+  db: DbFacade,
+): { villages: FormulaVillageData[]; fieldLevels: FormulaFieldLevelData[] } => {
+  const villages = db.selectObjects({
+    sql: `
+      SELECT
+        nvs.village_id AS villageId,
+        nvs.faction_key AS factionKey,
+        ti.tribe,
+        t.x,
+        t.y,
+        nvs.building_budget AS buildingBudget,
+        nvs.last_raided_ms AS lastRaidedMs,
+        nvs.loot_at_last_raid AS lootAtLastRaid,
+        nvs.max_loot_capacity AS maxLoot
+      FROM npc_village_state nvs
+      JOIN villages v ON v.id = nvs.village_id
+      JOIN tiles t ON t.id = v.tile_id
+      JOIN players p ON p.id = v.player_id
+      LEFT JOIN tribe_ids ti ON ti.id = p.tribe_id;
+    `,
+    schema: z.any(),
+  }) as unknown as FormulaVillageData[];
+
+  const villageIds = villages.map((v) => v.villageId);
+  if (villageIds.length === 0) {
+    return { villages: [], fieldLevels: [] };
+  }
+
+  const placeholders = villageIds.map((_, i) => `$v${i}`).join(',');
+  const binds: Record<string, number> = {};
+  villageIds.forEach((vid, i) => {
+    binds[`$v${i}`] = vid;
+  });
+
+  const fieldLevels = db.selectObjects({
+    sql: `
+      SELECT village_id AS villageId, field_id AS fieldId, level
+      FROM building_fields
+      WHERE village_id IN (${placeholders})
+        AND field_id <= 18;
+    `,
+    bind: binds,
+    schema: z.any(),
+  }) as unknown as FormulaFieldLevelData[];
+
+  return { villages, fieldLevels };
+};
+
 globalThis.addEventListener('message', async (event: MessageEvent) => {
   const { data } = event;
   const { type } = data;
@@ -125,7 +183,7 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         dbFacade.exec({
           sql: `
           PRAGMA foreign_keys = ON;        -- keep referential integrity
-          PRAGMA locking_mode = EXCLUSIVE; -- single-writer optimization
+          PRAGMA locking_mode = NORMAL;    -- allow background worker to co-write
           PRAGMA journal_mode = OFF;       -- fastest; no rollback journal
           PRAGMA synchronous = OFF;        -- don't wait for OS to flush (fast, risky)
           PRAGMA temp_store = MEMORY;      -- temp tables + indices kept in RAM
@@ -163,12 +221,54 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
             const speed = getGameSpeed(dbFacade);
             processNPCTick(dbFacade, LIVE_TICK_INTERVAL_MS, speed);
             setLastSimulationTimestamp(dbFacade, Date.now());
+
+            // Send village data to background worker for building computation
+            if (npcBuildWorker) {
+              const { villages, fieldLevels } = fetchBuildWorkerData(dbFacade);
+              npcBuildWorker.postMessage({
+                type: 'BUILD_BATCH',
+                villages,
+                fieldLevels,
+                elapsedMs: LIVE_TICK_INTERVAL_MS,
+                speed,
+              });
+            }
+
             globalThis.postMessage({
               eventKey: 'event:npc-live-tick',
               timestamp: Date.now(),
             });
           } catch (_tickError) {}
         }, LIVE_TICK_INTERVAL_MS);
+
+        // ─── Spawn background NPC build worker ───
+        try {
+          npcBuildWorker = new Worker(
+            new URL('./workers/npc-build-worker.ts', import.meta.url),
+            { type: 'module' },
+          );
+
+          npcBuildWorker.addEventListener('message', (e) => {
+            const msg = e.data;
+            if (msg.type === 'BUILD_ERROR') {
+              // biome-ignore lint/suspicious/noConsole: Background worker error logging
+              console.warn('[NPC Build Worker] Error:', msg.error);
+            }
+          });
+
+          npcBuildWorker.addEventListener('error', (e) => {
+            console.error('[NPC Build Worker] Fatal error:', e.message);
+            npcBuildWorker = null;
+          });
+
+          npcBuildWorker.postMessage({
+            type: 'WORKER_INIT',
+            serverSlug,
+          });
+        } catch (_workerError) {
+          // Background worker failed to spawn — building will be skipped
+          npcBuildWorker = null;
+        }
 
         const dataSource = createSchedulerDataSource(dbFacade);
 
@@ -228,6 +328,12 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
       if (liveTickInterval !== null) {
         clearInterval(liveTickInterval);
         liveTickInterval = null;
+      }
+
+      // Terminate background build worker
+      if (npcBuildWorker !== null) {
+        npcBuildWorker.postMessage({ type: 'WORKER_CLOSE' });
+        npcBuildWorker = null;
       }
 
       cancelScheduling();

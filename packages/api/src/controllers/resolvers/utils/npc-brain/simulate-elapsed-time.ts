@@ -9,7 +9,12 @@ import type {
 } from './npc-brain-types';
 import { buildOfflineSummary } from './offline-summary';
 import { processAggressionDecayBatch } from './subsystems/aggression-escalation';
-import { processBuildDecisions } from './subsystems/build-simulation';
+import {
+  applyFormulaBuildResult,
+  type FormulaFieldLevelData,
+  type FormulaVillageData,
+  processFormulaBuild,
+} from './subsystems/build-simulation';
 import { processGrowthBatch } from './subsystems/growth-simulation';
 import { processMemoryDecayBatch } from './subsystems/memory-decay';
 import { processDueRetaliations } from './subsystems/retaliation-execution';
@@ -21,22 +26,17 @@ const MAX_OFFLINE_REAL_MS = 72 * 3_600_000;
 /**
  * Single-pass NPC Brain reconciliation.
  *
- * Replaces the old chunk-loop architecture. Runs each subsystem ONCE with the
- * full elapsed time instead of N times with small chunks. Subsystems use
- * formula-driven math internally (accumulators, while-loops for multi-build)
- * so the result is identical but dramatically faster.
+ * Runs growth, memory decay, aggression decay, and retaliations.
+ * Building is NOT handled here — it is handled by the background worker
+ * (online) or by formula-based catch-up in simulateElapsedTime (offline).
  *
- * Performance: ~15 queries total regardless of elapsed time, vs old
- * ~15 queries × N chunks (50–720 chunks).
- *
- * @param maxBuilds - Max build actions per village per pass.
- *   Use 20 for offline reconciliation, 3 for live tick.
+ * @param maxBuilds - Unused, kept for API compatibility.
  */
 export const reconcileNpcBrain = (
   db: DbFacade,
   elapsedMs: number,
   speed: number,
-  maxBuilds = 20,
+  _maxBuilds = 20,
 ): ReconciliationResult => {
   const now = Date.now();
 
@@ -131,18 +131,8 @@ export const reconcileNpcBrain = (
     mapSize,
   );
 
-  // ─── 3. Build Decisions (supports multiple upgrades per village) ───
-  // Offline: process all villages. Live: process up to 50 due villages.
-  const buildBatchSize = maxBuilds >= 20 ? Number.POSITIVE_INFINITY : 50;
-  processBuildDecisions(
-    db,
-    allVillages,
-    allFieldLevels,
-    elapsedMs,
-    speed,
-    maxBuilds,
-    buildBatchSize,
-  );
+  // ─── 3. Building is handled by background worker (online) or formula (offline) ───
+  // Not called here.
 
   // ─── 4. Aggression Decay ───
   const decayResult = processAggressionDecayBatch(db, allVillages, now, speed);
@@ -170,7 +160,7 @@ export const reconcileNpcBrain = (
 };
 
 /**
- * Full offline simulation: reconcile + build summary.
+ * Full offline simulation: reconcile + formula-based building + build summary.
  *
  * Called ONCE at app open with total elapsed milliseconds since last save.
  * Fast-forwards ALL NPC state in a single pass.
@@ -184,7 +174,65 @@ export const simulateElapsedTime = async (
   // Cap at 3 real days regardless of game speed
   const cappedElapsedMs = Math.min(elapsedMs, MAX_OFFLINE_REAL_MS);
 
+  // Step 1: Growth, decay, retaliation (no building)
   const result = reconcileNpcBrain(db, cappedElapsedMs, speed, 20);
+
+  // Step 2: Formula-based building for offline catch-up
+  const villages = db.selectObjects({
+    sql: `
+      SELECT
+        nvs.village_id AS villageId,
+        nvs.faction_key AS factionKey,
+        ti.tribe,
+        t.x,
+        t.y,
+        nvs.building_budget AS buildingBudget,
+        nvs.last_raided_ms AS lastRaidedMs,
+        nvs.loot_at_last_raid AS lootAtLastRaid,
+        nvs.max_loot_capacity AS maxLoot
+      FROM npc_village_state nvs
+      JOIN villages v ON v.id = nvs.village_id
+      JOIN tiles t ON t.id = v.tile_id
+      JOIN players p ON p.id = v.player_id
+      LEFT JOIN tribe_ids ti ON ti.id = p.tribe_id;
+    `,
+    schema: z.any(),
+  }) as unknown as FormulaVillageData[];
+
+  if (villages.length > 0) {
+    const villageIds = villages.map((v) => v.villageId);
+    const placeholders = villageIds.map((_, i) => `$v${i}`).join(',');
+    const binds: Record<string, number> = {};
+    villageIds.forEach((vid, i) => {
+      binds[`$v${i}`] = vid;
+    });
+
+    const fieldLevels = db.selectObjects({
+      sql: `
+        SELECT village_id AS villageId, field_id AS fieldId, level
+        FROM building_fields
+        WHERE village_id IN (${placeholders})
+          AND field_id <= 18;
+      `,
+      bind: binds,
+      schema: z.any(),
+    }) as unknown as FormulaFieldLevelData[];
+
+    const buildResult = processFormulaBuild(
+      db,
+      villages,
+      fieldLevels,
+      cappedElapsedMs,
+      speed,
+    );
+
+    if (
+      buildResult.buildUpdates.length > 0 ||
+      buildResult.budgetUpdates.length > 0
+    ) {
+      applyFormulaBuildResult(db, buildResult);
+    }
+  }
 
   onProgress?.(1);
 
