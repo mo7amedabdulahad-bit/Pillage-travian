@@ -24,6 +24,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 48,
     restStockpileBonus: 0.1,
     preferredTroopTierWeights: [0.3, 0.3, 0.25, 0.15],
+    proactiveCooldownMultiplier: 0.6,
   },
   npc2: {
     key: 'npc2',
@@ -40,6 +41,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 24,
     restStockpileBonus: 0.25,
     preferredTroopTierWeights: [0.5, 0.25, 0.15, 0.1],
+    proactiveCooldownMultiplier: 2.5,
   },
   npc3: {
     key: 'npc3',
@@ -56,6 +58,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 48,
     restStockpileBonus: 0.15,
     preferredTroopTierWeights: [0.2, 0.3, 0.3, 0.2],
+    proactiveCooldownMultiplier: 1.0,
   },
   npc4: {
     key: 'npc4',
@@ -72,6 +75,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 48,
     restStockpileBonus: 0.1,
     preferredTroopTierWeights: [0.4, 0.3, 0.2, 0.1],
+    proactiveCooldownMultiplier: 0.8,
   },
   npc5: {
     key: 'npc5',
@@ -88,6 +92,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 48,
     restStockpileBonus: 0.2,
     preferredTroopTierWeights: [0.2, 0.2, 0.3, 0.3],
+    proactiveCooldownMultiplier: 0.9,
   },
   npc6: {
     key: 'npc6',
@@ -104,6 +109,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 48,
     restStockpileBonus: 0.05,
     preferredTroopTierWeights: [0.25, 0.25, 0.25, 0.25],
+    proactiveCooldownMultiplier: 0.65,
   },
   npc7: {
     key: 'npc7',
@@ -120,6 +126,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 24,
     restStockpileBonus: 0.3,
     preferredTroopTierWeights: [0.6, 0.2, 0.1, 0.1],
+    proactiveCooldownMultiplier: 3.0,
   },
   npc8: {
     key: 'npc8',
@@ -136,6 +143,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 48,
     restStockpileBonus: 0.15,
     preferredTroopTierWeights: [0.3, 0.3, 0.25, 0.15],
+    proactiveCooldownMultiplier: 1.8,
   },
   npc9: {
     key: 'npc9',
@@ -152,6 +160,7 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     restThresholdHours: 48,
     restStockpileBonus: 0.05,
     preferredTroopTierWeights: [0.3, 0.25, 0.25, 0.2],
+    proactiveCooldownMultiplier: 0.55,
   },
 };
 

@@ -22,6 +22,12 @@ export interface FactionProfile {
   readonly restThresholdHours: number;
   readonly restStockpileBonus: number;
   readonly preferredTroopTierWeights: readonly [number, number, number, number];
+  /**
+   * Multiplier applied to the base difficulty cooldown for this faction's proactive attacks.
+   * < 1.0 = more aggressive (attacks more often)
+   * > 1.0 = more passive (attacks less often)
+   */
+  readonly proactiveCooldownMultiplier: number;
 }
 
 // ───────────────────────────────────────────────────────────────

@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
+import { reputationLevels } from '@pillage-first/game-assets/reputation';
 import type { UnitId } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createEvents } from '../../../../utils/create-event.ts';
+import { FACTION_PROFILES } from '../faction-profiles';
 import {
   adjustForSpeed,
   getMapSize,
-  getPlayerVillageCoords,
   mapDistance,
   scaleTroops,
 } from '../helpers';
@@ -16,31 +17,62 @@ import { getNpcTroopMultiplier } from '../world-threat-level';
 import { materializeNpcTroops } from './troop-regeneration';
 
 /**
- * Proactive NPC Attack Subsystem
+ * Proactive NPC Attack Subsystem — Reputation-Gated Escalating Wave System
  *
- * NPCs proactively attack the player on a scheduled basis.
- * This is separate from retaliation — NPCs attack even if not provoked.
+ * NPCs proactively attack the player on a scheduled basis, but:
+ * 1. Allied factions (high reputation) are skipped entirely
+ * 2. Each faction has its own cooldown, not per-village
+ * 3. Wave stage escalates over time (1 village, then 2, then 3...)
+ * 4. Global budget limits total in-flight attacks
  */
 
 export type Difficulty = 'skirmish' | 'assault' | 'siege';
 export type GameMode = 'standard' | 'blitz';
 
 /**
- * Difficulty settings for proactive attacks.
- * Each defines the base interval (in-game minutes) and chance to actually send troops.
+ * Base interval by difficulty (in real ms, NOT divided by speed)
  */
-const DIFFICULTY_SETTINGS: Record<
-  Difficulty,
-  { intervalMinutes: number; attackChance: number }
-> = {
-  skirmish: { intervalMinutes: 60, attackChance: 0.1 },
-  assault: { intervalMinutes: 45, attackChance: 0.25 },
-  siege: { intervalMinutes: 20, attackChance: 0.65 },
+const BASE_INTERVAL_MS: Record<Difficulty, number> = {
+  skirmish: 60 * 60 * 1000,
+  assault: 45 * 60 * 1000,
+  siege: 20 * 60 * 1000,
 };
 
 /**
+ * Max wave cap (max villages per wave) by map size
+ */
+const MAX_WAVE_CAP: Record<number, number> = {
+  25: 2,
+  50: 3,
+  75: 4,
+  100: 5,
+};
+
+/**
+ * Global attack budget by difficulty (standard mode)
+ */
+const BASE_BUDGET: Record<Difficulty, number> = {
+  skirmish: 3,
+  assault: 6,
+  siege: 12,
+};
+
+/**
+ * Global attack budget by difficulty (blitz mode)
+ */
+const BLITZ_BUDGET: Record<Difficulty, number> = {
+  skirmish: 2,
+  assault: 4,
+  siege: 8,
+};
+
+/**
+ * Ally threshold: factions at or above this reputation level are skipped.
+ */
+const ALLY_THRESHOLD = reputationLevels.get('friendly') ?? 45_000;
+
+/**
  * Get the server's difficulty setting.
- * Defaults to 'assault' if not set.
  */
 export const getDifficulty = (db: DbFacade): Difficulty => {
   try {
@@ -59,7 +91,6 @@ export const getDifficulty = (db: DbFacade): Difficulty => {
 
 /**
  * Get the server's game mode.
- * Defaults to 'standard' if not set.
  */
 export const getGameMode = (db: DbFacade): GameMode => {
   try {
@@ -78,7 +109,6 @@ export const getGameMode = (db: DbFacade): GameMode => {
 
 /**
  * Check if Blitz protection is still active.
- * Returns true if the server is in Blitz mode and protection hasn't ended.
  */
 export const isBlitzProtectionActive = (db: DbFacade): boolean => {
   try {
@@ -102,39 +132,15 @@ export const isBlitzProtectionActive = (db: DbFacade): boolean => {
 };
 
 /**
- * Calculate the proactive attack interval in real milliseconds for a given difficulty.
- * The interval is divided by server speed to account for game speed.
- */
-export const getProactiveAttackIntervalMs = (
-  difficulty: Difficulty,
-  speed: number,
-): number => {
-  const settings = DIFFICULTY_SETTINGS[difficulty];
-  return adjustForSpeed(settings.intervalMinutes * 60_000, speed);
-};
-
-/**
- * Get the attack chance for a difficulty level.
- */
-export const getAttackChance = (difficulty: Difficulty): number => {
-  return DIFFICULTY_SETTINGS[difficulty].attackChance;
-};
-
-/**
- * Check if the server is still in the grace period (no proactive attacks).
- * Standard servers: 5 in-game hours
- * Blitz servers: No grace period after protection ends
- * Returns true if grace period is still active.
+ * Check if the server is still in the grace period.
  */
 export const isInGracePeriod = (db: DbFacade, speed: number): boolean => {
   const gameMode = getGameMode(db);
 
-  // Blitz mode: check protection period instead of grace period
   if (gameMode === 'blitz') {
     return isBlitzProtectionActive(db);
   }
 
-  // Standard mode: 5 in-game hours grace period
   try {
     const result = db.selectObject({
       sql: 'SELECT created_at FROM servers LIMIT 1;',
@@ -146,7 +152,7 @@ export const isInGracePeriod = (db: DbFacade, speed: number): boolean => {
 
     const now = Date.now();
     const serverAge = now - result.created_at;
-    const gracePeriodMs = adjustForSpeed(5 * 3_600_000, speed); // 5 in-game hours
+    const gracePeriodMs = adjustForSpeed(5 * 3_600_000, speed);
 
     return serverAge < gracePeriodMs;
   } catch (_e) {
@@ -155,16 +161,55 @@ export const isInGracePeriod = (db: DbFacade, speed: number): boolean => {
 };
 
 /**
+ * Get server creation timestamp.
+ */
+const getServerCreatedAt = (db: DbFacade): number => {
+  try {
+    const result = db.selectValue({
+      sql: 'SELECT created_at FROM servers LIMIT 1;',
+      schema: z.number(),
+    });
+    return result ?? 0;
+  } catch (_e) {
+    return 0;
+  }
+};
+
+/**
+ * Get all player village IDs and coordinates, sorted by distance from a point.
+ */
+const getPlayerVillages = (
+  db: DbFacade,
+): { villageId: number; tileId: number; x: number; y: number }[] => {
+  return db.selectObjects({
+    sql: `
+      SELECT
+        v.id AS villageId,
+        v.tile_id AS tileId,
+        t.x,
+        t.y
+      FROM villages v
+      JOIN tiles t ON t.id = v.tile_id
+      WHERE v.player_id = $playerId;
+    `,
+    bind: { $playerId: PLAYER_ID },
+    schema: z.strictObject({
+      villageId: z.number(),
+      tileId: z.number(),
+      x: z.number(),
+      y: z.number(),
+    }),
+  });
+};
+
+/**
  * Process proactive attacks for all NPC villages.
  *
- * This is called during the NPC brain tick. It:
- * 1. Checks if we're still in the grace period
- * 2. For each NPC village, checks if enough time has passed since last proactive attack
- * 3. Rolls the dice to determine if an attack is sent
- * 4. Selects the player's nearest village as target
- * 5. Creates a troop movement attack event
- *
- * Performance: Uses batch queries and minimal DB writes.
+ * Uses a reputation-gated, faction-turn, escalating wave system:
+ * Layer 1 — Reputation Gate: Skip allied factions
+ * Layer 2 — Faction Cooldown: Check faction-level cooldown
+ * Layer 3 — Wave Stage: How many villages attack this wave
+ * Layer 4 — Global Budget: Limit total in-flight attacks
  */
 export const processProactiveAttacks = (
   db: DbFacade,
@@ -172,48 +217,73 @@ export const processProactiveAttacks = (
   speed: number,
   worldThreatLevel: number,
 ): number => {
-  const difficulty = getDifficulty(db);
-
-  // Check grace period (handles both standard and blitz modes)
+  // Layer 0: Grace period check
   if (isInGracePeriod(db, speed)) {
     return 0;
   }
 
-  const settings = DIFFICULTY_SETTINGS[difficulty];
-  const intervalMs = getProactiveAttackIntervalMs(difficulty, speed);
-  const attackChance = settings.attackChance;
-  const npcTroopMultiplier = getNpcTroopMultiplier(worldThreatLevel);
+  const difficulty = getDifficulty(db);
+  const gameMode = getGameMode(db);
   const mapSize = getMapSize(db);
+  const serverCreatedAt = getServerCreatedAt(db);
+  const npcTroopMultiplier = getNpcTroopMultiplier(worldThreatLevel);
 
-  // Get player's village coordinates once
-  const playerCoords = getPlayerVillageCoords(db);
-  if (!playerCoords) {
-    return 0;
-  }
-
-  // Get player's village ID
-  const playerVillageId = db.selectValue({
+  // Layer 1: Reputation Gate — Fetch faction reputations
+  const factionReputations = db.selectObjects({
     sql: `
-      SELECT v.id FROM villages v
-      WHERE v.player_id = $playerId
-      ORDER BY v.id ASC LIMIT 1;
+      SELECT
+        fi.faction AS factionKey,
+        fr.reputation AS reputationScore
+      FROM faction_ids fi
+      JOIN faction_reputation fr ON fr.target_faction_id = fi.id
+      JOIN players p ON p.faction_id = fr.source_faction_id
+      WHERE p.id = 1
+        AND fi.faction != 'player';
     `,
-    bind: { $playerId: PLAYER_ID },
-    schema: z.number(),
-  });
-  if (!playerVillageId) {
-    return 0;
+    schema: z.any(),
+  }) as { factionKey: string; reputationScore: number }[];
+
+  const reputationMap = new Map<string, number>();
+  for (const row of factionReputations) {
+    reputationMap.set(row.factionKey, row.reputationScore);
   }
 
-  // Batch fetch: all NPC villages with their state and coordinates
+  // Load faction state
+  const factionStates = db.selectObjects({
+    sql: 'SELECT * FROM npc_faction_state;',
+    schema: z.any(),
+  }) as {
+    faction_key: string;
+    last_faction_attack_ms: number;
+    current_wave_stage: number;
+    wave_locked_until_ms: number;
+  }[];
+
+  const factionStateMap = new Map<
+    string,
+    {
+      lastFactionAttackMs: number;
+      currentWaveStage: number;
+      waveLockedUntilMs: number;
+    }
+  >();
+  for (const fs of factionStates) {
+    factionStateMap.set(fs.faction_key, {
+      lastFactionAttackMs: fs.last_faction_attack_ms,
+      currentWaveStage: fs.current_wave_stage,
+      waveLockedUntilMs: fs.wave_locked_until_ms,
+    });
+  }
+
+  // Load all NPC villages grouped by faction
   const npcVillages = db.selectObjects({
     sql: `
       SELECT
         nvs.village_id AS villageId,
         nvs.faction_key AS factionKey,
         nvs.last_proactive_attack_ms AS lastProactiveAttackMs,
+        nvs.proactive_attack_offset_ms AS offsetMs,
         v.tile_id AS tileId,
-        v.name AS villageName,
         t.x,
         t.y,
         COALESCE(vt.tribe, pt.tribe) AS tribe
@@ -229,8 +299,8 @@ export const processProactiveAttacks = (
     villageId: number;
     factionKey: string;
     lastProactiveAttackMs: number;
+    offsetMs: number;
     tileId: number;
-    villageName: string;
     x: number;
     y: number;
     tribe: string;
@@ -240,130 +310,314 @@ export const processProactiveAttacks = (
     return 0;
   }
 
-  let attacksLaunched = 0;
-  const updates: { villageId: number; timestamp: number }[] = [];
-
+  // Group villages by faction
+  const villagesByFaction = new Map<string, typeof npcVillages>();
   for (const village of npcVillages) {
-    // Check if enough time has passed since last proactive attack
-    const lastAttack = village.lastProactiveAttackMs || 0;
-    if (currentTimeMs - lastAttack < intervalMs) {
+    const existing = villagesByFaction.get(village.factionKey) ?? [];
+    existing.push(village);
+    villagesByFaction.set(village.factionKey, existing);
+  }
+
+  // Get player villages
+  const playerVillages = getPlayerVillages(db);
+  if (playerVillages.length === 0) {
+    return 0;
+  }
+
+  // Layer 4: Global budget check
+  const budgetMap = gameMode === 'blitz' ? BLITZ_BUDGET : BASE_BUDGET;
+  const mapScaleFactor = mapSize <= 50 ? 0.5 : 1.0;
+  const budget = Math.max(
+    1,
+    Math.floor(budgetMap[difficulty] * mapScaleFactor),
+  );
+
+  // Count in-flight NPC attacks
+  const inFlightResult = db.selectValue({
+    sql: `
+      SELECT COUNT(*) AS inFlight
+      FROM events
+      WHERE type = 'troopMovementAttack'
+        AND starts_at + duration > $now;
+    `,
+    bind: { $now: currentTimeMs },
+    schema: z.number(),
+  });
+  const inFlight = inFlightResult ?? 0;
+
+  if (inFlight >= budget) {
+    return 0;
+  }
+
+  // Process each faction
+  let attacksLaunched = 0;
+  const factionStateUpdates: {
+    factionKey: string;
+    lastFactionAttackMs: number;
+    currentWaveStage: number;
+    waveLockedUntilMs: number;
+  }[] = [];
+  const villageTimestampUpdates: { villageId: number; timestamp: number }[] =
+    [];
+
+  const waveCap = MAX_WAVE_CAP[mapSize] ?? 5;
+
+  for (const [factionKey, factionVillages] of villagesByFaction) {
+    // Layer 1: Reputation gate — skip allied factions
+    const reputation = reputationMap.get(factionKey) ?? 0;
+    if (reputation >= ALLY_THRESHOLD) {
       continue;
     }
 
-    // Roll the dice
-    if (Math.random() > attackChance) {
-      // Update timestamp even if we don't attack (to avoid checking every tick)
-      updates.push({ villageId: village.villageId, timestamp: currentTimeMs });
+    // Layer 2: Faction cooldown check
+    const profile = FACTION_PROFILES[factionKey as FactionKey];
+    if (!profile) {
       continue;
     }
 
-    // Materialize troops for this village
-    materializeNpcTroops(
-      db,
-      village.villageId,
-      village.tileId,
-      village.factionKey as FactionKey,
-      village.tribe,
-      mapSize,
-      village.x,
-      village.y,
+    const factionIntervalMs = adjustForSpeed(
+      BASE_INTERVAL_MS[difficulty] * profile.proactiveCooldownMultiplier,
       speed,
     );
 
-    // Get home troops
-    const homeTroops = db.selectObjects({
-      sql: `
-        SELECT u.unit AS unitId, t.amount
-        FROM troops t
-        JOIN unit_ids u ON u.id = t.unit_id
-        WHERE t.tile_id = $tileId
-          AND t.source_tile_id = $tileId
-          AND t.amount > 0;
-      `,
-      bind: { $tileId: village.tileId },
-      schema: z.any(),
-    }) as { unitId: string; amount: number }[];
+    const factionState = factionStateMap.get(factionKey) ?? {
+      lastFactionAttackMs: 0,
+      currentWaveStage: 0,
+      waveLockedUntilMs: 0,
+    };
 
-    const totalUnits = homeTroops.reduce((sum, t) => sum + t.amount, 0);
-
-    // Skip if below minimum threshold
-    if (totalUnits < NPC_BRAIN_CONSTANTS.MIN_TROOPS_FOR_RETALIATION) {
-      updates.push({ villageId: village.villageId, timestamp: currentTimeMs });
-      continue;
-    }
-
-    // Cap at 70% of available troops
-    const troopMap: Record<string, number> = {};
-    for (const troop of homeTroops) {
-      troopMap[troop.unitId] = troop.amount;
-    }
-    const attackTroops = scaleTroops(troopMap, 0.7);
-
-    if (Object.keys(attackTroops).length === 0) {
-      updates.push({ villageId: village.villageId, timestamp: currentTimeMs });
-      continue;
-    }
-
-    // Apply world threat multiplier
-    const scaledTroops: {
-      unitId: UnitId;
-      amount: number;
-      tileId: number;
-      source: number;
-    }[] = [];
-    for (const [unitId, amount] of Object.entries(attackTroops)) {
-      const scaledAmount = Math.max(1, Math.floor(amount * npcTroopMultiplier));
-      scaledTroops.push({
-        unitId: unitId as UnitId,
-        amount: scaledAmount,
-        tileId: village.tileId,
-        source: village.tileId,
-      });
-    }
-
-    if (scaledTroops.length === 0) {
-      updates.push({ villageId: village.villageId, timestamp: currentTimeMs });
-      continue;
-    }
-
-    // Calculate travel time
-    const distance = mapDistance({ x: village.x, y: village.y }, playerCoords);
-    const slowestSpeed = 3; // Assume slowest unit speed
-    const travelTimeMs = Math.ceil(
-      (distance / (slowestSpeed * speed)) * 3_600_000,
+    // Cold-start: use serverCreatedAt as baseline
+    const effectiveLastAttackMs = Math.max(
+      factionState.lastFactionAttackMs,
+      serverCreatedAt,
     );
-    const executeAtMs = currentTimeMs + travelTimeMs;
 
-    // Create the attack event
-    try {
-      createEvents<'troopMovementAttack'>(db, {
-        type: 'troopMovementAttack',
-        villageId: village.villageId,
-        targetId: playerVillageId,
-        troops: scaledTroops as any,
-        startsAt: Math.floor(executeAtMs),
-      });
-      attacksLaunched++;
-    } catch (_e) {
-      // Event creation failed — skip
+    if (currentTimeMs - effectiveLastAttackMs < factionIntervalMs) {
+      continue;
     }
 
-    updates.push({ villageId: village.villageId, timestamp: currentTimeMs });
+    // Layer 3: Wave stage — how many villages attack
+    let currentWaveStage = factionState.currentWaveStage;
+    let waveLockedUntilMs = factionState.waveLockedUntilMs;
+
+    // Advance wave stage if lock has expired
+    if (currentTimeMs >= waveLockedUntilMs) {
+      currentWaveStage = Math.min(currentWaveStage + 1, waveCap - 1);
+      // Lock wave stage for 2 full cooldown cycles (or 3 real minutes on Blitz)
+      if (gameMode === 'blitz') {
+        waveLockedUntilMs = currentTimeMs + 3 * 60 * 1000;
+      } else {
+        waveLockedUntilMs = currentTimeMs + factionIntervalMs * 2;
+      }
+    }
+
+    const villagesThisWave = Math.min(currentWaveStage + 1, waveCap);
+
+    // Sort villages by distance to nearest player village and pick closest
+    const sortedVillages = [...factionVillages].sort((a, b) => {
+      const distA = Math.min(
+        ...playerVillages.map((pv) =>
+          mapDistance({ x: a.x, y: a.y }, { x: pv.x, y: pv.y }),
+        ),
+      );
+      const distB = Math.min(
+        ...playerVillages.map((pv) =>
+          mapDistance({ x: b.x, y: b.y }, { x: pv.x, y: pv.y }),
+        ),
+      );
+      return distA - distB;
+    });
+
+    const attackingVillages = sortedVillages.slice(0, villagesThisWave);
+
+    // Send attacks from selected villages
+    for (const village of attackingVillages) {
+      // Check budget again
+      if (attacksLaunched + inFlight >= budget) {
+        break;
+      }
+
+      // Materialize troops
+      materializeNpcTroops(
+        db,
+        village.villageId,
+        village.tileId,
+        village.factionKey as FactionKey,
+        village.tribe,
+        mapSize,
+        village.x,
+        village.y,
+        speed,
+      );
+
+      // Get home troops
+      const homeTroops = db.selectObjects({
+        sql: `
+          SELECT u.unit AS unitId, t.amount
+          FROM troops t
+          JOIN unit_ids u ON u.id = t.unit_id
+          WHERE t.tile_id = $tileId
+            AND t.source_tile_id = $tileId
+            AND t.amount > 0;
+        `,
+        bind: { $tileId: village.tileId },
+        schema: z.any(),
+      }) as { unitId: string; amount: number }[];
+
+      const totalUnits = homeTroops.reduce((sum, t) => sum + t.amount, 0);
+
+      if (totalUnits < NPC_BRAIN_CONSTANTS.MIN_TROOPS_FOR_RETALIATION) {
+        continue;
+      }
+
+      // Cap at 70% of available troops
+      const troopMap: Record<string, number> = {};
+      for (const troop of homeTroops) {
+        troopMap[troop.unitId] = troop.amount;
+      }
+      const attackTroops = scaleTroops(troopMap, 0.7);
+
+      if (Object.keys(attackTroops).length === 0) {
+        continue;
+      }
+
+      // Apply world threat multiplier
+      const scaledTroops: {
+        unitId: UnitId;
+        amount: number;
+        tileId: number;
+        source: number;
+      }[] = [];
+      for (const [unitId, amount] of Object.entries(attackTroops)) {
+        const scaledAmount = Math.max(
+          1,
+          Math.floor(amount * npcTroopMultiplier),
+        );
+        scaledTroops.push({
+          unitId: unitId as UnitId,
+          amount: scaledAmount,
+          tileId: village.tileId,
+          source: village.tileId,
+        });
+      }
+
+      if (scaledTroops.length === 0) {
+        continue;
+      }
+
+      // Find nearest player village
+      let nearestPlayerVillage = playerVillages[0];
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      for (const pv of playerVillages) {
+        const dist = mapDistance(
+          { x: village.x, y: village.y },
+          { x: pv.x, y: pv.y },
+        );
+        if (dist < nearestDistance) {
+          nearestDistance = dist;
+          nearestPlayerVillage = pv;
+        }
+      }
+
+      // Calculate travel time using slowest unit speed
+      const slowestSpeed = 3; // Fallback
+      const travelTimeMs = Math.ceil(
+        (nearestDistance / (slowestSpeed * speed)) * 3_600_000,
+      );
+      const executeAtMs = currentTimeMs + travelTimeMs;
+
+      // Create the attack event
+      try {
+        createEvents<'troopMovementAttack'>(db, {
+          type: 'troopMovementAttack',
+          villageId: village.villageId,
+          targetId: nearestPlayerVillage.villageId,
+          troops: scaledTroops as any,
+          startsAt: Math.floor(executeAtMs),
+        });
+        attacksLaunched++;
+      } catch (_e) {
+        // Event creation failed
+      }
+
+      villageTimestampUpdates.push({
+        villageId: village.villageId,
+        timestamp: currentTimeMs,
+      });
+    }
+
+    // Record faction state update
+    factionStateUpdates.push({
+      factionKey,
+      lastFactionAttackMs: currentTimeMs,
+      currentWaveStage,
+      waveLockedUntilMs,
+    });
   }
 
-  // Batch update last proactive attack timestamps
-  if (updates.length > 0) {
+  // Batch update faction state
+  if (factionStateUpdates.length > 0) {
     const caseClauses: string[] = [];
     const bind: Record<string, number> = {};
-    for (let i = 0; i < updates.length; i++) {
-      const u = updates[i];
+    for (let i = 0; i < factionStateUpdates.length; i++) {
+      const u = factionStateUpdates[i];
+      caseClauses.push(`WHEN faction_key = $fk${i} THEN $la${i}`);
+      bind[`$fk${i}`] = u.factionKey as any;
+      bind[`$la${i}`] = u.lastFactionAttackMs;
+    }
+
+    const waveCaseClauses: string[] = [];
+    const waveBind: Record<string, number> = {};
+    for (let i = 0; i < factionStateUpdates.length; i++) {
+      const u = factionStateUpdates[i];
+      waveCaseClauses.push(`WHEN faction_key = $wfk${i} THEN $ws${i}`);
+      waveBind[`$wfk${i}`] = u.factionKey as any;
+      waveBind[`$ws${i}`] = u.currentWaveStage;
+    }
+
+    const lockCaseClauses: string[] = [];
+    const lockBind: Record<string, number> = {};
+    for (let i = 0; i < factionStateUpdates.length; i++) {
+      const u = factionStateUpdates[i];
+      lockCaseClauses.push(`WHEN faction_key = $lfk${i} THEN $wl${i}`);
+      lockBind[`$lfk${i}`] = u.factionKey as any;
+      lockBind[`$wl${i}`] = u.waveLockedUntilMs;
+    }
+
+    const placeholders = factionStateUpdates.map((_, i) => `$pk${i}`).join(',');
+    const placeholderBinds: Record<string, string> = {};
+    factionStateUpdates.forEach((u, i) => {
+      placeholderBinds[`$pk${i}`] = u.factionKey;
+    });
+
+    db.exec({
+      sql: `
+        UPDATE npc_faction_state
+        SET
+          last_faction_attack_ms = CASE ${caseClauses.join('\n')} ELSE last_faction_attack_ms END,
+          current_wave_stage = CASE ${waveCaseClauses.join('\n')} ELSE current_wave_stage END,
+          wave_locked_until_ms = CASE ${lockCaseClauses.join('\n')} ELSE wave_locked_until_ms END
+        WHERE faction_key IN (${placeholders});
+      `,
+      bind: { ...bind, ...waveBind, ...lockBind, ...placeholderBinds },
+    });
+  }
+
+  // Batch update village timestamps
+  if (villageTimestampUpdates.length > 0) {
+    const caseClauses: string[] = [];
+    const bind: Record<string, number> = {};
+    for (let i = 0; i < villageTimestampUpdates.length; i++) {
+      const u = villageTimestampUpdates[i];
       caseClauses.push(`WHEN village_id = $v${i} THEN $t${i}`);
       bind[`$v${i}`] = u.villageId;
       bind[`$t${i}`] = u.timestamp;
     }
-    const placeholders = updates.map((_, i) => `$p${i}`).join(',');
+    const placeholders = villageTimestampUpdates
+      .map((_, i) => `$p${i}`)
+      .join(',');
     const placeholderBinds: Record<string, number> = {};
-    updates.forEach((u, i) => {
+    villageTimestampUpdates.forEach((u, i) => {
       placeholderBinds[`$p${i}`] = u.villageId;
     });
 

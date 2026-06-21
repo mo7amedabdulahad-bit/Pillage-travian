@@ -394,4 +394,25 @@ export const upgradeDb = (database: DbFacade): void => {
   } catch (_e) {
     // Column might already exist
   }
+
+  // ─── Phase 2 Fix: npc_faction_state table ───
+  try {
+    database.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS npc_faction_state (
+          faction_key TEXT PRIMARY KEY NOT NULL,
+          last_faction_attack_ms INTEGER NOT NULL DEFAULT 0,
+          current_wave_stage INTEGER NOT NULL DEFAULT 0,
+          wave_locked_until_ms INTEGER NOT NULL DEFAULT 0
+        ) STRICT;
+      `,
+    });
+  } catch (_e) {}
+
+  // ─── Phase 2 Fix: staggered cold-start offset on npc_village_state ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN proactive_attack_offset_ms INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
 };

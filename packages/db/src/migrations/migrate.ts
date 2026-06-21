@@ -62,6 +62,7 @@ import { heroAdventuresSeeder } from '../seeders/hero-adventures-seeder';
 import { heroAppearanceSeeder } from '../seeders/hero-appearance-seeder';
 import { heroSeeder } from '../seeders/hero-seeder';
 import { mapFiltersSeeder } from '../seeders/map-filters-seeder';
+import { npcFactionStateSeeder } from '../seeders/npc-faction-state-seeder';
 import { npcStartingBuildingsSeeder } from '../seeders/npc-starting-buildings-seeder';
 import { npcVillageStateSeeder } from '../seeders/npc-village-state-seeder';
 import { oasisSeeder } from '../seeders/oasis-seeder';
@@ -208,6 +209,28 @@ export const migrateAndSeed = (
     // NPC village state (must run after npcStartingBuildingsSeeder — reads building levels for max_loot)
     db.exec({ sql: createNpcVillageStateTable });
     npcVillageStateSeeder(db);
+
+    // Add proactive_attack_offset_ms column if it doesn't exist
+    try {
+      db.exec({
+        sql: 'ALTER TABLE npc_village_state ADD COLUMN proactive_attack_offset_ms INTEGER NOT NULL DEFAULT 0;',
+      });
+    } catch (_e) {
+      // Column might already exist
+    }
+
+    // NPC faction state table and staggered offsets (must run after npcVillageStateSeeder)
+    db.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS npc_faction_state (
+          faction_key TEXT PRIMARY KEY NOT NULL,
+          last_faction_attack_ms INTEGER NOT NULL DEFAULT 0,
+          current_wave_stage INTEGER NOT NULL DEFAULT 0,
+          wave_locked_until_ms INTEGER NOT NULL DEFAULT 0
+        ) STRICT;
+      `,
+    });
+    npcFactionStateSeeder(db);
 
     // Troops (must run after npcVillageStateSeeder — uses max_loot_capacity)
     db.exec({ sql: createTroopsTable });
