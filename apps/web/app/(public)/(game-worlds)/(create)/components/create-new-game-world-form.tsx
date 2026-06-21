@@ -46,7 +46,7 @@ const createServerFormSchema = z.strictObject({
   name: z.string().min(1, { error: 'Server name is required' }),
   configuration: z.strictObject({
     speed: z
-      .enum(['1', '2', '3', '5', '10'])
+      .enum(['1', '2', '3', '5', '10', '200'])
       // @ts-expect-error: I don't know how to solve this one, speed is expected to be number, but if I use z.literal to use exact numbers
       // fom completely breaks
       .overwrite((val) => Number.parseInt(val, 10)),
@@ -194,6 +194,18 @@ export const CreateNewGameWorldForm = () => {
 
   const gameMode = form.watch('gameplay.gameMode');
 
+  // Auto-set speed and map size when Blitz mode is selected
+  useEffect(() => {
+    if (gameMode === 'blitz') {
+      form.setValue('configuration.speed', '200');
+      form.setValue('configuration.mapSize', '25');
+    } else {
+      // Reset to defaults when switching back to standard
+      form.setValue('configuration.speed', '10');
+      form.setValue('configuration.mapSize', '100');
+    }
+  }, [gameMode, form]);
+
   const onSubmit = (values: z.infer<typeof createServerFormSchema>) => {
     const id = crypto.randomUUID();
     const slug = `s-${id.slice(0, 4)}`;
@@ -302,7 +314,9 @@ export const CreateNewGameWorldForm = () => {
                       <FormItem>
                         <FormLabel>Size</FormLabel>
                         <Select
-                          disabled={isPending || isSuccess}
+                          disabled={
+                            isPending || isSuccess || gameMode === 'blitz'
+                          }
                           onValueChange={field.onChange}
                           value={field.value}
                         >
@@ -330,7 +344,9 @@ export const CreateNewGameWorldForm = () => {
                       <FormItem>
                         <FormLabel>Speed</FormLabel>
                         <Select
-                          disabled={isPending || isSuccess}
+                          disabled={
+                            isPending || isSuccess || gameMode === 'blitz'
+                          }
                           onValueChange={field.onChange}
                           value={field.value}
                         >
@@ -345,6 +361,7 @@ export const CreateNewGameWorldForm = () => {
                             <SelectItem value="3">3x</SelectItem>
                             <SelectItem value="5">5x</SelectItem>
                             <SelectItem value="10">10x</SelectItem>
+                            <SelectItem value="200">200x (Blitz)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

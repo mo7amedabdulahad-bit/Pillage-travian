@@ -13,6 +13,7 @@ export const speedSchema = z
     z.literal(3),
     z.literal(5),
     z.literal(10),
+    z.literal(200),
   ])
   .meta({ id: 'ServerSpeed' });
 
