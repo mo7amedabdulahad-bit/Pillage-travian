@@ -631,6 +631,19 @@ export const icons: Record<IconType, (props: IconBaseProps) => JSX.Element> = {
       className={clsx('text-foreground', props.className)}
     />
   ),
+  warElephant: (props) => (
+    <GiElephant
+      {...props}
+      className={clsx('text-stone-600 dark:text-stone-400', props.className)}
+    />
+  ),
+  ballista: (props) => icons.missingIcon(props),
+  natarianEmperor: (props) => (
+    <TbLaurelWreath
+      {...props}
+      className={clsx('text-yellow-600 dark:text-yellow-400', props.className)}
+    />
+  ),
 
   // Nature
   rat: (props) => (

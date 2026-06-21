@@ -127,6 +127,9 @@ export const natarUnitIdSchema = z.enum([
   'NATARIAN_CATAPULT',
   'NATARIAN_CHIEF',
   'NATARIAN_SETTLER',
+  'WAR_ELEPHANT',
+  'BALLISTA',
+  'NATARIAN_EMPEROR',
 ]);
 
 export type NatarUnitId = z.infer<typeof natarUnitIdSchema>;
@@ -185,8 +188,10 @@ type UnitTier =
   | 'scout'
   | 'tier-4'
   | 'tier-5'
+  | 'tier-6'
   | 'siege-ram'
   | 'siege-catapult'
+  | 'siege-ballista'
   | 'administration'
   | 'hero';
 
@@ -242,6 +247,7 @@ type BaseUnit = {
   tier: UnitTier;
   recruitmentRequirements: UnitRecruitmentRequirement[];
   researchRequirements: UnitResearchRequirement[];
+  playable?: boolean;
 };
 
 type Tier1Unit = BaseUnit & {

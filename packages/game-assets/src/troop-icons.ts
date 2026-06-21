@@ -35,6 +35,9 @@ export type SpriteUnitId =
   | 8
   | 9
   | 10
+  | 11
+  | 12
+  | 13
   | 901
   | 902
   | 903
@@ -133,6 +136,9 @@ const NATAR_UNIT_MAP: Record<NatarUnitId, SpriteUnitId> = {
   NATARIAN_CATAPULT: 8,
   NATARIAN_CHIEF: 9,
   NATARIAN_SETTLER: 10,
+  WAR_ELEPHANT: 11,
+  BALLISTA: 12,
+  NATARIAN_EMPEROR: 13,
 };
 
 const NATURE_UNIT_MAP: Record<NatureUnitId, SpriteUnitId> = {
