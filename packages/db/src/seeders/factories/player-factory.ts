@@ -109,7 +109,21 @@ export const generateNpcPlayers = (
     Math.round((playerDensity * totalTiles + 1) / 100) * 100;
 
   // Subtract 1 player to account for player
-  const npcCount = totalPlayerCount - 1;
+  let npcCount = totalPlayerCount - 1;
+
+  // Cap NPC count for small maps to prevent memory issues
+  // 25x25: max 20 NPCs, 50x50: max 50 NPCs, 75x75: max 200 NPCs
+  const maxNpcByMapSize: Record<number, number> = {
+    25: 20,
+    50: 50,
+    75: 200,
+    100: 500,
+  };
+  const maxNpc = maxNpcByMapSize[mapSize] ?? 500;
+  npcCount = Math.min(npcCount, maxNpc);
+
+  // Ensure at least 1 NPC per faction
+  npcCount = Math.max(npcCount, npcFactionIds.length);
 
   return Array.from({ length: npcCount }, (_, index) => {
     const factionId = seededRandomArrayElement(prng, npcFactionIds);
