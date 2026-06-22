@@ -75,15 +75,12 @@ export const heroHealthRegenerationResolver: Resolver<
   GameEvent<'heroHealthRegeneration'>
 > = (database, args) => {
   const { resolvesAt } = args;
+  const now = Date.now();
 
-  database.exec({
-    sql: 'UPDATE heroes SET health = MIN(health + 1, 100) WHERE player_id = $player_id AND health > 0;',
-    bind: { $player_id: PLAYER_ID },
-  });
-
-  const { healthRegeneration, speed } = database.selectObject({
+  const { health, healthRegeneration, speed } = database.selectObject({
     sql: `
       SELECT
+        heroes.health AS health,
         heroes.health_regeneration AS healthRegeneration,
         servers.speed AS speed
       FROM heroes
@@ -94,19 +91,46 @@ export const heroHealthRegenerationResolver: Resolver<
       $player_id: PLAYER_ID,
     },
     schema: z.object({
+      health: z.number(),
       healthRegeneration: z.number(),
       speed: z.number(),
     }),
   })!;
 
-  const duration = calculateHealthRegenerationEventDuration(
+  const regenInterval = calculateHealthRegenerationEventDuration(
     healthRegeneration,
     speed,
   );
 
+  if (health >= 100 || regenInterval <= 0) {
+    // Hero already at full health — no regen needed. Reschedule from real-now
+    // so the next event lands in the future instead of spiraling through
+    // no-op ticks accumulated while offline.
+    createEvents<'heroHealthRegeneration'>(database, {
+      type: 'heroHealthRegeneration',
+      startsAt: now,
+      duration: regenInterval,
+    });
+    return;
+  }
+
+  // Bulk catch-up: apply all regen intervals missed since this event was due
+  // in one shot, instead of one tick per resolver invocation.
+  const intervalsElapsed = Math.max(
+    1,
+    Math.floor((now - resolvesAt) / regenInterval) + 1,
+  );
+  const newHealth = Math.min(100, health + intervalsElapsed);
+
+  database.exec({
+    sql: 'UPDATE heroes SET health = $health WHERE player_id = $player_id AND health > 0;',
+    bind: { $player_id: PLAYER_ID, $health: newHealth },
+  });
+
+  // Reschedule from real-now so the next event is in the future, not the past.
   createEvents<'heroHealthRegeneration'>(database, {
     type: 'heroHealthRegeneration',
-    startsAt: resolvesAt,
-    duration,
+    startsAt: now,
+    duration: regenInterval,
   });
 };

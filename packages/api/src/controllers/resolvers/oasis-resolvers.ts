@@ -40,8 +40,11 @@ const oasisTroopCombinations: Record<string, [NatureUnitId, number, number][]> =
 
 export const oasisTickResolver: Resolver<
   GameEvent<'oasisLoyaltyRegeneration'>
-> = (database, args) => {
-  const { resolvesAt } = args;
+> = (database, _args) => {
+  // Advance state to real-now (not the stale scheduled resolvesAt) so the
+  // next reschedule lands in the future instead of the past. This collapses
+  // the recurring-event spiral on world open after long offline periods.
+  const now = Date.now();
 
   const serverSpeed = database.selectValue({
     sql: 'SELECT speed FROM servers LIMIT 1;',
@@ -62,7 +65,7 @@ export const oasisTickResolver: Resolver<
         FROM oasis
         WHERE loyalty < 100
       `,
-      bind: { $now: resolvesAt },
+      bind: { $now: now },
       schema: z.strictObject({
         tileId: z.number(),
         loyalty: z.number(),
@@ -71,7 +74,7 @@ export const oasisTickResolver: Resolver<
     });
 
     for (const oasis of oasesNeedingRegen) {
-      const elapsed = resolvesAt - oasis.loyaltyUpdatedAt;
+      const elapsed = now - oasis.loyaltyUpdatedAt;
       const loyaltyToAdd = Math.floor(elapsed / regenInterval);
 
       if (loyaltyToAdd > 0) {
@@ -85,7 +88,7 @@ export const oasisTickResolver: Resolver<
           `,
           bind: {
             $loyalty: newLoyalty,
-            $now: resolvesAt,
+            $now: now,
             $tileId: oasis.tileId,
           },
         });
@@ -122,7 +125,6 @@ export const oasisTickResolver: Resolver<
       })!;
 
       if (animalCount === 0) {
-        const now = resolvesAt;
         const baseRespawnMs = ANIMAL_RESPAWN_BASE_MS / serverSpeed;
 
         if (oasis.animalSpawnedAt === null) {
@@ -214,7 +216,7 @@ export const oasisTickResolver: Resolver<
 
   createEvents<'oasisLoyaltyRegeneration'>(database, {
     type: 'oasisLoyaltyRegeneration',
-    startsAt: resolvesAt,
+    startsAt: now,
     duration: OASIS_TICK_INTERVAL_MS / serverSpeed,
   });
 };

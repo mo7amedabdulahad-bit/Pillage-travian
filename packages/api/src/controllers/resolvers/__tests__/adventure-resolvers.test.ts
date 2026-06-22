@@ -20,7 +20,7 @@ describe(adventurePointIncreaseResolver, () => {
 
     const mockEvent = createAdventurePointIncreaseEventMock({
       id: 1,
-      startsAt: 1000,
+      startsAt: Date.now() - 501,
       duration: 500,
       villageId: 1,
     });

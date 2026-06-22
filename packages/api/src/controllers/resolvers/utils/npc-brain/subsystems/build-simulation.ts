@@ -737,7 +737,7 @@ const maxAffordableLevel = (currentLevel: number, budget: number): number => {
     return currentLevel;
   }
   const discriminant =
-    1 + 4 * (currentLevel * (currentLevel + 1) + (budget / 50) * 2);
+    1 + 4 * (currentLevel * (currentLevel + 1) + budget / 50);
   return Math.floor((-1 + Math.sqrt(discriminant)) / 2);
 };
 
@@ -1048,7 +1048,7 @@ export const applyFormulaBuildResult = (
   const { buildUpdates, lootCapacityUpdates, budgetUpdates } = result;
   const now = Date.now();
 
-  // ─── Batch UPDATE building_fields ───
+  // ─── Batch INSERT new buildings + UPDATE existing buildings ───
   if (buildUpdates.length > 0) {
     const deduped = new Map<string, FormulaBuildUpdate>();
     for (const u of buildUpdates) {
@@ -1056,42 +1056,74 @@ export const applyFormulaBuildResult = (
     }
     const uniqueUpdates = [...deduped.values()];
 
-    const caseClauses: string[] = [];
-    const bind: Record<string, number> = {};
+    // Split into new buildings (INSERT) and existing buildings (UPDATE)
+    const newBuildings = uniqueUpdates.filter((u) => u.previousLevel === 0);
+    const existingBuildings = uniqueUpdates.filter((u) => u.previousLevel > 0);
 
-    uniqueUpdates.forEach((u, i) => {
-      const vk = `$v${i}`;
-      const fk = `$f${i}`;
-      const lk = `$l${i}`;
-      caseClauses.push(
-        `WHEN village_id = ${vk} AND field_id = ${fk} THEN ${lk}`,
-      );
-      bind[vk] = u.villageId;
-      bind[fk] = u.fieldId;
-      bind[lk] = u.newLevel;
-    });
+    // ─── INSERT new buildings ───
+    if (newBuildings.length > 0) {
+      const insertPlaceholders = newBuildings
+        .map((_, i) => `($v${i}, $f${i}, $b${i}, $l${i})`)
+        .join(',');
+      const insertBind: Record<string, number> = {};
+      newBuildings.forEach((u, i) => {
+        insertBind[`$v${i}`] = u.villageId;
+        insertBind[`$f${i}`] = u.fieldId;
+        insertBind[`$b${i}`] = u.buildingId;
+        insertBind[`$l${i}`] = u.newLevel;
+      });
 
-    const villageIds = [...new Set(uniqueUpdates.map((u) => u.villageId))];
-    const villageIdPlaceholders = villageIds
-      .map((_, i) => `$vid${i}`)
-      .join(',');
-    const villageIdBinds: Record<string, number> = {};
-    villageIds.forEach((vid, i) => {
-      villageIdBinds[`$vid${i}`] = vid;
-    });
+      db.exec({
+        sql: `
+          INSERT INTO building_fields (village_id, field_id, building_id, level)
+          VALUES ${insertPlaceholders}
+          ON CONFLICT (village_id, field_id) DO UPDATE SET level = excluded.level;
+        `,
+        bind: insertBind,
+      });
+    }
 
-    db.exec({
-      sql: `
-        UPDATE building_fields
-        SET level = CASE
-          ${caseClauses.join('\n')}
-          ELSE level
-        END
-        WHERE village_id IN (${villageIdPlaceholders})
-          AND field_id > 18;
-      `,
-      bind: { ...bind, ...villageIdBinds },
-    });
+    // ─── UPDATE existing buildings ───
+    if (existingBuildings.length > 0) {
+      const caseClauses: string[] = [];
+      const bind: Record<string, number> = {};
+
+      existingBuildings.forEach((u, i) => {
+        const vk = `$v${i}`;
+        const fk = `$f${i}`;
+        const lk = `$l${i}`;
+        caseClauses.push(
+          `WHEN village_id = ${vk} AND field_id = ${fk} THEN ${lk}`,
+        );
+        bind[vk] = u.villageId;
+        bind[fk] = u.fieldId;
+        bind[lk] = u.newLevel;
+      });
+
+      const villageIds = [
+        ...new Set(existingBuildings.map((u) => u.villageId)),
+      ];
+      const villageIdPlaceholders = villageIds
+        .map((_, i) => `$vid${i}`)
+        .join(',');
+      const villageIdBinds: Record<string, number> = {};
+      villageIds.forEach((vid, i) => {
+        villageIdBinds[`$vid${i}`] = vid;
+      });
+
+      db.exec({
+        sql: `
+          UPDATE building_fields
+          SET level = CASE
+            ${caseClauses.join('\n')}
+            ELSE level
+          END
+          WHERE village_id IN (${villageIdPlaceholders})
+            AND field_id > 18;
+        `,
+        bind: { ...bind, ...villageIdBinds },
+      });
+    }
 
     // Record in history
     const historyRows: [number, number, number, number, number, number][] = [];

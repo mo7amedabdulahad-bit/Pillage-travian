@@ -272,8 +272,20 @@ describe('migrateAndSeed', () => {
         serverMock.configuration.mapSize,
       );
       const playerDensity = 0.046;
-      const expectedTotalPlayers =
-        Math.round((playerDensity * totalTiles) / 100) * 100; // +1 human player
+      const maxNpcByMapSize: Record<number, number> = {
+        25: 20,
+        50: 50,
+        75: 200,
+        100: 500,
+      };
+      const maxNpc = maxNpcByMapSize[serverMock.configuration.mapSize] ?? 500;
+      const totalPlayerCount =
+        Math.ceil((playerDensity * totalTiles + 1) / 100) * 100;
+      const npcCount = Math.max(
+        Math.min(totalPlayerCount - 1, maxNpc),
+        9, // npcFactionIds.length
+      );
+      const expectedTotalPlayers = npcCount + 1; // +1 human player
 
       const actualCount = database.selectValue({
         sql: 'SELECT COUNT(*) AS c FROM players;',

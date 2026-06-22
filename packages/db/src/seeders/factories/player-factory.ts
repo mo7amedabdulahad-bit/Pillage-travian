@@ -105,8 +105,11 @@ export const generateNpcPlayers = (
 
   const { totalTiles } = calculateGridLayout(mapSize);
 
+  // Use ceil instead of round so small maps don't round down to 0.
+  // For a 25x25 map: density * tiles = ~44, ceil(45/100)*100 = 100 → capped at 20.
+  // With round: round(45/100)*100 = 0 → falls back to min 9 (one per faction).
   const totalPlayerCount =
-    Math.round((playerDensity * totalTiles + 1) / 100) * 100;
+    Math.ceil((playerDensity * totalTiles + 1) / 100) * 100;
 
   // Subtract 1 player to account for player
   let npcCount = totalPlayerCount - 1;

@@ -59,10 +59,12 @@ describe('hero-resolvers', () => {
       sql: 'UPDATE heroes SET health = 50, health_regeneration = 10;',
     });
 
+    const duration = 8640000; // 24h / 10
+    // Resolve at "just past" so exactly one interval is applied by bulk catch-up
     const eventArgs = createHeroHealthRegenerationEventMock({
       id: 1,
-      startsAt: 1000,
-      duration: 8640000, // 24h / 10
+      startsAt: Date.now() - duration - 1,
+      duration,
       villageId: 1,
     });
 
@@ -72,7 +74,7 @@ describe('hero-resolvers', () => {
     // 3. Resolve
     heroHealthRegenerationResolver(database, eventArgs);
 
-    // 4. Verify health increased
+    // 4. Verify health increased by 1 (one interval)
     const health = database.selectValue({
       sql: 'SELECT health FROM heroes LIMIT 1;',
       schema: z.number(),
@@ -101,7 +103,7 @@ describe('hero-resolvers', () => {
 
     const eventArgs = createHeroHealthRegenerationEventMock({
       id: 1,
-      startsAt: 1000,
+      startsAt: Date.now() - 8640000 - 1,
       duration: 8640000,
       villageId: 1,
     });
@@ -136,7 +138,7 @@ describe('hero-resolvers', () => {
       database,
       createHeroHealthRegenerationEventMock({
         id: 1,
-        startsAt: 1000,
+        startsAt: Date.now() - 8640000 - 1,
         duration: 8640000,
         villageId: 1,
       }),

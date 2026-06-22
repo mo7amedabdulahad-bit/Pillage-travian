@@ -493,9 +493,14 @@ export const processProactiveAttacks = (
           1,
           Math.floor(amount * npcTroopMultiplier),
         );
+        // Cap at actual available amount — createEvents validates availability
+        const cappedAmount = Math.min(scaledAmount, troopMap[unitId] ?? 0);
+        if (cappedAmount <= 0) {
+          continue;
+        }
         scaledTroops.push({
           unitId: unitId as UnitId,
-          amount: scaledAmount,
+          amount: cappedAmount,
           tileId: village.tileId,
           source: village.tileId,
         });
@@ -519,21 +524,15 @@ export const processProactiveAttacks = (
         }
       }
 
-      // Calculate travel time using slowest unit speed
-      const slowestSpeed = 3; // Fallback
-      const travelTimeMs = Math.ceil(
-        (nearestDistance / (slowestSpeed * speed)) * 3_600_000,
-      );
-      const executeAtMs = currentTimeMs + travelTimeMs;
-
-      // Create the attack event
+      // Create the attack event — startsAt = departure time (now),
+      // createEvents adds duration (travel time) to compute resolvesAt.
       try {
         createEvents<'troopMovementAttack'>(db, {
           type: 'troopMovementAttack',
           villageId: village.villageId,
           targetId: nearestPlayerVillage.villageId,
           troops: scaledTroops as any,
-          startsAt: Math.floor(executeAtMs),
+          startsAt: currentTimeMs,
         });
         attacksLaunched++;
       } catch (_e) {

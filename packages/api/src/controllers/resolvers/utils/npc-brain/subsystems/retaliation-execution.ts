@@ -204,7 +204,6 @@ export const processDueRetaliations = (
             (Math.random() * 2 * NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE -
               NPC_BRAIN_CONSTANTS.RETALIATION_VARIANCE) *
             travelTimeMs;
-          const executeAtMs = currentTimeMs + travelTimeMs + variance;
 
           // Apply world-threat multiplier to intent troops
           const scaledTroops: {
@@ -218,9 +217,14 @@ export const processDueRetaliations = (
               1,
               Math.floor(amount * npcTroopMultiplier),
             );
+            // Cap at actual available amount — createEvents validates availability
+            const cappedAmount = Math.min(scaledAmount, troopMap[unitId] ?? 0);
+            if (cappedAmount <= 0) {
+              continue;
+            }
             scaledTroops.push({
               unitId: unitId as UnitId,
-              amount: scaledAmount,
+              amount: cappedAmount,
               tileId: intent.tileId,
               source: intent.tileId,
             });
@@ -232,7 +236,7 @@ export const processDueRetaliations = (
               villageId: intent.villageId,
               targetId: intent.targetVillageId,
               troops: scaledTroops as any,
-              startsAt: Math.floor(executeAtMs),
+              startsAt: Math.floor(currentTimeMs + variance),
             });
 
             resolutions.push({
@@ -243,7 +247,7 @@ export const processDueRetaliations = (
               attackerWins: false,
               attackerTroopsLost: 0,
               defenderTroopsLost: 0,
-              timestamp: Math.floor(executeAtMs),
+              timestamp: Math.floor(currentTimeMs + variance),
             });
 
             // Only clear intent on successful event creation
@@ -307,11 +311,35 @@ const executeRetaliationAttack = (
     tileId: number;
     source: number;
   }[] = [];
+
+  // Fetch available troops to cap scaled amounts
+  const availableTroops = db.selectObjects({
+    sql: `
+      SELECT u.unit AS unitId, t.amount
+      FROM troops t
+      JOIN unit_ids u ON u.id = t.unit_id
+      WHERE t.tile_id = $tileId
+        AND t.source_tile_id = $tileId
+        AND t.amount > 0;
+    `,
+    bind: { $tileId: retaliation.tileId },
+    schema: z.any(),
+  }) as { unitId: string; amount: number }[];
+  const availableMap = new Map<string, number>();
+  for (const t of availableTroops) {
+    availableMap.set(t.unitId, t.amount);
+  }
+
   for (const [unitId, amount] of Object.entries(troops)) {
     const scaledAmount = Math.max(1, Math.floor(amount * npcTroopMultiplier));
+    // Cap at actual available amount — createEvents validates availability
+    const cappedAmount = Math.min(scaledAmount, availableMap.get(unitId) ?? 0);
+    if (cappedAmount <= 0) {
+      continue;
+    }
     scaledTroops.push({
       unitId: unitId as UnitId,
-      amount: scaledAmount,
+      amount: cappedAmount,
       tileId: retaliation.tileId,
       source: retaliation.tileId,
     });
@@ -342,7 +370,7 @@ const executeRetaliationAttack = (
       villageId: retaliation.villageId,
       targetId: playerVillageId,
       troops: scaledTroops as any,
-      startsAt: retaliation.executeAtMs,
+      startsAt: Date.now(),
     });
   } catch (_e) {
     return null;
@@ -356,7 +384,7 @@ const executeRetaliationAttack = (
     attackerWins: false,
     attackerTroopsLost: 0,
     defenderTroopsLost: 0,
-    timestamp: retaliation.executeAtMs,
+    timestamp: Date.now(),
   };
 };
 
