@@ -39,7 +39,7 @@
     "@pillage-first/utils": "*",
     "@sqlite.org/sqlite-wasm": "*",
     "moderndash": "4.0.0",
-    "path-to-regexp": "8.3.0",
+    "path-to-regexp": "8.4.2",
     "tsx": "4.21.0",
     "zod": "*",
     "zod-openapi": "5.4.6"
