@@ -347,5 +347,5 @@ export const formatDuration = (ms: number): string => {
  * Check if a faction key is valid.
  */
 export const isValidFactionKey = (key: string): key is FactionKey => {
-  return key.startsWith('npc') && key !== 'player';
+  return key !== 'player' && (key.startsWith('npc') || key === 'natars');
 };

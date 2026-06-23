@@ -62,6 +62,11 @@ const FACTION_STARTING_VALUES: Record<
     restThresholdHours: 48,
     restStockpileBonus: 0.05,
   },
+  natars: {
+    populationGrowthRate: 0,
+    restThresholdHours: 24 * 365,
+    restStockpileBonus: 0,
+  },
 };
 
 /**

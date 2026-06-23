@@ -6,6 +6,8 @@ import { calculateAdventurePointIncreaseEventDuration } from '@pillage-first/gam
 import {
   calculateBuildingCostForLevel,
   calculateBuildingDurationForLevel,
+  calculateWorldWonderCostForLevel,
+  calculateWorldWonderDurationForLevel,
   getBuildingDefinition,
 } from '@pillage-first/game-assets/utils/buildings';
 import {
@@ -48,6 +50,7 @@ import {
   isTroopTrainingEvent,
   isUnitImprovementEvent,
   isUnitResearchEvent,
+  isWorldWonderUpgradeEvent,
 } from '@pillage-first/utils/guards/event';
 import { calculateDistanceBetweenPoints } from '@pillage-first/utils/math';
 import { selectAllRelevantEffectsByIdQuery } from '../../utils/queries/effect-queries';
@@ -517,6 +520,22 @@ export const validateEventCreationPrerequisites = (
     }
   }
 
+  if (isWorldWonderUpgradeEvent(event)) {
+    const { targetLevel, villageId } = event;
+    const maxLevel = 20;
+    if (targetLevel > maxLevel) {
+      throw new Error('World Wonder level cannot exceed 20');
+    }
+    const currentLevel = database.selectValue({
+      sql: 'SELECT world_wonder_level FROM villages WHERE id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.number(),
+    });
+    if (targetLevel !== (currentLevel ?? 0) + 1) {
+      throw new Error('World Wonder must be upgraded one level at a time');
+    }
+  }
+
   if (isAdventureTroopMovementEvent(event)) {
     const hasAvailableAdventurePoints = !!database.selectValue({
       sql: `
@@ -680,6 +699,11 @@ export const getEventCost = (
   if (isSettleTroopMovementEvent(event)) {
     // Settling costs 750 of each resource
     return [750, 750, 750, 750];
+  }
+
+  if (isWorldWonderUpgradeEvent(event)) {
+    const { targetLevel } = event;
+    return calculateWorldWonderCostForLevel(targetLevel);
   }
 
   return [0, 0, 0, 0];
@@ -1081,6 +1105,15 @@ export const getEventDuration = (
     return Math.ceil((5 * 60 * 1000) / speed);
   }
 
+  if (isWorldWonderUpgradeEvent(event)) {
+    const { speed } = database.selectObject({
+      sql: 'SELECT speed FROM servers LIMIT 1;',
+      schema: z.object({ speed: speedSchema }),
+    })!;
+    const { targetLevel } = event;
+    return calculateWorldWonderDurationForLevel(targetLevel, speed);
+  }
+
   console.error('Missing duration calculation for event', event);
   return 0;
 };
@@ -1217,6 +1250,10 @@ export const getEventStartTime = (
     const { startsAt, duration } = event;
 
     return startsAt + duration;
+  }
+
+  if (isWorldWonderUpgradeEvent(event)) {
+    return Date.now();
   }
 
   return Date.now();

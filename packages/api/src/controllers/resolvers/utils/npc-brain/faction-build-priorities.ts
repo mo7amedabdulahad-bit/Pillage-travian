@@ -25,6 +25,7 @@ export const FACTION_SPENDING_RATE: Record<FactionKey, number> = {
   npc7: 0.7, // Economy
   npc8: 0.8, // Balanced
   npc9: 0.9, // Aggressive
+  natars: 0, // Passive: never builds
 };
 
 /**
@@ -130,5 +131,8 @@ export const FACTION_BUILD_PRIORITIES: Record<FactionKey, BuildPriorityScript> =
       { buildingId: 'STABLE', maxLevel: 10, priority: 'high' },
       { buildingId: 'SMITHY', maxLevel: 10, priority: 'medium' },
       { buildingId: 'ACADEMY', maxLevel: 5, priority: 'low' },
+    ],
+    natars: [
+      // Natar Guardians: passive, no building priorities
     ],
   };

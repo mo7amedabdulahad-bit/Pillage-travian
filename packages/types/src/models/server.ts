@@ -46,6 +46,10 @@ export const serverDbSchema = z
       .optional(),
     difficulty: difficultySchema.optional(),
     game_mode: gameModeSchema.optional(),
+    ended_at: z.number().nullable().optional(),
+    winner_player_id: z.number().nullable().optional(),
+    winner_type: z.enum(['player', 'natars']).nullable().optional(),
+    win_condition_met_at: z.number().nullable().optional(),
   })
   .transform((t) => {
     return {
@@ -66,6 +70,10 @@ export const serverDbSchema = z
       startingFieldCombination: t.starting_field_combination ?? undefined,
       difficulty: t.difficulty ?? 'assault',
       gameMode: t.game_mode ?? 'standard',
+      endedAt: t.ended_at ?? null,
+      winnerPlayerId: t.winner_player_id ?? null,
+      winnerType: t.winner_type ?? null,
+      winConditionMetAt: t.win_condition_met_at ?? null,
     };
   })
   .meta({ id: 'ServerDb' });
@@ -89,6 +97,10 @@ export const serverSchema = z
     startingFieldCombination: resourceFieldCompositionSchema.optional(),
     difficulty: difficultySchema.optional(),
     gameMode: gameModeSchema.optional(),
+    endedAt: z.number().nullable().optional(),
+    winnerPlayerId: z.number().nullable().optional(),
+    winnerType: z.enum(['player', 'natars']).nullable().optional(),
+    winConditionMetAt: z.number().nullable().optional(),
   })
   .meta({ id: 'Server' });
 

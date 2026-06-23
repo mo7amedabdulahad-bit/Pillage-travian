@@ -36,7 +36,8 @@ type BuildingCategory =
   | 'infrastructure'
   | 'military'
   | 'resource-booster'
-  | 'resource-production';
+  | 'resource-production'
+  | 'wonder';
 
 export const buildingIdSchema = z
   .enum([
@@ -86,6 +87,7 @@ export const buildingIdSchema = z
     'TOWN_HALL',
     'EMBASSY',
     'TREASURY',
+    'WORLD_WONDER',
   ])
   .meta({ id: 'BuildingId' });
 
@@ -115,4 +117,5 @@ export type Building = {
   category: BuildingCategory;
   buildingCostCoefficient: number;
   maxLevel: number;
+  isWorldWonder?: boolean;
 };

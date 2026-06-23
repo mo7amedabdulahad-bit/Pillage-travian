@@ -1601,6 +1601,28 @@ export const buildings: Building[] = [
     buildingDurationModifier: 10_875,
     buildingDurationReduction: 1875,
   },
+  {
+    id: 'WORLD_WONDER',
+    category: 'wonder',
+    populationCoefficient: 0,
+    culturePointsCoefficient: 0,
+    effects: [],
+    buildingRequirements: [
+      {
+        id: 1,
+        type: 'building',
+        buildingId: 'TREASURY',
+        level: 10,
+      },
+    ],
+    baseBuildingCost: [50_000, 50_000, 50_000, 50_000],
+    buildingCostCoefficient: 0,
+    maxLevel: 20,
+    buildingDurationBase: 0,
+    buildingDurationModifier: 0,
+    buildingDurationReduction: 0,
+    isWorldWonder: true,
+  },
 ];
 
 // Use this for faster lookups

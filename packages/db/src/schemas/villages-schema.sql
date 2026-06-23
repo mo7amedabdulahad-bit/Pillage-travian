@@ -8,6 +8,9 @@ CREATE TABLE villages
   tribe_id INTEGER,
   loyalty INTEGER NOT NULL DEFAULT 100,
   loyalty_updated_at INTEGER,
+  is_world_wonder_village INTEGER NOT NULL DEFAULT 0,
+  world_wonder_level INTEGER NOT NULL DEFAULT 0,
+  construction_plan_held INTEGER NOT NULL DEFAULT 0,
 
   UNIQUE (tile_id),
 

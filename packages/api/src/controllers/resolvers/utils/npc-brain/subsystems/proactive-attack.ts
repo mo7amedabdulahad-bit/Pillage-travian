@@ -12,7 +12,7 @@ import {
   scaleTroops,
 } from '../helpers';
 import type { FactionKey } from '../npc-brain-types';
-import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
+import { isPassiveFaction, NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 import { getNpcTroopMultiplier } from '../world-threat-level';
 import { materializeNpcTroops } from './troop-regeneration';
 
@@ -363,6 +363,11 @@ export const processProactiveAttacks = (
   const waveCap = MAX_WAVE_CAP[mapSize] ?? 5;
 
   for (const [factionKey, factionVillages] of villagesByFaction) {
+    // Layer 0: Passive factions (Natars) never attack proactively
+    if (isPassiveFaction(factionKey)) {
+      continue;
+    }
+
     // Layer 1: Reputation gate — skip allied factions
     const reputation = reputationMap.get(factionKey) ?? 0;
     if (reputation >= ALLY_THRESHOLD) {

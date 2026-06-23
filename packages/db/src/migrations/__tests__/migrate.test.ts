@@ -285,7 +285,7 @@ describe('migrateAndSeed', () => {
         Math.min(totalPlayerCount - 1, maxNpc),
         9, // npcFactionIds.length
       );
-      const expectedTotalPlayers = npcCount + 1; // +1 human player
+      const expectedTotalPlayers = npcCount + 2; // +1 human player, +1 Natar player
 
       const actualCount = database.selectValue({
         sql: 'SELECT COUNT(*) AS c FROM players;',

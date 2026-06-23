@@ -3,11 +3,12 @@ import { FACTION_PROFILES, getFactionProfile } from '../faction-profiles';
 import type { FactionKey } from '../npc-brain-types';
 
 describe('Faction Profiles', () => {
-  it('should have all 9 NPC factions defined', () => {
+  it('should have all 9 NPC factions plus natars defined', () => {
     const keys = Object.keys(FACTION_PROFILES);
-    expect(keys).toHaveLength(9);
+    expect(keys).toHaveLength(10);
     expect(keys).toContain('npc1');
     expect(keys).toContain('npc9');
+    expect(keys).toContain('natars');
   });
 
   it('should have correct permanent memory factions', () => {

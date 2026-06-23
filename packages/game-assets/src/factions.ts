@@ -12,6 +12,7 @@ export const FACTION_COLORS: Record<Faction, string> = {
   npc7: '#f97316',
   npc8: '#6366f1',
   npc9: '#dc2626',
+  natars: '#1f2937',
 };
 
 export const FACTION_NAMES: Record<Faction, string> = {
@@ -25,6 +26,7 @@ export const FACTION_NAMES: Record<Faction, string> = {
   npc7: 'Verdant Order',
   npc8: 'Iron Scholars',
   npc9: 'Bone Reavers',
+  natars: 'Natar Guardians',
 };
 
 export const TRIBE_COLORS: Record<Tribe, string> = {

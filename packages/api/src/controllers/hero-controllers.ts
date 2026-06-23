@@ -4,6 +4,7 @@ import type { ResourceProductionEffectId } from '@pillage-first/types/models/eff
 import { heroResourceToProduceSchema } from '@pillage-first/types/models/hero';
 import { heroAdventuresSchema } from '@pillage-first/types/models/hero-adventures';
 import type { Resource } from '@pillage-first/types/models/resource';
+import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createController } from '../utils/controller';
 import { updateVillageResourcesAt } from '../utils/village';
 import { getHeroAppearanceSchema } from './schemas/hero-appearance-schemas';
@@ -857,3 +858,64 @@ export const updateHeroAppearance = createController(
     });
   },
 );
+
+// ============================================================================
+// Construction Plan helpers (Phase 4 — World Wonder endgame)
+// ============================================================================
+// Item ID 200 = CONSTRUCTION_PLAN (see packages/game-assets/src/items.ts)
+
+/**
+ * The item ID of the Construction Plan hero item.
+ */
+export const CONSTRUCTION_PLAN_ITEM_ID = 200;
+
+/**
+ * Check whether a hero already holds a Construction Plan.
+ */
+export const hasConstructionPlan = (
+  database: DbFacade,
+  heroId: number,
+): boolean => {
+  const row = database.selectObject({
+    sql: 'SELECT amount FROM hero_inventory WHERE hero_id = $hero_id AND item_id = $item_id',
+    bind: { $hero_id: heroId, $item_id: CONSTRUCTION_PLAN_ITEM_ID },
+    schema: z.strictObject({ amount: z.number() }),
+  });
+  return (row?.amount ?? 0) > 0;
+};
+
+/**
+ * Grant a Construction Plan to a hero. Refuses if the hero already holds one.
+ * Returns true on success, false if the hero already has a plan.
+ */
+export const grantConstructionPlan = (
+  database: DbFacade,
+  heroId: number,
+): boolean => {
+  if (hasConstructionPlan(database, heroId)) {
+    return false;
+  }
+  database.exec({
+    sql: `
+      INSERT INTO hero_inventory (hero_id, item_id, amount)
+      VALUES ($hero_id, $item_id, 1)
+      ON CONFLICT(hero_id, item_id) DO UPDATE SET amount = amount + EXCLUDED.amount
+    `,
+    bind: { $hero_id: heroId, $item_id: CONSTRUCTION_PLAN_ITEM_ID },
+  });
+  return true;
+};
+
+/**
+ * Remove the Construction Plan from a hero's inventory.
+ * Called when the WW reaches Level 1 (plan is consumed).
+ */
+export const consumeConstructionPlan = (
+  database: DbFacade,
+  heroId: number,
+): void => {
+  database.exec({
+    sql: 'DELETE FROM hero_inventory WHERE hero_id = $hero_id AND item_id = $item_id',
+    bind: { $hero_id: heroId, $item_id: CONSTRUCTION_PLAN_ITEM_ID },
+  });
+};

@@ -12,7 +12,8 @@ export type HeroItemCategory =
   | 'right-hand'
   | 'horse'
   | 'consumable'
-  | 'artifact';
+  | 'artifact'
+  | 'construction_plan';
 
 export type HeroItemSlot =
   | 'head'

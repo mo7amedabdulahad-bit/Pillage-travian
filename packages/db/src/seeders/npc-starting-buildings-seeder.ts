@@ -98,6 +98,15 @@ const FACTION_BUILDINGS: Record<
     STABLE: { 'xxs/xs': 2, 'sm/md': 3, 'lg/xl': 4, '2xl+': 5 },
     WALL: { 'xxs/xs': 2, 'sm/md': 3, 'lg/xl': 5, '2xl+': 7 },
   },
+  natars: {
+    WAREHOUSE: { 'xxs/xs': 10, 'sm/md': 10, 'lg/xl': 10, '2xl+': 10 },
+    GRANARY: { 'xxs/xs': 10, 'sm/md': 10, 'lg/xl': 10, '2xl+': 10 },
+    RALLY_POINT: { 'xxs/xs': 10, 'sm/md': 10, 'lg/xl': 10, '2xl+': 10 },
+    WALL: { 'xxs/xs': 20, 'sm/md': 20, 'lg/xl': 20, '2xl+': 20 },
+    BARRACKS: { 'xxs/xs': 10, 'sm/md': 10, 'lg/xl': 10, '2xl+': 10 },
+    STABLE: { 'xxs/xs': 10, 'sm/md': 10, 'lg/xl': 10, '2xl+': 10 },
+    WORKSHOP: { 'xxs/xs': 10, 'sm/md': 10, 'lg/xl': 10, '2xl+': 10 },
+  },
 };
 
 const getSizeGroup = (size: VillageSize): string => {

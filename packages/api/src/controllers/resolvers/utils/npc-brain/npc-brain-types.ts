@@ -7,6 +7,13 @@ import type { UnitId } from '@pillage-first/types/models/unit';
 
 export type FactionKey = Exclude<Faction, 'player'>;
 
+/**
+ * Returns true for factions that never attack proactively or retaliate.
+ * The Natars are passive guardians — they only defend their villages.
+ */
+export const isPassiveFaction = (factionKey: string): boolean =>
+  factionKey === 'natars';
+
 export interface FactionProfile {
   readonly key: FactionKey;
   readonly name: string;

@@ -13,5 +13,9 @@ CREATE TABLE servers
   starting_field_combination TEXT CHECK (starting_field_combination IS NULL OR starting_field_combination IN ('4446','5436','5346','4536','3546','4356','3456','4437','4347','3447','3339','11115','00018')),
   difficulty TEXT NOT NULL DEFAULT 'assault' CHECK (difficulty IN ('skirmish', 'assault', 'siege')),
   game_mode TEXT NOT NULL DEFAULT 'standard' CHECK (game_mode IN ('standard', 'blitz')),
-  blitz_protection_ends_at INTEGER
+  blitz_protection_ends_at INTEGER,
+  ended_at INTEGER,
+  winner_player_id INTEGER,
+  winner_type TEXT CHECK (winner_type IS NULL OR winner_type IN ('player', 'natars')),
+  win_condition_met_at INTEGER
 ) STRICT, WITHOUT ROWID;

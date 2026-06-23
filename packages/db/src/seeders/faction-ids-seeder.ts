@@ -23,10 +23,13 @@ export const factionIdsSeeder = (database: DbFacade, server: Server): void => {
     server.configuration.mapSize,
   );
 
-  // Always include 'player', then add the appropriate number of NPC factions
+  // Always include 'player' and 'natars', then add the appropriate number of NPC factions
   const factionsToCreate = [
     'player',
-    ...allFactions.filter((f) => f !== 'player').slice(0, npcFactionCount),
+    'natars',
+    ...allFactions
+      .filter((f) => f !== 'player' && f !== 'natars')
+      .slice(0, npcFactionCount),
   ];
 
   batchInsert(

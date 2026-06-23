@@ -139,7 +139,10 @@ const vitestConfig = defineVitestConfig({
     alias: {
       react: resolve(__dirname, '../../node_modules/react'),
       'react-dom': resolve(__dirname, '../../node_modules/react-dom'),
-      'react-dom/client': resolve(__dirname, '../../node_modules/react-dom/client'),
+      'react-dom/client': resolve(
+        __dirname,
+        '../../node_modules/react-dom/client',
+      ),
     },
   },
 });

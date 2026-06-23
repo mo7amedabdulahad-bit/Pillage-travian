@@ -8,7 +8,11 @@ export type ReportType =
   | 'scout-attack'
   | 'scout-defence'
   | 'adventure'
-  | 'trade';
+  | 'trade'
+  | 'construction_plan_obtained'
+  | 'npc_wonder_milestone'
+  | 'world_wonder_level'
+  | 'server_end';
 
 export type Report = {
   id: number;

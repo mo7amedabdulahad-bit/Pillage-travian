@@ -162,6 +162,23 @@ export const FACTION_PROFILES: Readonly<Record<FactionKey, FactionProfile>> = {
     preferredTroopTierWeights: [0.3, 0.25, 0.25, 0.2],
     proactiveCooldownMultiplier: 0.55,
   },
+  natars: {
+    key: 'natars',
+    name: 'Natar Guardians',
+    personality: 'Passive defenders',
+    retaliationThreshold: Number.MAX_SAFE_INTEGER,
+    memoryDurationHours: null,
+    isMemoryPermanent: false,
+    repLossPerRaid: 0,
+    aggressionDecayDays: null,
+    isAggressionPermanent: false,
+    growthRateMultiplier: 0,
+    troopRegenRateMultiplier: 0.5,
+    restThresholdHours: Number.MAX_SAFE_INTEGER,
+    restStockpileBonus: 0,
+    preferredTroopTierWeights: [0.25, 0.25, 0.25, 0.25],
+    proactiveCooldownMultiplier: Number.POSITIVE_INFINITY,
+  },
 };
 
 /**

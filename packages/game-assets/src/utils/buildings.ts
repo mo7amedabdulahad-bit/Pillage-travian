@@ -229,3 +229,45 @@ export const calculateBuildingDurationForLevel = (
     1000
   );
 };
+
+// ─── World Wonder helpers ───
+// The World Wonder uses a custom cost/time formula: baseCost * level^2.5
+// and build time = 3600s * level / serverSpeed.
+// These are separate from the generic building formula because the WW is
+// intentionally a massive resource sink with linear time scaling.
+
+/**
+ * Calculate the resource cost for a World Wonder at a given level.
+ * Formula: baseCost * level^2.5, where baseCost = 50000 per resource.
+ *
+ * Level 1  → ~50,000 each
+ * Level 10 → ~1,581,000 each
+ * Level 20 → ~8,944,000 each
+ */
+export const calculateWorldWonderCostForLevel = (level: number): number[] => {
+  const factor = level ** 2.5;
+  const base = 50_000;
+  return [
+    Math.ceil((base * factor) / 5) * 5,
+    Math.ceil((base * factor) / 5) * 5,
+    Math.ceil((base * factor) / 5) * 5,
+    Math.ceil((base * factor) / 5) * 5,
+  ];
+};
+
+/**
+ * Calculate the build duration (in seconds, real-time) for a WW level upgrade.
+ * Formula: 3600 * level / serverSpeed seconds.
+ *
+ * At 1x speed: L1 = 3600s (1h),  L20 = 72000s (20h)
+ * At 10x speed: L1 = 360s (6min), L20 = 7200s (2h)
+ * At 200x speed (Blitz): L1 = 18s,  L20 = 360s (6min)
+ *
+ * Returns milliseconds (consistent with calculateBuildingDurationForLevel).
+ */
+export const calculateWorldWonderDurationForLevel = (
+  level: number,
+  serverSpeed: number,
+): number => {
+  return Math.floor((3600 * level) / serverSpeed) * 1000;
+};

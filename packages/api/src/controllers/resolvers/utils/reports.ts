@@ -181,6 +181,47 @@ export const saveAdventureReport = (
   });
 };
 
+export const saveConstructionPlanObtainedReport = (
+  database: DbFacade,
+  attackerVillageId: number,
+  natarVillageId: number,
+  heroId: number,
+  timestamp: number,
+  attackerFactionId: number,
+  defenderFactionId: number,
+): void => {
+  const data = JSON.stringify({
+    natarVillageId,
+    heroId,
+    timestamp,
+  });
+
+  database.exec({
+    sql: `
+      INSERT INTO reports (
+        type,
+        village_id,
+        target_village_id,
+        timestamp,
+        attacker_faction_id,
+        defender_faction_id,
+        data,
+        is_read
+      )
+      VALUES ($type, $attackerVillageId, $natarVillageId, $timestamp, $attackerFactionId, $defenderFactionId, $data, 0);
+    `,
+    bind: {
+      $type: 'construction_plan_obtained',
+      $attackerVillageId: attackerVillageId,
+      $natarVillageId: natarVillageId,
+      $timestamp: timestamp,
+      $attackerFactionId: attackerFactionId,
+      $defenderFactionId: defenderFactionId,
+      $data: data,
+    },
+  });
+};
+
 export const saveScoutReports = (
   database: DbFacade,
   data: ScoutReportData,

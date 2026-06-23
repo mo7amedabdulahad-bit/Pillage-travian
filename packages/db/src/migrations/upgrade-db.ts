@@ -415,4 +415,123 @@ export const upgradeDb = (database: DbFacade): void => {
       sql: 'ALTER TABLE npc_village_state ADD COLUMN proactive_attack_offset_ms INTEGER NOT NULL DEFAULT 0;',
     });
   } catch (_e) {}
+
+  // ─── Phase 4: Server endgame columns ───
+  for (const [colName, colDef] of [
+    ['ended_at', 'INTEGER'],
+    ['winner_player_id', 'INTEGER'],
+    [
+      'winner_type',
+      "TEXT CHECK (winner_type IS NULL OR winner_type IN ('player', 'natars'))",
+    ],
+    ['win_condition_met_at', 'INTEGER'],
+  ] as const) {
+    try {
+      database.exec({
+        sql: `ALTER TABLE servers ADD COLUMN ${colName} ${colDef};`,
+      });
+    } catch (_e) {
+      // Column might already exist
+    }
+  }
+
+  // ─── Phase 4: Village endgame columns ───
+  for (const [colName, colDef] of [
+    ['is_world_wonder_village', 'INTEGER NOT NULL DEFAULT 0'],
+    ['world_wonder_level', 'INTEGER NOT NULL DEFAULT 0'],
+    ['construction_plan_held', 'INTEGER NOT NULL DEFAULT 0'],
+  ] as const) {
+    try {
+      database.exec({
+        sql: `ALTER TABLE villages ADD COLUMN ${colName} ${colDef};`,
+      });
+    } catch (_e) {
+      // Column might already exist
+    }
+  }
+
+  // ─── Phase 4: natar_villages table ───
+  try {
+    database.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS natar_villages (
+          village_id INTEGER PRIMARY KEY,
+          server_slug TEXT NOT NULL,
+          construction_plan_available INTEGER NOT NULL DEFAULT 1,
+          plan_holder_player_id INTEGER,
+          FOREIGN KEY (village_id) REFERENCES villages (id) ON DELETE CASCADE
+        ) STRICT, WITHOUT ROWID;
+      `,
+    });
+  } catch (_e) {}
+
+  // ─── Phase 4: world_wonders table ───
+  try {
+    database.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS world_wonders (
+          village_id INTEGER PRIMARY KEY,
+          owner_player_id INTEGER,
+          owner_faction_id TEXT NOT NULL,
+          current_level INTEGER NOT NULL DEFAULT 0,
+          started_at INTEGER NOT NULL,
+          name TEXT DEFAULT NULL,
+          last_attack_at INTEGER,
+          next_attack_at INTEGER,
+          FOREIGN KEY (village_id) REFERENCES villages (id) ON DELETE CASCADE
+        ) STRICT, WITHOUT ROWID;
+      `,
+    });
+  } catch (_e) {}
+
+  // ─── Phase 4: Add 'natars' to faction_ids (rebuild table for CHECK constraint) ───
+  try {
+    database.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS faction_ids_new (
+          id INTEGER PRIMARY KEY,
+          faction TEXT NOT NULL UNIQUE CHECK (faction IN ('player', 'npc1', 'npc2', 'npc3', 'npc4', 'npc5', 'npc6', 'npc7', 'npc8', 'npc9', 'natars'))
+        ) STRICT;
+      `,
+    });
+    database.exec({
+      sql: 'INSERT OR IGNORE INTO faction_ids_new (id, faction) SELECT id, faction FROM faction_ids;',
+    });
+    database.exec({
+      sql: `INSERT OR IGNORE INTO faction_ids_new (faction) VALUES ('natars');`,
+    });
+    database.exec({ sql: 'DROP TABLE faction_ids;' });
+    database.exec({
+      sql: 'ALTER TABLE faction_ids_new RENAME TO faction_ids;',
+    });
+    database.exec({
+      sql: 'CREATE INDEX IF NOT EXISTS idx_faction_ids_faction ON faction_ids(faction);',
+    });
+  } catch (_e) {
+    // Table may already be up to date
+  }
+
+  // ─── Phase 4: Add 'WORLD_WONDER' to building_ids (rebuild table for CHECK constraint) ───
+  try {
+    database.exec({
+      sql: `
+        CREATE TABLE IF NOT EXISTS building_ids_new (
+          id INTEGER PRIMARY KEY,
+          building TEXT NOT NULL UNIQUE CHECK (building IN ('BARRACKS', 'GREAT_BARRACKS', 'STABLE', 'GREAT_STABLE', 'WORKSHOP', 'HOSPITAL', 'CLAY_PIT', 'WHEAT_FIELD', 'WOODCUTTER', 'IRON_MINE', 'BAKERY', 'BRICKYARD', 'GRAIN_MILL', 'GRANARY', 'GREAT_GRANARY', 'IRON_FOUNDRY', 'SAWMILL', 'WAREHOUSE', 'GREAT_WAREHOUSE', 'WATERWORKS', 'ACADEMY', 'ROMAN_WALL', 'TEUTONIC_WALL', 'HEROS_MANSION', 'HUN_WALL', 'GAUL_WALL', 'RALLY_POINT', 'EGYPTIAN_WALL', 'TRAPPER', 'BREWERY', 'COMMAND_CENTER', 'CRANNY', 'HORSE_DRINKING_TROUGH', 'MAIN_BUILDING', 'MARKETPLACE', 'RESIDENCE', 'TOURNAMENT_SQUARE', 'TRADE_OFFICE', 'SMITHY', 'TOWN_HALL', 'EMBASSY', 'TREASURY', 'SPARTAN_WALL', 'NATAR_WALL', 'NATURE_WALL', 'VIKING_WALL', 'WORLD_WONDER'))
+        ) STRICT;
+      `,
+    });
+    database.exec({
+      sql: 'INSERT OR IGNORE INTO building_ids_new (id, building) SELECT id, building FROM building_ids;',
+    });
+    database.exec({ sql: 'DROP TABLE building_ids;' });
+    database.exec({
+      sql: 'ALTER TABLE building_ids_new RENAME TO building_ids;',
+    });
+    database.exec({
+      sql: 'CREATE INDEX IF NOT EXISTS idx_building_ids_building ON building_ids(building);',
+    });
+  } catch (_e) {
+    // Table may already be up to date
+  }
 };

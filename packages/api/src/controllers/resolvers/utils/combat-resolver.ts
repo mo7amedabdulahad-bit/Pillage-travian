@@ -22,6 +22,10 @@ import {
   subtractVillageResourcesAt,
   updateVillageResourcesAt,
 } from '../../../utils/village';
+import {
+  grantConstructionPlan,
+  hasConstructionPlan,
+} from '../../hero-controllers';
 import { createEvents } from '../../utils/create-event';
 import {
   fetchDefenderTroops,
@@ -38,7 +42,11 @@ import {
   calculateWorldThreatLevel,
   getNpcTroopMultiplier,
 } from './npc-brain/world-threat-level';
-import { saveCombatReport, saveScoutReports } from './reports';
+import {
+  saveCombatReport,
+  saveConstructionPlanObtainedReport,
+  saveScoutReports,
+} from './reports';
 import { addTroops } from './troops';
 
 const isScoutUnit = (unitId: string) =>
@@ -2018,6 +2026,53 @@ export const resolveTroopMovementCombat = (
     attackerVillage.factionId,
     targetVillage.factionId,
   );
+
+  // 10b. Construction Plan drop (Phase 4E): if attacker won a full attack
+  //      against a Natar village with a surviving Hero, grant the plan.
+  if (
+    !isRaid &&
+    result.attackerWins &&
+    attackerHeroSurvived &&
+    npcVillageData?.factionKey === 'natars'
+  ) {
+    const natarPlanRow = database.selectObject({
+      sql: `
+        SELECT nv.construction_plan_available
+        FROM natar_villages nv
+        WHERE nv.village_id = $villageId
+      `,
+      bind: { $villageId: targetId },
+      schema: z.strictObject({ construction_plan_available: z.number() }),
+    });
+
+    if (natarPlanRow?.construction_plan_available === 1) {
+      // Look up attacker's hero
+      const heroRow = database.selectObject({
+        sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
+        bind: { $playerId: attackerVillage.playerId },
+        schema: z.strictObject({ id: z.number() }),
+      });
+
+      if (heroRow && !hasConstructionPlan(database, heroRow.id)) {
+        grantConstructionPlan(database, heroRow.id);
+
+        database.exec({
+          sql: 'UPDATE natar_villages SET construction_plan_available = 0 WHERE village_id = $villageId',
+          bind: { $villageId: targetId },
+        });
+
+        saveConstructionPlanObtainedReport(
+          database,
+          villageId,
+          targetId,
+          heroRow.id,
+          resolvesAt,
+          attackerVillage.factionId,
+          targetVillage.factionId,
+        );
+      }
+    }
+  }
 
   // 11. Attacker return movement (wrapped in try/catch — if return event fails,
   //    add troops directly home so they're not stuck in limbo)

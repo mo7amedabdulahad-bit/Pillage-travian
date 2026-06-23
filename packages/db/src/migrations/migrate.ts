@@ -29,6 +29,7 @@ import createUnitDataTable from '../schemas/lookup-tables/unit-data-schema.sql?r
 import createUnitIdsTable from '../schemas/lookup-tables/unit-ids-schema.sql?raw';
 import createMapFiltersTable from '../schemas/map-filters-schema.sql?raw';
 import createMapMarkersTable from '../schemas/map-markers-schema.sql?raw';
+import createNatarVillagesTable from '../schemas/natar-villages-schema.sql?raw';
 import createNpcRaidHistoryTable from '../schemas/npc-raid-history-schema.sql?raw';
 import createNpcRetaliationQueueTable from '../schemas/npc-retaliation-queue-schema.sql?raw';
 import createNpcVillageStateTable from '../schemas/npc-village-state-schema.sql?raw';
@@ -47,6 +48,7 @@ import createUnitImprovementTable from '../schemas/unit-improvements-schema.sql?
 import createUnitResearchTable from '../schemas/unit-research-schema.sql?raw';
 import createVillagesTable from '../schemas/villages-schema.sql?raw';
 import createWorldItemsTable from '../schemas/world-items-schema.sql?raw';
+import createWorldWondersTable from '../schemas/world-wonders-schema.sql?raw';
 import { bookmarksSeeder } from '../seeders/bookmarks-seeder';
 import { buildingDataSeeder } from '../seeders/building-data-seeder';
 import { buildingFieldsSeeder } from '../seeders/building-fields-seeder';
@@ -62,6 +64,7 @@ import { heroAdventuresSeeder } from '../seeders/hero-adventures-seeder';
 import { heroAppearanceSeeder } from '../seeders/hero-appearance-seeder';
 import { heroSeeder } from '../seeders/hero-seeder';
 import { mapFiltersSeeder } from '../seeders/map-filters-seeder';
+import { natarVillagesSeeder } from '../seeders/natar-villages-seeder';
 import { npcFactionStateSeeder } from '../seeders/npc-faction-state-seeder';
 import { npcStartingBuildingsSeeder } from '../seeders/npc-starting-buildings-seeder';
 import { npcVillageStateSeeder } from '../seeders/npc-village-state-seeder';
@@ -168,6 +171,9 @@ export const migrateAndSeed = (
     db.exec({ sql: createVillagesTable });
     villageSeeder(db, server);
     occupiedOasisSeeder(db, server);
+    db.exec({ sql: createNatarVillagesTable });
+    natarVillagesSeeder(db, server);
+    db.exec({ sql: createWorldWondersTable });
 
     onProgress?.();
 

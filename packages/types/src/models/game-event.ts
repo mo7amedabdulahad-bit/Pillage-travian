@@ -100,6 +100,7 @@ export const gameEventTypeSchema = z.enum([
   'heroHealthRegeneration',
   'oasisLoyaltyRegeneration',
   'oasisRelease',
+  'worldWonderUpgrade',
 ]);
 
 export type GameEventType = z.infer<typeof gameEventTypeSchema>;
@@ -138,6 +139,11 @@ export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
   oasisLoyaltyRegeneration: BaseGameEvent;
   oasisRelease: BaseGameEvent & {
     meta: { oasisTileId: number; villageId: number };
+  };
+  worldWonderUpgrade: BaseGameEvent & {
+    targetLevel: number;
+    ownerPlayerId: number | null;
+    ownerFactionId: string;
   };
 }[T];
 

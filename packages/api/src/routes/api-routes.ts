@@ -109,6 +109,12 @@ import {
   getVillageBySlug,
 } from '../controllers/village-controllers';
 import { getArtifactsAroundVillage } from '../controllers/world-items-controllers';
+import {
+  getWorldWonder,
+  renameWorldWonder,
+  startWorldWonder,
+  upgradeWorldWonder,
+} from '../controllers/world-wonder-controllers';
 import type { Route } from './route.ts';
 import { createRoute } from './route.ts';
 
@@ -237,6 +243,12 @@ const apiRoutes: Route[] = [
   createRoute(markReportsAsRead),
   createRoute(deleteReports),
   createRoute(archiveReports),
+
+  // World Wonder
+  createRoute(getWorldWonder as any),
+  createRoute(startWorldWonder as any),
+  createRoute(upgradeWorldWonder as any),
+  createRoute(renameWorldWonder as any),
 ];
 
 export const compiledApiRoutes = apiRoutes.map((route) => ({

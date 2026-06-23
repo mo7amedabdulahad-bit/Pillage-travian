@@ -1336,6 +1336,27 @@ const spartanWeapons = generateTribeWeapons('spartans', 149, [
 export const artifacts: HeroItem[] = [];
 
 // ============================================================================
+// CONSTRUCTION PLANS (Phase 4 — World Wonder endgame)
+// ============================================================================
+export const constructionPlans: HeroItem[] = [
+  {
+    id: 200,
+    imageId: 200,
+    name: 'CONSTRUCTION_PLAN',
+    displayName: 'Construction Plan',
+    description:
+      'A World Wonder Construction Plan. Required to start a World Wonder. Consumed when WW reaches Level 1.',
+    slot: 'non-equipable',
+    tier: 3,
+    rarity: 'epic',
+    category: 'construction_plan',
+    tribe: 'any',
+    basePrice: null,
+    heroBonus: [],
+  },
+];
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
@@ -1569,6 +1590,7 @@ export const items: HeroItem[] = [
   ...hunWeapons, // 130-144
   ...spartanWeapons, // 149-163
   ...vikingWeapons,
+  ...constructionPlans, // 200
 ];
 
 // Use this for faster lookups
@@ -1593,6 +1615,7 @@ export const itemCategories = [
   'right-hand',
   'horse',
   'consumable',
+  'construction_plan',
 ] as const;
 
 export const categoryDisplayNames: Record<string, string> = {
@@ -1603,4 +1626,5 @@ export const categoryDisplayNames: Record<string, string> = {
   'right-hand': 'Weapons',
   horse: 'Mounts',
   consumable: 'Consumables',
+  construction_plan: 'Construction Plans',
 };

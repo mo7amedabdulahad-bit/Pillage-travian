@@ -159,11 +159,13 @@ export const villageSeeder = (database: DbFacade, server: Server): void => {
 
   const playerIds = database.selectValues({
     sql: `
-      SELECT id
+      SELECT players.id
       FROM
         players
+          LEFT JOIN faction_ids fi ON fi.id = players.faction_id
       WHERE
-        id != $player_id
+        players.id != $player_id
+        AND fi.faction != 'natars'
     `,
     bind: {
       $player_id: PLAYER_ID,
@@ -446,7 +448,13 @@ export const villageSeeder = (database: DbFacade, server: Server): void => {
   // convert to rows & insert — each NPC village gets its player's tribe_id
   const playerTribeMap = new Map<number, number>();
   const tribeRows = database.selectObjects({
-    sql: 'SELECT id, tribe_id FROM players WHERE id != $player_id',
+    sql: `
+      SELECT players.id, players.tribe_id
+      FROM players
+        LEFT JOIN faction_ids fi ON fi.id = players.faction_id
+      WHERE players.id != $player_id
+        AND fi.faction != 'natars'
+    `,
     bind: { $player_id: PLAYER_ID },
     schema: z.strictObject({ id: z.number(), tribe_id: z.number() }),
   });

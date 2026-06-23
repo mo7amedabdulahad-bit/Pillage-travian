@@ -157,3 +157,9 @@ export const isSettleTroopMovementEvent = (
 ): event is GameEvent<'troopMovementSettle'> => {
   return event.type === 'troopMovementSettle';
 };
+
+export const isWorldWonderUpgradeEvent = (
+  event: GameEvent,
+): event is GameEvent<'worldWonderUpgrade'> => {
+  return event.type === 'worldWonderUpgrade';
+};

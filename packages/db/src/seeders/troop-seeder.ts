@@ -176,6 +176,30 @@ const getFactionTroopWeights = (factionKey: string): number[] => {
   return FACTION_TROOP_WEIGHTS[factionKey] ?? [0.25, 0.25, 0.25, 0.25];
 };
 
+const NATAR_GARRISON_WEIGHTS: [UnitId, number][] = [
+  ['PIKEMAN', 0.24],
+  ['THORNED_WARRIOR', 0.2],
+  ['GUARDSMAN', 0.18],
+  ['AXERIDER', 0.14],
+  ['NATARIAN_KNIGHT', 0.1],
+  ['NATARIAN_SCOUT', 0.06],
+  ['NATARIAN_RAM', 0.03],
+  ['NATARIAN_CATAPULT', 0.03],
+  ['NATARIAN_CHIEF', 0.02],
+];
+
+const getNatarGarrisonTotal = (mapSize: number, speed: number): number => {
+  const baseTotal =
+    mapSize <= 25
+      ? 4_000
+      : mapSize <= 50
+        ? 12_000
+        : mapSize <= 75
+          ? 25_000
+          : 40_000;
+  return Math.floor(baseTotal * getTroopSpeedMultiplier(speed));
+};
+
 const oasisTroopCombinations = new Map<
   Resource,
   [NatureUnitId, number, number][]
@@ -479,6 +503,30 @@ export const troopSeeder = (database: DbFacade, server: Server): void => {
     }
 
     // ─── NPC village: faction-specific starting troops ───
+    if (faction_key === 'natars') {
+      const totalTroops = getNatarGarrisonTotal(
+        server.configuration.mapSize,
+        server.configuration.speed,
+      );
+      let remaining = totalTroops;
+
+      for (let i = 0; i < NATAR_GARRISON_WEIGHTS.length; i += 1) {
+        const [unitId, weight] = NATAR_GARRISON_WEIGHTS[i];
+        const amount =
+          i === NATAR_GARRISON_WEIGHTS.length - 1
+            ? remaining
+            : Math.max(1, Math.floor(totalTroops * weight));
+        const numericId = unitIdMap.get(unitId);
+
+        if (numericId !== undefined && amount > 0) {
+          results.push([numericId, amount, tile_id, tile_id]);
+        }
+        remaining -= amount;
+      }
+
+      continue;
+    }
+
     const villageSize = getVillageSize(server.configuration.mapSize, x, y);
     const factionTroopTotal = getFactionTroopTotal(faction_key, villageSize);
     const speedMultiplier = getTroopSpeedMultiplier(server.configuration.speed);

@@ -27,6 +27,7 @@ import {
 import { troopTrainingEventResolver } from '../controllers/resolvers/troop-resolvers';
 import { unitImprovementResolver } from '../controllers/resolvers/unit-improvement-resolvers';
 import { unitResearchResolver } from '../controllers/resolvers/unit-research-resolvers';
+import { worldWonderUpgradeResolver } from '../controllers/resolvers/world-wonder-resolvers';
 
 export const getGameEventResolver = (gameEventType: GameEventType) => {
   switch (gameEventType) {
@@ -89,6 +90,9 @@ export const getGameEventResolver = (gameEventType: GameEventType) => {
     }
     case 'unitImprovement': {
       return unitImprovementResolver;
+    }
+    case 'worldWonderUpgrade': {
+      return worldWonderUpgradeResolver;
     }
     default: {
       console.error(`No resolver function set for event type ${gameEventType}`);

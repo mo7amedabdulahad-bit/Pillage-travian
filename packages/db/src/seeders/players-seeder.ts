@@ -45,12 +45,22 @@ export const playersSeeder = (database: DbFacade, server: Server): void => {
   // We only have 1 "real" player, so we can delete this faction
   factionMap.delete('player');
 
+  const natarFaction = factionMap.get('natars')!;
+  factionMap.delete('natars');
+
   const npcFactionIds = [...factionMap.values()];
 
   const player = playerFactory(server, playerFaction);
   const npcPlayers = generateNpcPlayers(server, npcFactionIds);
+  const natarPlayer = {
+    id: 10_000_000,
+    name: 'Natars',
+    tribe: 'natars',
+    factionId: natarFaction,
+    personality: 'defensive',
+  } as const;
 
-  const players = [player, ...npcPlayers];
+  const players = [player, ...npcPlayers, natarPlayer];
 
   const playersToInsert = players.map(
     ({ id, name, tribe, factionId, personality }) => {
