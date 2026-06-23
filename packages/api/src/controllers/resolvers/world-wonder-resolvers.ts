@@ -68,10 +68,10 @@ export const endServer = (
 ): void => {
   const alreadyEnded = database.selectValue({
     sql: 'SELECT ended_at FROM servers LIMIT 1',
-    schema: z.object({ ended_at: z.number().nullable() }),
+    schema: z.number().nullable(),
   });
 
-  if (alreadyEnded?.ended_at !== null) {
+  if (alreadyEnded !== null) {
     return;
   }
 
