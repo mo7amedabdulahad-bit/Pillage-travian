@@ -116,4 +116,7 @@ export const cachesToClearOnResolve: Handlers = {
   oasisRelease: () => {
     return [villageListing, effectsCacheKey, playerVillagesCacheKey];
   },
+  worldWonderUpgrade: () => {
+    return [playerVillagesCacheKey, effectsCacheKey];
+  },
 };

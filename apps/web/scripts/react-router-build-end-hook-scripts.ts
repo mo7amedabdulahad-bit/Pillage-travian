@@ -1,21 +1,26 @@
 /// <reference types="node" />
 
+import { existsSync } from 'node:fs';
 import { glob, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { load } from 'cheerio';
 import { REACT_ICONS_SPRITE_URL_PLACEHOLDER } from 'react-icons-sprite';
 import type { Config } from '@react-router/dev/config';
-import { getGameRoutePaths } from 'app/utils/react-router';
+import { getGameRoutePaths } from '../app/utils/react-router';
 
 export const createSPAPagesWithPreloads: NonNullable<
   Config['buildEnd']
 > = async () => {
-  const gamePagesToPrerender = getGameRoutePaths();
-
   const clientDir = resolve('build/client');
 
   const fallbackPath = join(clientDir, '__spa-fallback.html');
   const prefetchHtmlPath = join(clientDir, '__spa-preload', 'index.html');
+
+  if (!existsSync(fallbackPath) || !existsSync(prefetchHtmlPath)) {
+    return;
+  }
+
+  const gamePagesToPrerender = getGameRoutePaths();
 
   const [fallbackHtml, prefetchHtml] = await Promise.all([
     readFile(fallbackPath, 'utf8'),
@@ -66,6 +71,10 @@ export const deleteSPAPreloadPage: NonNullable<
 > = async () => {
   const spaPreloadDir = resolve('build/client/__spa-preload');
 
+  if (!existsSync(spaPreloadDir)) {
+    return;
+  }
+
   await rm(spaPreloadDir, { recursive: true, force: true });
 };
 
@@ -86,15 +95,17 @@ export const replaceReactIconsSpritePlaceholdersOnPreRenderedPages: NonNullable<
       });
 
     await Promise.all(
-      preRenderedFileUrls.map(async (filePath) => {
-        const content = await readFile(filePath, 'utf8');
-        const updatedContent = content.replaceAll(
-          REACT_ICONS_SPRITE_URL_PLACEHOLDER,
-          svgSpriteName,
-        );
+      preRenderedFileUrls
+        .filter((filePath) => existsSync(filePath))
+        .map(async (filePath) => {
+          const content = await readFile(filePath, 'utf8');
+          const updatedContent = content.replaceAll(
+            REACT_ICONS_SPRITE_URL_PLACEHOLDER,
+            svgSpriteName,
+          );
 
-        await writeFile(filePath, updatedContent, 'utf8');
-      }),
+          await writeFile(filePath, updatedContent, 'utf8');
+        }),
     );
   }
 };

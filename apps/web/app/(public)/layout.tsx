@@ -13,7 +13,7 @@ import { Toaster } from 'app/components/ui/toaster';
 import { type AvailableLocale, i18n, locales } from 'app/localization/i18n.ts';
 import { CookieContext, CookieProvider } from 'app/providers/cookie-provider';
 
-export const loader = async ({ params }: Route.LoaderArgs) => {
+export const clientLoader = async ({ params }: Route.ClientLoaderArgs) => {
   let { locale = 'en-US' } = params;
 
   if (!locales.includes(locale as AvailableLocale)) {

@@ -15,3 +15,24 @@ export const getFactionCountForMapSize = (mapSize: number): number => {
   }
   return 9;
 };
+
+/**
+ * Returns the number of Natar villages per map size.
+ * Natar villages hold Construction Plans and are passive defenders.
+ * - 25x25: 1 Natar village
+ * - 50x50: 2 Natar villages
+ * - 75x75: 3 Natar villages
+ * - 100x100: 4 Natar villages
+ */
+export const getNatarVillageCount = (mapSize: number): number => {
+  if (mapSize <= 25) {
+    return 1;
+  }
+  if (mapSize <= 50) {
+    return 2;
+  }
+  if (mapSize <= 75) {
+    return 3;
+  }
+  return 4;
+};

@@ -96,6 +96,7 @@ const viteConfig = defineViteConfig({
     exclude: ['@sqlite.org/sqlite-wasm'],
   },
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       app: resolve(__dirname, 'app'),
       ...(!isDeployingToMaster && {
@@ -134,6 +135,11 @@ const vitestConfig = defineVitestConfig({
     reporters: ['default'],
     coverage: {
       include: ['app/**/*.{ts,tsx}'],
+    },
+    alias: {
+      react: resolve(__dirname, '../../node_modules/react'),
+      'react-dom': resolve(__dirname, '../../node_modules/react-dom'),
+      'react-dom/client': resolve(__dirname, '../../node_modules/react-dom/client'),
     },
   },
 });
