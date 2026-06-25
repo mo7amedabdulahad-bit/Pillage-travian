@@ -81,19 +81,18 @@ jobs:
         continue-on-error: true
         env:
           FIREBASE_SA_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         if: env.FIREBASE_SA_SECRET != ''
         run: |
-          # Write service account to temp file
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > /tmp/firebase-sa.json
+          printf '%s' "$FIREBASE_SA_SECRET" > /tmp/firebase-sa.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-sa.json
 
           npm install -g firebase-tools --silent
 
           firebase appdistribution:distribute \
             apps/web/android/app/build/outputs/apk/release/app-release.apk \
-            --app ${{ secrets.FIREBASE_APP_ID }} \
+            --app "$FIREBASE_APP_ID" \
             --groups testers \
             --release-notes "Build ${{ github.run_number }} from commit ${{ github.sha }}"
 
-          # Clean up
           rm -f /tmp/firebase-sa.json
