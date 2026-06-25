@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
+import { calculateHeroLevel } from '@pillage-first/game-assets/utils/hero';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { createController } from '../utils/controller';
+import { addVillageResourcesAt } from '../utils/village';
 import { grantConstructionPlan } from './hero-controllers';
 import { reconcileNpcBrain } from './resolvers/utils/npc-brain/simulate-elapsed-time';
 import { endServer } from './resolvers/world-wonder-resolvers';
@@ -29,6 +31,12 @@ import {
   adminUpgradeBuildingSchema,
 } from './schemas/admin-action-schemas';
 
+type AdminResult = {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+};
+
 const requireAdminMode = (database: DbFacade): boolean => {
   const enabled = database.selectValue({
     sql: 'SELECT is_admin_mode_enabled FROM developer_settings LIMIT 1',
@@ -37,16 +45,26 @@ const requireAdminMode = (database: DbFacade): boolean => {
   return enabled === 1;
 };
 
-const success = (message?: string, data?: unknown) => ({
-  success: true as const,
+const success = (message?: string, data?: unknown): AdminResult => ({
+  success: true,
   message,
   data,
 });
 
-const failure = (message: string) => ({
-  success: false as const,
+const failure = (message: string): AdminResult => ({
+  success: false,
   message,
 });
+
+const getResourceSitesTileId = (
+  database: DbFacade,
+  villageId: number,
+): number | undefined =>
+  database.selectValue({
+    sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+    bind: { $villageId: villageId },
+    schema: z.number(),
+  });
 
 // ─── Troop Management ───
 
@@ -59,29 +77,44 @@ export const adminSpawnTroops = createController(
   }
 
   const parsed = adminSpawnTroopsSchema.parse(body);
-  const village = database.selectObject({
-    sql: 'SELECT id, tile_id FROM villages WHERE id = $villageId',
-    bind: { $villageId: parsed.villageId },
-    schema: z.object({ id: z.number(), tile_id: z.number() }),
-  });
-  if (!village) {
-    return failure('Village not found');
-  }
+  let result = success(`Spawned troops in village ${parsed.villageId}`);
 
-  for (const troop of parsed.troops) {
-    database.exec({
-      sql: `INSERT INTO troops (tile_id, source_tile_id, unit_id, amount)
-            VALUES ($tileId, $tileId, $unitId, $amount)
-            ON CONFLICT(tile_id, source_tile_id, unit_id) DO UPDATE SET amount = amount + $amount`,
-      bind: {
-        $tileId: village.tile_id,
-        $unitId: troop.unitId,
-        $amount: troop.amount,
-      },
+  database.transaction((db) => {
+    const village = db.selectObject({
+      sql: 'SELECT id, tile_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: parsed.villageId },
+      schema: z.object({ id: z.number(), tile_id: z.number() }),
     });
-  }
+    if (!village) {
+      result = failure('Village not found');
+      return;
+    }
 
-  return success(`Spawned troops in village ${parsed.villageId}`);
+    for (const troop of parsed.troops) {
+      const unitIdRow = db.selectValue({
+        sql: 'SELECT id FROM unit_ids WHERE unit = $unit',
+        bind: { $unit: troop.unitId },
+        schema: z.number(),
+      });
+      if (!unitIdRow) {
+        result = failure(`Unknown unit: ${troop.unitId}`);
+        return;
+      }
+      db.exec({
+        sql: `INSERT INTO troops (tile_id, source_tile_id, unit_id, amount)
+              VALUES ($tileId, $tileId, $unitId, $amount)
+              ON CONFLICT(tile_id, source_tile_id, unit_id)
+              DO UPDATE SET amount = amount + $amount`,
+        bind: {
+          $tileId: village.tile_id,
+          $unitId: unitIdRow,
+          $amount: troop.amount,
+        },
+      });
+    }
+  });
+
+  return result;
 });
 
 export const adminRemoveTroops = createController(
@@ -93,28 +126,54 @@ export const adminRemoveTroops = createController(
   }
 
   const parsed = adminRemoveTroopsSchema.parse(body);
-  const village = database.selectObject({
-    sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
-    bind: { $villageId: parsed.villageId },
-    schema: z.object({ tile_id: z.number() }),
-  });
-  if (!village) {
-    return failure('Village not found');
-  }
+  let result = success(`Removed troops from village ${parsed.villageId}`);
 
-  for (const troop of parsed.troops) {
-    database.exec({
-      sql: `UPDATE troops SET amount = MAX(0, amount - $amount)
-            WHERE tile_id = $tileId AND source_tile_id = $tileId AND unit_id = $unitId`,
-      bind: {
-        $tileId: village.tile_id,
-        $unitId: troop.unitId,
-        $amount: troop.amount,
-      },
+  database.transaction((db) => {
+    const village = db.selectObject({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: parsed.villageId },
+      schema: z.object({ tile_id: z.number() }),
     });
-  }
+    if (!village) {
+      result = failure('Village not found');
+      return;
+    }
 
-  return success(`Removed troops from village ${parsed.villageId}`);
+    for (const troop of parsed.troops) {
+      const unitIdRow = db.selectValue({
+        sql: 'SELECT id FROM unit_ids WHERE unit = $unit',
+        bind: { $unit: troop.unitId },
+        schema: z.number(),
+      });
+      if (!unitIdRow) {
+        result = failure(`Unknown unit: ${troop.unitId}`);
+        return;
+      }
+      // troops has CHECK(amount > 0); can't set to 0, so delete rows we fully drain.
+      db.exec({
+        sql: `DELETE FROM troops
+              WHERE tile_id = $tileId AND source_tile_id = $tileId
+                AND unit_id = $unitId AND amount <= $amount`,
+        bind: {
+          $tileId: village.tile_id,
+          $unitId: unitIdRow,
+          $amount: troop.amount,
+        },
+      });
+      db.exec({
+        sql: `UPDATE troops SET amount = amount - $amount
+              WHERE tile_id = $tileId AND source_tile_id = $tileId
+                AND unit_id = $unitId AND amount > $amount`,
+        bind: {
+          $tileId: village.tile_id,
+          $unitId: unitIdRow,
+          $amount: troop.amount,
+        },
+      });
+    }
+  });
+
+  return result;
 });
 
 // ─── Resource Management ───
@@ -129,24 +188,30 @@ export const adminSetResources = createController(
 
   const parsed = adminSetResourcesSchema.parse(body);
   const { villageId, lumber, clay, iron, crop } = parsed;
-  database.exec({
-    sql: 'UPDATE resource_fields SET amount = $amount WHERE village_id = $villageId AND resource = $resource',
-    bind: { $villageId: villageId, $resource: 'wood', $amount: lumber },
-  });
-  database.exec({
-    sql: 'UPDATE resource_fields SET amount = $amount WHERE village_id = $villageId AND resource = $resource',
-    bind: { $villageId: villageId, $resource: 'clay', $amount: clay },
-  });
-  database.exec({
-    sql: 'UPDATE resource_fields SET amount = $amount WHERE village_id = $villageId AND resource = $resource',
-    bind: { $villageId: villageId, $resource: 'iron', $amount: iron },
-  });
-  database.exec({
-    sql: 'UPDATE resource_fields SET amount = $amount WHERE village_id = $villageId AND resource = $resource',
-    bind: { $villageId: villageId, $resource: 'wheat', $amount: crop },
-  });
 
-  return success(`Set resources for village ${villageId}`);
+  let result = success(`Set resources for village ${villageId}`);
+  database.transaction((db) => {
+    const tileId = getResourceSitesTileId(db, villageId);
+    if (!tileId) {
+      result = failure('Village not found');
+      return;
+    }
+    db.exec({
+      sql: `UPDATE resource_sites
+            SET wood = $wood, clay = $clay, iron = $iron, wheat = $wheat,
+                updated_at = $now
+            WHERE tile_id = $tileId`,
+      bind: {
+        $tileId: tileId,
+        $wood: lumber,
+        $clay: clay,
+        $iron: iron,
+        $wheat: crop,
+        $now: Date.now(),
+      },
+    });
+  });
+  return result;
 });
 
 export const adminAddResources = createController(
@@ -158,27 +223,20 @@ export const adminAddResources = createController(
   }
 
   const parsed = adminAddResourcesSchema.parse(body);
-  const resources = [
-    { resource: 'wood', amount: parsed.lumber },
-    { resource: 'clay', amount: parsed.clay },
-    { resource: 'iron', amount: parsed.iron },
-    { resource: 'wheat', amount: parsed.crop },
-  ];
-
-  for (const r of resources) {
-    if (r.amount !== 0) {
-      database.exec({
-        sql: 'UPDATE resource_fields SET amount = amount + $amount WHERE village_id = $villageId AND resource = $resource',
-        bind: {
-          $villageId: parsed.villageId,
-          $resource: r.resource,
-          $amount: r.amount,
-        },
-      });
+  let result = success(`Added resources to village ${parsed.villageId}`);
+  database.transaction((db) => {
+    if (!getResourceSitesTileId(db, parsed.villageId)) {
+      result = failure('Village not found');
+      return;
     }
-  }
-
-  return success(`Added resources to village ${parsed.villageId}`);
+    addVillageResourcesAt(db, parsed.villageId, Date.now(), [
+      parsed.lumber,
+      parsed.clay,
+      parsed.iron,
+      parsed.crop,
+    ]);
+  });
+  return result;
 });
 
 // ─── Building Management ───
@@ -193,7 +251,8 @@ export const adminUpgradeBuilding = createController(
 
   const parsed = adminUpgradeBuildingSchema.parse(body);
   database.exec({
-    sql: 'UPDATE building_fields SET level = $level WHERE village_id = $villageId AND id = $fieldId',
+    sql: `UPDATE building_fields SET level = $level
+          WHERE village_id = $villageId AND field_id = $fieldId`,
     bind: {
       $villageId: parsed.villageId,
       $fieldId: parsed.fieldId,
@@ -216,7 +275,8 @@ export const adminDowngradeBuilding = createController(
 
   const parsed = adminDowngradeBuildingSchema.parse(body);
   database.exec({
-    sql: 'UPDATE building_fields SET level = $level WHERE village_id = $villageId AND id = $fieldId',
+    sql: `UPDATE building_fields SET level = $level
+          WHERE village_id = $villageId AND field_id = $fieldId`,
     bind: {
       $villageId: parsed.villageId,
       $fieldId: parsed.fieldId,
@@ -292,10 +352,15 @@ export const adminLevelUpHero = createController(
     return failure('Hero not found');
   }
 
-  const newExp = currentExp + 1000 * parsed.levels;
+  // Level is derived from experience via calculateHeroLevel. To advance N
+  // levels, set experience to the threshold of (currentLevel + N).
+  const { level: currentLevel } = calculateHeroLevel(currentExp);
+  const targetLevel = currentLevel + parsed.levels;
+  const targetExp = targetLevel * (targetLevel + 1) * 25;
+
   database.exec({
     sql: 'UPDATE heroes SET experience = $exp WHERE id = $heroId',
-    bind: { $heroId: parsed.heroId, $exp: newExp },
+    bind: { $heroId: parsed.heroId, $exp: targetExp },
   });
 
   return success(`Leveled up hero ${parsed.heroId} by ${parsed.levels} levels`);
@@ -312,65 +377,135 @@ export const adminCreateNatarVillage = createController(
   }
 
   const parsed = adminCreateNatarVillageSchema.parse(body);
+  let result = success('Created Natar village');
+  let createdVillageId: number | undefined;
 
-  const tile = database.selectObject({
-    sql: 'SELECT id FROM tiles WHERE x = $x AND y = $y',
-    bind: { $x: parsed.x, $y: parsed.y },
-    schema: z.object({ id: z.number() }),
+  database.transaction((db) => {
+    const tile = db.selectObject({
+      sql: 'SELECT id FROM tiles WHERE x = $x AND y = $y',
+      bind: { $x: parsed.x, $y: parsed.y },
+      schema: z.object({ id: z.number() }),
+    });
+    if (!tile) {
+      result = failure('Tile not found');
+      return;
+    }
+
+    const existing = db.selectValue({
+      sql: 'SELECT id FROM villages WHERE tile_id = $tileId',
+      bind: { $tileId: tile.id },
+      schema: z.number(),
+    });
+    if (existing) {
+      result = failure('Tile is already occupied');
+      return;
+    }
+
+    const natarFactionId = db.selectValue({
+      sql: `SELECT id FROM faction_ids WHERE faction = 'natars' LIMIT 1`,
+      schema: z.number(),
+    });
+    if (!natarFactionId) {
+      result = failure('Natars faction not configured');
+      return;
+    }
+
+    db.exec({
+      sql: `INSERT INTO players (faction_id, name, tribe_id)
+            VALUES ($factionId, 'Natar Village', 7)`,
+      bind: { $factionId: natarFactionId },
+    });
+    const npcPlayerId = db.selectValue({
+      sql: 'SELECT id FROM players ORDER BY id DESC LIMIT 1',
+      schema: z.number(),
+    });
+    if (!npcPlayerId) {
+      result = failure('Failed to create NPC player');
+      return;
+    }
+
+    db.exec({
+      sql: `INSERT INTO villages (player_id, tile_id, name, population)
+            VALUES ($playerId, $tileId, 'Natar Village', 100)`,
+      bind: { $playerId: npcPlayerId, $tileId: tile.id },
+    });
+    const villageId = db.selectValue({
+      sql: 'SELECT id FROM villages ORDER BY id DESC LIMIT 1',
+      schema: z.number(),
+    });
+    if (!villageId) {
+      result = failure('Failed to create village');
+      return;
+    }
+    createdVillageId = villageId;
+
+    db.exec({
+      sql: `INSERT INTO natar_villages (village_id, server_slug, construction_plan_available)
+            VALUES ($villageId, 'default', 1)`,
+      bind: { $villageId: villageId },
+    });
+
+    db.exec({
+      sql: `INSERT INTO npc_village_state (village_id, faction_key, aggression_level)
+            VALUES ($villageId, 'natars', 0)`,
+      bind: { $villageId: villageId },
+    });
+
+    // Seed garrison troops if a garrison strength was requested.
+    if (parsed.garrisonStrength > 0) {
+      // Distribute the requested garrison across the standard Natar unit set.
+      const garrisonUnits = [
+        'PIKEMAN',
+        'THORNED_WARRIOR',
+        'GUARDSMAN',
+        'AXERIDER',
+        'NATARIAN_KNIGHT',
+        'WAR_ELEPHANT',
+        'BALLISTA',
+        'NATARIAN_EMPEROR',
+      ];
+      const perUnit = Math.max(
+        1,
+        Math.floor(parsed.garrisonStrength / garrisonUnits.length),
+      );
+      for (const unit of garrisonUnits) {
+        const unitIdRow = db.selectValue({
+          sql: 'SELECT id FROM unit_ids WHERE unit = $unit',
+          bind: { $unit: unit },
+          schema: z.number(),
+        });
+        if (!unitIdRow) {
+          continue;
+        }
+        db.exec({
+          sql: `INSERT INTO troops (tile_id, source_tile_id, unit_id, amount)
+                VALUES ($tileId, $tileId, $unitId, $amount)
+                ON CONFLICT(tile_id, source_tile_id, unit_id)
+                DO UPDATE SET amount = amount + $amount`,
+          bind: {
+            $tileId: tile.id,
+            $unitId: unitIdRow,
+            $amount: perUnit,
+          },
+        });
+      }
+      // Reflect garrison strength into npc_village_state.
+      db.exec({
+        sql: 'UPDATE npc_village_state SET garrison_power = $power WHERE village_id = $villageId',
+        bind: { $power: perUnit * garrisonUnits.length, $villageId: villageId },
+      });
+    }
+
+    result = success(`Created Natar village at (${parsed.x}, ${parsed.y})`, {
+      villageId,
+    });
   });
-  if (!tile) {
-    return failure('Tile not found');
+
+  // Surface the created id via the success data even if loop vars cleared.
+  if (createdVillageId && result.success) {
+    return success(result.message, { villageId: createdVillageId });
   }
-
-  const existing = database.selectValue({
-    sql: 'SELECT id FROM villages WHERE tile_id = $tileId',
-    bind: { $tileId: tile.id },
-    schema: z.number(),
-  });
-  if (existing) {
-    return failure('Tile is already occupied');
-  }
-
-  database.exec({
-    sql: `INSERT INTO players (faction_id, name, tribe_id)
-          SELECT fi.id, 'Natar Village', 7 FROM faction_ids fi WHERE fi.faction = 'natars'`,
-  });
-  const npcPlayerId = database.selectValue({
-    sql: 'SELECT id FROM players ORDER BY id DESC LIMIT 1',
-    schema: z.number(),
-  });
-  if (!npcPlayerId) {
-    return failure('Failed to create NPC player');
-  }
-
-  database.exec({
-    sql: `INSERT INTO villages (player_id, tile_id, name, population)
-          VALUES ($playerId, $tileId, 'Natar Village', 100)`,
-    bind: { $playerId: npcPlayerId, $tileId: tile.id },
-  });
-  const villageId = database.selectValue({
-    sql: 'SELECT id FROM villages ORDER BY id DESC LIMIT 1',
-    schema: z.number(),
-  });
-  if (!villageId) {
-    return failure('Failed to create village');
-  }
-
-  database.exec({
-    sql: `INSERT INTO natar_villages (village_id, server_slug, construction_plan_available)
-          VALUES ($villageId, 'default', 1)`,
-    bind: { $villageId: villageId },
-  });
-
-  database.exec({
-    sql: `INSERT INTO npc_village_state (village_id, faction_key, aggression_level)
-          VALUES ($villageId, 'natars', 0)`,
-    bind: { $villageId: villageId },
-  });
-
-  return success(`Created Natar village at (${parsed.x}, ${parsed.y})`, {
-    villageId,
-  });
+  return result;
 });
 
 // ─── Construction Plan ───
@@ -403,46 +538,53 @@ export const adminStartWorldWonder = createController(
   }
 
   const parsed = adminStartWorldWonderSchema.parse(body);
-  const village = database.selectObject({
-    sql: 'SELECT id, player_id FROM villages WHERE id = $villageId',
-    bind: { $villageId: parsed.villageId },
-    schema: z.object({ id: z.number(), player_id: z.number() }),
-  });
-  if (!village) {
-    return failure('Village not found');
-  }
+  let result = success(`Started World Wonder in village ${parsed.villageId}`);
 
-  const existing = database.selectValue({
-    sql: 'SELECT village_id FROM world_wonders WHERE village_id = $villageId',
-    bind: { $villageId: parsed.villageId },
-    schema: z.number(),
-  });
-  if (existing) {
-    return failure('World Wonder already exists for this village');
-  }
+  database.transaction((db) => {
+    const village = db.selectObject({
+      sql: 'SELECT id, player_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: parsed.villageId },
+      schema: z.object({ id: z.number(), player_id: z.number() }),
+    });
+    if (!village) {
+      result = failure('Village not found');
+      return;
+    }
 
-  const hero = database.selectObject({
-    sql: 'SELECT id FROM heroes WHERE player_id = $playerId LIMIT 1',
-    bind: { $playerId: PLAYER_ID },
-    schema: z.object({ id: z.number() }),
-  });
-  if (hero) {
-    grantConstructionPlan(database, hero.id);
-  }
+    const existing = db.selectValue({
+      sql: 'SELECT village_id FROM world_wonders WHERE village_id = $villageId',
+      bind: { $villageId: parsed.villageId },
+      schema: z.number(),
+    });
+    if (existing) {
+      result = failure('World Wonder already exists for this village');
+      return;
+    }
 
-  const now = Date.now();
-  database.exec({
-    sql: `INSERT INTO world_wonders (village_id, owner_player_id, owner_faction_id, current_level, started_at)
-          VALUES ($villageId, $playerId, 'player', 0, $now)`,
-    bind: { $villageId: parsed.villageId, $playerId: PLAYER_ID, $now: now },
+    // Bypass preconditions: ensure the player's hero holds a plan first.
+    const hero = db.selectObject({
+      sql: 'SELECT id FROM heroes WHERE player_id = $playerId LIMIT 1',
+      bind: { $playerId: PLAYER_ID },
+      schema: z.object({ id: z.number() }),
+    });
+    if (hero) {
+      grantConstructionPlan(db, hero.id);
+    }
+
+    const now = Date.now();
+    db.exec({
+      sql: `INSERT INTO world_wonders (village_id, owner_player_id, owner_faction_id, current_level, started_at)
+            VALUES ($villageId, $playerId, 'player', 0, $now)`,
+      bind: { $villageId: parsed.villageId, $playerId: PLAYER_ID, $now: now },
+    });
+
+    db.exec({
+      sql: 'UPDATE villages SET is_world_wonder_village = 1, world_wonder_level = 0 WHERE id = $villageId',
+      bind: { $villageId: parsed.villageId },
+    });
   });
 
-  database.exec({
-    sql: 'UPDATE villages SET is_world_wonder_village = 1, world_wonder_level = 0 WHERE id = $villageId',
-    bind: { $villageId: parsed.villageId },
-  });
-
-  return success(`Started World Wonder in village ${parsed.villageId}`);
+  return result;
 });
 
 export const adminSetWorldWonderLevel = createController(
@@ -454,27 +596,31 @@ export const adminSetWorldWonderLevel = createController(
   }
 
   const parsed = adminSetWorldWonderLevelSchema.parse(body);
-  const ww = database.selectValue({
-    sql: 'SELECT village_id FROM world_wonders WHERE village_id = $villageId',
-    bind: { $villageId: parsed.villageId },
-    schema: z.number(),
-  });
-  if (!ww) {
-    return failure('No World Wonder found for this village');
-  }
-
-  database.exec({
-    sql: 'UPDATE world_wonders SET current_level = $level WHERE village_id = $villageId',
-    bind: { $villageId: parsed.villageId, $level: parsed.level },
-  });
-  database.exec({
-    sql: 'UPDATE villages SET world_wonder_level = $level WHERE id = $villageId',
-    bind: { $villageId: parsed.villageId, $level: parsed.level },
-  });
-
-  return success(
+  let result = success(
     `Set World Wonder in village ${parsed.villageId} to level ${parsed.level}`,
   );
+
+  database.transaction((db) => {
+    const ww = db.selectValue({
+      sql: 'SELECT village_id FROM world_wonders WHERE village_id = $villageId',
+      bind: { $villageId: parsed.villageId },
+      schema: z.number(),
+    });
+    if (!ww) {
+      result = failure('No World Wonder found for this village');
+      return;
+    }
+    db.exec({
+      sql: 'UPDATE world_wonders SET current_level = $level WHERE village_id = $villageId',
+      bind: { $villageId: parsed.villageId, $level: parsed.level },
+    });
+    db.exec({
+      sql: 'UPDATE villages SET world_wonder_level = $level WHERE id = $villageId',
+      bind: { $villageId: parsed.villageId, $level: parsed.level },
+    });
+  });
+
+  return result;
 });
 
 // ─── Server Management ───
@@ -488,7 +634,17 @@ export const adminEndServer = createController(
   }
 
   const parsed = adminEndServerSchema.parse(body);
-  const winnerPlayerId = parsed.winnerType === 'player' ? PLAYER_ID : 0;
+  let winnerPlayerId: number = PLAYER_ID;
+  if (parsed.winnerType === 'natars') {
+    // Find a Natar-controlled player to mirror the natural endgame path.
+    const natarPlayerId = database.selectValue({
+      sql: `SELECT p.id FROM players p
+            JOIN faction_ids fi ON fi.id = p.faction_id
+            WHERE fi.faction = 'natars' LIMIT 1`,
+      schema: z.number(),
+    });
+    winnerPlayerId = natarPlayerId ?? 0;
+  }
   endServer(database, parsed.winnerType, winnerPlayerId, Date.now());
 
   return success(`Server ended. Winner: ${parsed.winnerType}`);
@@ -597,8 +753,12 @@ export const adminCancelEvent = createController(
   }
 
   const parsed = adminCancelEventSchema.parse(body);
+  // The events table has no resolved_at column; events are DELETEd after
+  // resolution. Cancelling = removing the pending event so the scheduler
+  // never picks it up (the plan's "leave rows for inspection" is already
+  // how resolution works; cancelling is intentionally destructive).
   database.exec({
-    sql: 'DELETE FROM events WHERE id = $id AND resolved_at IS NULL',
+    sql: 'DELETE FROM events WHERE id = $id',
     bind: { $id: parsed.eventId },
   });
 
@@ -616,41 +776,48 @@ export const adminTeleportVillage = createController(
   }
 
   const parsed = adminTeleportVillageSchema.parse(body);
-  const village = database.selectObject({
-    sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
-    bind: { $villageId: parsed.villageId },
-    schema: z.object({ tile_id: z.number() }),
-  });
-  if (!village) {
-    return failure('Village not found');
-  }
-
-  const targetTile = database.selectObject({
-    sql: 'SELECT id FROM tiles WHERE x = $x AND y = $y',
-    bind: { $x: parsed.x, $y: parsed.y },
-    schema: z.object({ id: z.number() }),
-  });
-  if (!targetTile) {
-    return failure('Target tile not found');
-  }
-
-  const occupied = database.selectValue({
-    sql: 'SELECT id FROM villages WHERE tile_id = $tileId',
-    bind: { $tileId: targetTile.id },
-    schema: z.number(),
-  });
-  if (occupied) {
-    return failure('Target tile is already occupied');
-  }
-
-  database.exec({
-    sql: 'UPDATE villages SET tile_id = $newTileId WHERE id = $villageId',
-    bind: { $villageId: parsed.villageId, $newTileId: targetTile.id },
-  });
-
-  return success(
+  let result = success(
     `Teleported village ${parsed.villageId} to (${parsed.x}, ${parsed.y})`,
   );
+
+  database.transaction((db) => {
+    const village = db.selectObject({
+      sql: 'SELECT tile_id FROM villages WHERE id = $villageId',
+      bind: { $villageId: parsed.villageId },
+      schema: z.object({ tile_id: z.number() }),
+    });
+    if (!village) {
+      result = failure('Village not found');
+      return;
+    }
+
+    const targetTile = db.selectObject({
+      sql: 'SELECT id FROM tiles WHERE x = $x AND y = $y',
+      bind: { $x: parsed.x, $y: parsed.y },
+      schema: z.object({ id: z.number() }),
+    });
+    if (!targetTile) {
+      result = failure('Target tile not found');
+      return;
+    }
+
+    const occupied = db.selectValue({
+      sql: 'SELECT id FROM villages WHERE tile_id = $tileId',
+      bind: { $tileId: targetTile.id },
+      schema: z.number(),
+    });
+    if (occupied) {
+      result = failure('Target tile is already occupied');
+      return;
+    }
+
+    db.exec({
+      sql: 'UPDATE villages SET tile_id = $newTileId WHERE id = $villageId',
+      bind: { $villageId: parsed.villageId, $newTileId: targetTile.id },
+    });
+  });
+
+  return result;
 });
 
 export const adminRenameVillage = createController(
@@ -721,9 +888,9 @@ export const adminGetIntegrityReport = createController(
     'SELECT COUNT(*) FROM world_wonders WHERE current_level > 20',
   );
   runCheck(
-    'Events resolving after server end',
+    'Pending events after server end',
     'warning',
-    'SELECT COUNT(*) FROM events WHERE resolved_at IS NULL AND (SELECT ended_at FROM servers LIMIT 1) IS NOT NULL',
+    'SELECT COUNT(*) FROM events WHERE (SELECT ended_at FROM servers LIMIT 1) IS NOT NULL',
   );
   runCheck(
     'Natar villages with has_plan but plan unavailable',
@@ -731,6 +898,24 @@ export const adminGetIntegrityReport = createController(
     `SELECT COUNT(*) FROM npc_village_state nvs
      JOIN natar_villages nv ON nv.village_id = nvs.village_id
      WHERE nvs.has_plan = 1 AND nv.construction_plan_available = 0`,
+  );
+  runCheck(
+    'NPC factions holding a plan but with no World Wonder',
+    'info',
+    `SELECT COUNT(DISTINCT nvs.faction_key) FROM npc_village_state nvs
+     WHERE nvs.holds_plan = 1
+       AND nvs.faction_key NOT IN (SELECT owner_faction_id FROM world_wonders)`,
+  );
+  runCheck(
+    'Player villages flagged plan_held but no plan in inventory',
+    'warning',
+    `SELECT COUNT(*) FROM villages v
+     WHERE v.construction_plan_held = 1 AND v.player_id = 1
+       AND NOT EXISTS (
+         SELECT 1 FROM hero_inventory hi
+         JOIN heroes h ON h.id = hi.hero_id
+         WHERE h.player_id = 1 AND hi.item_id = 200 AND hi.amount > 0
+       )`,
   );
   runCheck(
     'Retaliation queue entries for Natars',
@@ -745,12 +930,12 @@ export const adminGetIntegrityReport = createController(
   runCheck(
     'Villages with negative resources',
     'error',
-    'SELECT COUNT(*) FROM resource_fields WHERE amount < 0',
+    'SELECT COUNT(*) FROM resource_sites WHERE wood < 0 OR clay < 0 OR iron < 0 OR wheat < 0',
   );
   runCheck(
-    'Troops with negative amounts',
+    'Troops with non-positive amounts',
     'error',
-    'SELECT COUNT(*) FROM troops WHERE amount < 0',
+    'SELECT COUNT(*) FROM troops WHERE amount <= 0',
   );
 
   return success(undefined, { checks });

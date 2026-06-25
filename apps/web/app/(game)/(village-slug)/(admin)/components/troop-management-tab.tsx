@@ -1,5 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { use, useState } from 'react';
+import { use, useMemo, useState } from 'react';
+import { unitsMap } from '@pillage-first/game-assets/units';
 import { useAdminDashboard } from 'app/(game)/(village-slug)/hooks/use-admin-dashboard';
 import { ApiContext } from 'app/(game)/providers/api-provider';
 import { Button } from 'app/components/ui/button';
@@ -27,27 +28,14 @@ type Village = {
 
 type TroopEntry = {
   unitId: string;
-  name: string;
   amount: number;
 };
 
-type VillageTroops = {
-  villageId: number;
-  troops: TroopEntry[];
+type UnitOption = {
+  id: string;
+  tribe: string;
+  category: string;
 };
-
-const UNIT_TYPES = [
-  { id: '1', name: 'Clubswinger' },
-  { id: '2', name: 'Swordsman' },
-  { id: '3', name: 'Axeman' },
-  { id: '4', name: 'Scout' },
-  { id: '5', name: 'Paladin' },
-  { id: '6', name: 'Teutonic Knight' },
-  { id: '7', name: 'Ram' },
-  { id: '8', name: 'Catapult' },
-  { id: '9', name: 'Nobleman' },
-  { id: '10', name: 'Settler' },
-];
 
 export const TroopManagementTab = () => {
   const { fetcher } = use(ApiContext);
@@ -59,25 +47,41 @@ export const TroopManagementTab = () => {
   const [removeAmount, setRemoveAmount] = useState('1');
 
   const { data: villages } = useSuspenseQuery({
-    queryKey: ['player-villages'],
+    queryKey: ['admin-villages'],
     queryFn: async () => {
-      const response = await fetcher<Village[]>('/me/villages');
+      const response = await fetcher<Village[]>('/admin/villages');
       return response.data ?? [];
     },
   });
 
-  const { data: troopData } = useSuspenseQuery({
+  const { data: units } = useSuspenseQuery({
+    queryKey: ['admin-units'],
+    queryFn: async () => {
+      const response = await fetcher<UnitOption[]>('/admin/units');
+      return response.data ?? [];
+    },
+  });
+
+  const { data: troops } = useSuspenseQuery({
     queryKey: ['admin-troop-data', selectedVillageId],
     queryFn: async () => {
       if (!selectedVillageId) {
         return null;
       }
-      const response = await fetcher<VillageTroops>(
+      const response = await fetcher<TroopEntry[]>(
         `/villages/${selectedVillageId}/troops`,
       );
-      return response.data;
+      return response.data ?? [];
     },
   });
+
+  const unitLabel = useMemo(() => {
+    return (unitId: string): string => {
+      const unit = unitsMap.get(unitId as never);
+      const tribe = unit?.tribe ?? '';
+      return `${unitId} (${tribe})`;
+    };
+  }, []);
 
   const handleSpawn = async () => {
     if (!selectedVillageId || !spawnUnitId || !spawnAmount) {
@@ -129,7 +133,7 @@ export const TroopManagementTab = () => {
         </CardContent>
       </Card>
 
-      {selectedVillageId && troopData && (
+      {selectedVillageId && troops && (
         <Card>
           <CardHeader className="p-3 sm:p-4">
             <CardTitle className="text-sm sm:text-base">
@@ -147,7 +151,7 @@ export const TroopManagementTab = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {troopData.troops?.length === 0 ? (
+                  {troops.length === 0 ? (
                     <tr>
                       <td
                         colSpan={2}
@@ -157,12 +161,12 @@ export const TroopManagementTab = () => {
                       </td>
                     </tr>
                   ) : (
-                    troopData.troops?.map((t) => (
+                    troops.map((t) => (
                       <tr
                         key={t.unitId}
                         className="border-b last:border-0"
                       >
-                        <td className="p-3">{t.name}</td>
+                        <td className="p-3">{unitLabel(t.unitId)}</td>
                         <td className="p-3 text-right font-mono">
                           {t.amount.toLocaleString()}
                         </td>
@@ -174,17 +178,17 @@ export const TroopManagementTab = () => {
             </div>
 
             <div className="md:hidden space-y-2">
-              {troopData.troops?.length === 0 ? (
+              {troops.length === 0 ? (
                 <div className="text-center text-muted-foreground text-sm p-3">
                   No troops
                 </div>
               ) : (
-                troopData.troops?.map((t) => (
+                troops.map((t) => (
                   <div
                     key={t.unitId}
                     className="flex items-center justify-between rounded-lg border p-3"
                   >
-                    <span className="text-sm">{t.name}</span>
+                    <span className="text-sm">{unitLabel(t.unitId)}</span>
                     <span className="font-mono text-sm">
                       {t.amount.toLocaleString()}
                     </span>
@@ -211,12 +215,12 @@ export const TroopManagementTab = () => {
                   <SelectValue placeholder="Unit type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {UNIT_TYPES.map((u) => (
+                  {units?.map((u) => (
                     <SelectItem
                       key={u.id}
                       value={u.id}
                     >
-                      {u.name}
+                      {unitLabel(u.id)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -256,12 +260,12 @@ export const TroopManagementTab = () => {
                   <SelectValue placeholder="Unit type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {UNIT_TYPES.map((u) => (
+                  {units?.map((u) => (
                     <SelectItem
                       key={u.id}
                       value={u.id}
                     >
-                      {u.name}
+                      {unitLabel(u.id)}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -26,10 +26,14 @@ type Village = {
 };
 
 type WorldWonderData = {
-  village_id: number;
-  owner_faction_id: string;
-  current_level: number;
-  name: string | null;
+  villageId: number;
+  ownerPlayerId: number | null;
+  ownerFactionId: string;
+  currentLevel: number;
+  startedAt: number;
+  villageName: string;
+  x: number;
+  y: number;
 };
 
 export const WorldWonderTab = () => {
@@ -47,19 +51,17 @@ export const WorldWonderTab = () => {
   const [heroId, setHeroId] = useState('');
 
   const { data: villages } = useSuspenseQuery({
-    queryKey: ['player-villages'],
+    queryKey: ['admin-villages'],
     queryFn: async () => {
-      const response = await fetcher<Village[]>('/me/villages');
+      const response = await fetcher<Village[]>('/admin/villages');
       return response.data ?? [];
     },
   });
 
-  const { data: _wonders } = useSuspenseQuery({
+  const { data: worldWonders } = useSuspenseQuery({
     queryKey: ['admin-world-wonders'],
     queryFn: async () => {
-      const response = await fetcher<WorldWonderData[]>(
-        '/admin/npc-dashboard/villages',
-      );
+      const response = await fetcher<WorldWonderData[]>('/admin/world-wonders');
       return response.data ?? [];
     },
   });
@@ -90,6 +92,50 @@ export const WorldWonderTab = () => {
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader className="p-3 sm:p-4">
+          <CardTitle className="text-sm sm:text-base">
+            World Wonders ({worldWonders?.length ?? 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 sm:p-4 pt-0">
+          {worldWonders?.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No World Wonders on this server.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {worldWonders?.map((ww) => (
+                <div
+                  key={ww.villageId}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div>
+                    <div className="font-medium text-sm">
+                      {ww.villageName} [{ww.x},{ww.y}]
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Owner: {ww.ownerFactionId} · Level {ww.currentLevel}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setLevelVillageId(String(ww.villageId));
+                      setWwLevel(String(ww.currentLevel));
+                    }}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="p-3 sm:p-4">
           <CardTitle className="text-sm sm:text-base">

@@ -810,6 +810,62 @@ export const paths = {
       },
     },
   },
+  '/admin/villages': {
+    get: {
+      summary: 'All villages with resources (admin)',
+      responses: {
+        '200': { description: 'Village list' },
+      },
+    },
+  },
+  '/admin/villages/:villageId/detail': {
+    get: {
+      summary: 'Village detail with buildings + troops (admin)',
+      responses: {
+        '200': { description: 'Village detail' },
+      },
+    },
+  },
+  '/admin/hero-overview': {
+    get: {
+      summary: 'Player hero overview (admin)',
+      responses: {
+        '200': { description: 'Hero overview' },
+      },
+    },
+  },
+  '/admin/events': {
+    get: {
+      summary: 'All events with optional filters (admin)',
+      responses: {
+        '200': { description: 'Event list' },
+      },
+    },
+  },
+  '/admin/reports': {
+    get: {
+      summary: 'All reports with optional filters (admin)',
+      responses: {
+        '200': { description: 'Report list' },
+      },
+    },
+  },
+  '/admin/world-wonders': {
+    get: {
+      summary: 'All World Wonders (admin)',
+      responses: {
+        '200': { description: 'World Wonder list' },
+      },
+    },
+  },
+  '/admin/units': {
+    get: {
+      summary: 'Unit catalogue for admin dropdowns',
+      responses: {
+        '200': { description: 'Unit list' },
+      },
+    },
+  },
   // ─── Admin Actions ───
   '/admin/spawn-troops': {
     post: {

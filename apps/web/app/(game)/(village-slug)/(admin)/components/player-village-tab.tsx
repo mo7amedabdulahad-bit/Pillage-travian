@@ -23,26 +23,18 @@ type Village = {
   slug: string;
   x: number;
   y: number;
-  hero?: {
-    health: number;
-    maxHealth: number;
-    level: number;
-    items: Array<{ id: number; name: string; amount: number }>;
-  };
+  playerId: number | null;
+  population: number;
+  loyalty: number;
+  isWorldWonderVillage: boolean;
+  worldWonderLevel: number;
+  constructionPlanHeld: boolean;
   resources?: {
     lumber: number;
     clay: number;
     iron: number;
     crop: number;
   };
-  buildings?: Array<{
-    fieldId: number;
-    name: string;
-    level: number;
-    x: number;
-    y: number;
-  }>;
-  troops?: Array<{ unitId: string; name: string; amount: number }>;
 };
 
 export const PlayerVillageTab = () => {
@@ -60,7 +52,7 @@ export const PlayerVillageTab = () => {
   );
 
   const { data: villages } = useSuspenseQuery({
-    queryKey: ['admin-all-villages'],
+    queryKey: ['admin-villages'],
     queryFn: async () => {
       const { data } = await fetcher('/admin/villages');
       return (data ?? []) as Village[];
@@ -72,6 +64,30 @@ export const PlayerVillageTab = () => {
     queryFn: async () => {
       const { data } = await fetcher('/admin/hero-overview');
       return data as Record<string, unknown> | undefined;
+    },
+  });
+
+  // Fetch building + troop detail for whichever village is currently being
+  // viewed in the details modal. Keyed by the selected id so it only fetches
+  // when the modal is open.
+  const selectedId = selectedVillage?.id ?? null;
+  const { data: villageDetail } = useSuspenseQuery({
+    queryKey: ['admin-village-detail', selectedId],
+    queryFn: async () => {
+      if (!selectedId) {
+        return null;
+      }
+      const { data } = await fetcher<{
+        id: number;
+        name: string;
+        buildings: Array<{
+          fieldId: number;
+          buildingId: string;
+          level: number;
+        }>;
+        troops: Array<{ unitId: string; amount: number }>;
+      }>(`/admin/villages/${selectedId}/detail`);
+      return data;
     },
   });
 
@@ -161,10 +177,8 @@ export const PlayerVillageTab = () => {
                 <tr className="sticky top-0 bg-background z-10 border-b">
                   <th className="p-3 text-left font-medium">Village</th>
                   <th className="p-3 text-left font-medium">Coords</th>
-                  <th className="p-3 text-right font-medium">Lumber</th>
-                  <th className="p-3 text-right font-medium">Clay</th>
-                  <th className="p-3 text-right font-medium">Iron</th>
-                  <th className="p-3 text-right font-medium">Crop</th>
+                  <th className="p-3 text-right font-medium">Pop</th>
+                  <th className="p-3 text-right font-medium">Loyalty</th>
                   <th className="p-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
@@ -179,16 +193,10 @@ export const PlayerVillageTab = () => {
                       [{village.x},{village.y}]
                     </td>
                     <td className="p-3 text-right font-mono">
-                      {village.resources?.lumber?.toLocaleString() ?? 0}
+                      {village.population.toLocaleString()}
                     </td>
                     <td className="p-3 text-right font-mono">
-                      {village.resources?.clay?.toLocaleString() ?? 0}
-                    </td>
-                    <td className="p-3 text-right font-mono">
-                      {village.resources?.iron?.toLocaleString() ?? 0}
-                    </td>
-                    <td className="p-3 text-right font-mono">
-                      {village.resources?.crop?.toLocaleString() ?? 0}
+                      {village.loyalty}%
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex gap-1 justify-end">
@@ -270,27 +278,15 @@ export const PlayerVillageTab = () => {
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   <div>
                     <span className="block font-mono text-foreground">
-                      {village.resources?.lumber?.toLocaleString() ?? 0}
+                      {village.population.toLocaleString()}
                     </span>
-                    <span className="text-muted-foreground">Lumber</span>
+                    <span className="text-muted-foreground">Pop</span>
                   </div>
                   <div>
                     <span className="block font-mono text-foreground">
-                      {village.resources?.clay?.toLocaleString() ?? 0}
+                      {village.loyalty}%
                     </span>
-                    <span className="text-muted-foreground">Clay</span>
-                  </div>
-                  <div>
-                    <span className="block font-mono text-foreground">
-                      {village.resources?.iron?.toLocaleString() ?? 0}
-                    </span>
-                    <span className="text-muted-foreground">Iron</span>
-                  </div>
-                  <div>
-                    <span className="block font-mono text-foreground">
-                      {village.resources?.crop?.toLocaleString() ?? 0}
-                    </span>
-                    <span className="text-muted-foreground">Crop</span>
+                    <span className="text-muted-foreground">Loyalty</span>
                   </div>
                 </div>
               </div>
@@ -346,14 +342,13 @@ export const PlayerVillageTab = () => {
               <div>
                 <h4 className="text-sm font-medium mb-2">Buildings</h4>
                 <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                  {selectedVillage.buildings?.map((building) => (
+                  {villageDetail?.buildings?.map((building) => (
                     <div
                       key={building.fieldId}
                       className="flex items-center gap-2 text-xs"
                     >
-                      <span className="flex-1 truncate">{building.name}</span>
-                      <span className="text-muted-foreground">
-                        [{building.x},{building.y}]
+                      <span className="flex-1 truncate">
+                        {building.buildingId}
                       </span>
                       <span className="font-mono w-8 text-right">
                         Lvl {building.level}
@@ -392,12 +387,12 @@ export const PlayerVillageTab = () => {
               <div>
                 <h4 className="text-sm font-medium mb-2">Troops</h4>
                 <div className="grid grid-cols-3 gap-1 text-xs">
-                  {selectedVillage.troops?.map((troop) => (
+                  {villageDetail?.troops?.map((troop) => (
                     <div
                       key={troop.unitId}
                       className="flex justify-between"
                     >
-                      <span className="truncate">{troop.name}</span>
+                      <span className="truncate">{troop.unitId}</span>
                       <span className="font-mono ml-2">
                         {troop.amount.toLocaleString()}
                       </span>
@@ -406,27 +401,34 @@ export const PlayerVillageTab = () => {
                 </div>
               </div>
 
-              {selectedVillage.hero && (
+              {heroData && (
                 <div>
                   <h4 className="text-sm font-medium mb-2">Hero</h4>
                   <div className="text-xs space-y-1">
                     <div>
                       Level:{' '}
                       <span className="font-mono">
-                        {selectedVillage.hero.level}
+                        {((heroData as Record<string, unknown>)
+                          ?.level as number) ?? 0}
                       </span>
                     </div>
                     <div>
                       Health:{' '}
                       <span className="font-mono">
-                        {selectedVillage.hero.health}/
-                        {selectedVillage.hero.maxHealth}
+                        {((heroData as Record<string, unknown>)
+                          ?.health as number) ?? 0}
+                        /
+                        {((heroData as Record<string, unknown>)
+                          ?.maxHealth as number) ?? 0}
                       </span>
                     </div>
                     <div>
                       Items:{' '}
                       <span className="font-mono">
-                        {selectedVillage.hero.items.length}
+                        {(
+                          (heroData as Record<string, unknown>)
+                            ?.items as unknown[]
+                        )?.length ?? 0}
                       </span>
                     </div>
                   </div>

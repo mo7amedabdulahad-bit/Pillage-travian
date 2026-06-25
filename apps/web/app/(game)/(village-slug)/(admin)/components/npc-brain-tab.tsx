@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { use, useState } from 'react';
 import { ActivityFeed } from 'app/(game)/(village-slug)/(npc-dashboard)/components/activity-feed';
 import { FactionBreakdown } from 'app/(game)/(village-slug)/(npc-dashboard)/components/faction-breakdown';
@@ -25,6 +25,7 @@ import {
 
 export const NpcBrainTab = () => {
   const { fetcher } = use(ApiContext);
+  const queryClient = useQueryClient();
   const { setNpcAggression, cancelRetaliation, triggerNpcBrainTick } =
     useAdminDashboard();
   const [aggressionVillageId, setAggressionVillageId] = useState('');
@@ -120,6 +121,7 @@ export const NpcBrainTab = () => {
           lootWheat: number;
         }[];
         pendingRetaliations: {
+          id: number;
           villageId: number;
           villageName: string;
           factionKey: string;
@@ -145,19 +147,27 @@ export const NpcBrainTab = () => {
       villageId: Number(aggressionVillageId),
       aggressionLevel: Number(aggressionLevel),
     });
+    await queryClient.invalidateQueries({ queryKey: ['admin-npc-villages'] });
   };
 
-  const handleCancelRetaliation = async () => {
-    if (!retaliationId) {
+  const handleCancelRetaliation = async (id?: number) => {
+    const targetId = id ?? Number(retaliationId);
+    if (!targetId) {
       return;
     }
-    await cancelRetaliation({ retaliationId: Number(retaliationId) });
+    await cancelRetaliation({ retaliationId: targetId });
     setRetaliationId('');
+    await queryClient.invalidateQueries({ queryKey: ['admin-npc-activity'] });
   };
 
   const handleTick = async () => {
     const result = await triggerNpcBrainTick();
     setTickResult(JSON.stringify(result?.data, null, 2));
+    await queryClient.invalidateQueries({
+      queryKey: ['admin-npc-overview'],
+    });
+    await queryClient.invalidateQueries({ queryKey: ['admin-npc-villages'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-npc-activity'] });
   };
 
   return (
@@ -239,7 +249,7 @@ export const NpcBrainTab = () => {
               Cancel Retaliation
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 sm:p-4 pt-0">
+          <CardContent className="p-3 sm:p-4 pt-0 space-y-3">
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 type="number"
@@ -252,11 +262,40 @@ export const NpcBrainTab = () => {
                 variant="destructive"
                 className="w-full sm:w-auto"
                 disabled={!retaliationId}
-                onClick={handleCancelRetaliation}
+                onClick={() => handleCancelRetaliation()}
               >
                 Cancel
               </Button>
             </div>
+            {activity?.pendingRetaliations &&
+              activity.pendingRetaliations.length > 0 && (
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {activity.pendingRetaliations.map((r) => (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between rounded-md border px-2 py-1.5 text-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">
+                          {r.villageName}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {r.factionKey} ·{' '}
+                          {new Date(r.executeAtMs).toLocaleString()}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleCancelRetaliation(r.id)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
           </CardContent>
         </Card>
 

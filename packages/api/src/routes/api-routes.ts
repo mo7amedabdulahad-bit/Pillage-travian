@@ -32,6 +32,15 @@ import {
   getAdminDashboardVillages,
 } from '../controllers/admin-dashboard-controller';
 import {
+  adminGetEvents,
+  adminGetHeroOverview,
+  adminGetReports,
+  adminGetUnits,
+  adminGetVillageDetail,
+  adminGetVillages,
+  adminGetWorldWonders,
+} from '../controllers/admin-read-controllers';
+import {
   getBookmarks,
   updateBookmark,
 } from '../controllers/bookmark-controllers';
@@ -168,6 +177,15 @@ const apiRoutes: Route[] = [
   createRoute(getAdminDashboardFactions),
   createRoute(getAdminDashboardVillages),
   createRoute(getAdminDashboardActivity),
+
+  // Admin Read Endpoints
+  createRoute(adminGetVillages),
+  createRoute(adminGetVillageDetail),
+  createRoute(adminGetHeroOverview),
+  createRoute(adminGetEvents),
+  createRoute(adminGetReports),
+  createRoute(adminGetWorldWonders),
+  createRoute(adminGetUnits),
 
   // Admin Actions
   createRoute(adminSpawnTroops as any),

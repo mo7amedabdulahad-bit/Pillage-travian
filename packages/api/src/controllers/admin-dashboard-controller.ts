@@ -337,6 +337,7 @@ export const getAdminDashboardActivity = createController(
     const pendingRetaliations = database.selectObjects({
       sql: `
         SELECT
+          rq.id AS id,
           rq.village_id AS villageId,
           v.name AS villageName,
           rq.faction_key AS factionKey,
@@ -353,6 +354,7 @@ export const getAdminDashboardActivity = createController(
         executeAtMs: z.number(),
         tier: z.number(),
         scheduledAtMs: z.number(),
+        id: z.number(),
       }),
     });
 
