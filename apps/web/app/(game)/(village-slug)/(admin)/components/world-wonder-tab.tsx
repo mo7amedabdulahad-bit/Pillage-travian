@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { use, useState } from 'react';
 import { useAdminDashboard } from 'app/(game)/(village-slug)/hooks/use-admin-dashboard';
 import { ApiContext } from 'app/(game)/providers/api-provider';
@@ -38,6 +38,7 @@ type WorldWonderData = {
 
 export const WorldWonderTab = () => {
   const { fetcher } = use(ApiContext);
+  const queryClient = useQueryClient();
   const {
     startWorldWonder,
     setWorldWonderLevel,
@@ -71,6 +72,8 @@ export const WorldWonderTab = () => {
       return;
     }
     await startWorldWonder({ villageId: Number(startVillageId) });
+    await queryClient.invalidateQueries({ queryKey: ['admin-world-wonders'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-villages'] });
   };
 
   const handleSetLevel = async () => {
@@ -81,6 +84,7 @@ export const WorldWonderTab = () => {
       villageId: Number(levelVillageId),
       level: Number(wwLevel),
     });
+    await queryClient.invalidateQueries({ queryKey: ['admin-world-wonders'] });
   };
 
   const handleGrantPlan = async () => {
@@ -321,21 +325,30 @@ export const WorldWonderTab = () => {
             <Button
               variant="destructive"
               className="w-full sm:w-auto"
-              onClick={() => endServer({ winnerType: 'player' })}
+              onClick={async () => {
+                await endServer({ winnerType: 'player' });
+                await queryClient.invalidateQueries({ queryKey: ['server'] });
+              }}
             >
               End (Player Wins)
             </Button>
             <Button
               variant="destructive"
               className="w-full sm:w-auto"
-              onClick={() => endServer({ winnerType: 'natars' })}
+              onClick={async () => {
+                await endServer({ winnerType: 'natars' });
+                await queryClient.invalidateQueries({ queryKey: ['server'] });
+              }}
             >
               End (Natars Win)
             </Button>
             <Button
               variant="outline"
               className="w-full sm:w-auto"
-              onClick={() => resetServerEnd()}
+              onClick={async () => {
+                await resetServerEnd();
+                await queryClient.invalidateQueries({ queryKey: ['server'] });
+              }}
             >
               Reset Server End
             </Button>

@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { use, useMemo, useState } from 'react';
 import { useAdminDashboard } from 'app/(game)/(village-slug)/hooks/use-admin-dashboard';
 import { usePagination } from 'app/(game)/(village-slug)/hooks/use-pagination';
@@ -49,6 +49,7 @@ const EVENT_TYPES = [
 
 export const EventInspectorTab = () => {
   const { fetcher } = use(ApiContext);
+  const queryClient = useQueryClient();
   const { cancelEvent } = useAdminDashboard();
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [resolvedFilter, setResolvedFilter] = useState<string>('');
@@ -79,6 +80,7 @@ export const EventInspectorTab = () => {
   const handleCancel = async (eventId: number) => {
     await cancelEvent({ eventId });
     setSelectedEvent(null);
+    await queryClient.invalidateQueries({ queryKey: ['admin-events'] });
   };
 
   return (

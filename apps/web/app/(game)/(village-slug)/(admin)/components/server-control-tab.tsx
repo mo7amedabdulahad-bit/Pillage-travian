@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { use, useState } from 'react';
 import { useAdminDashboard } from 'app/(game)/(village-slug)/hooks/use-admin-dashboard';
 import { useDeveloperSettings } from 'app/(game)/(village-slug)/hooks/use-developer-settings';
@@ -14,6 +14,7 @@ import { Input } from 'app/components/ui/input';
 
 export const ServerControlTab = () => {
   const { fetcher } = use(ApiContext);
+  const queryClient = useQueryClient();
   const { developerSettings, updateDeveloperSetting } = useDeveloperSettings();
   const { setGameSpeed, endServer, resetServerEnd, triggerNpcBrainTick } =
     useAdminDashboard();
@@ -28,16 +29,19 @@ export const ServerControlTab = () => {
     },
   });
 
-  const handleSetSpeed = () => {
-    setGameSpeed({ speed: Number.parseFloat(speed) });
+  const handleSetSpeed = async () => {
+    await setGameSpeed({ speed: Number.parseFloat(speed) });
+    await queryClient.invalidateQueries({ queryKey: ['server'] });
   };
 
-  const handleEndServer = (winnerType: 'player' | 'natars') => {
-    endServer({ winnerType });
+  const handleEndServer = async (winnerType: 'player' | 'natars') => {
+    await endServer({ winnerType });
+    await queryClient.invalidateQueries({ queryKey: ['server'] });
   };
 
-  const handleResetEnd = () => {
-    resetServerEnd();
+  const handleResetEnd = async () => {
+    await resetServerEnd();
+    await queryClient.invalidateQueries({ queryKey: ['server'] });
   };
 
   const handleTick = async () => {

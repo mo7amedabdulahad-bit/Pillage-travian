@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { use, useMemo, useState } from 'react';
 import { unitsMap } from '@pillage-first/game-assets/units';
 import { useAdminDashboard } from 'app/(game)/(village-slug)/hooks/use-admin-dashboard';
@@ -39,6 +39,7 @@ type UnitOption = {
 
 export const TroopManagementTab = () => {
   const { fetcher } = use(ApiContext);
+  const queryClient = useQueryClient();
   const { spawnTroops, removeTroops } = useAdminDashboard();
   const [selectedVillageId, setSelectedVillageId] = useState<string>('');
   const [spawnUnitId, setSpawnUnitId] = useState<string>('');
@@ -92,6 +93,9 @@ export const TroopManagementTab = () => {
       troops: [{ unitId: spawnUnitId, amount: Number(spawnAmount) }],
     });
     setSpawnAmount('1');
+    await queryClient.invalidateQueries({
+      queryKey: ['admin-troop-data', selectedVillageId],
+    });
   };
 
   const handleRemove = async () => {
@@ -103,6 +107,9 @@ export const TroopManagementTab = () => {
       troops: [{ unitId: removeUnitId, amount: Number(removeAmount) }],
     });
     setRemoveAmount('1');
+    await queryClient.invalidateQueries({
+      queryKey: ['admin-troop-data', selectedVillageId],
+    });
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { use, useState } from 'react';
 import { useAdminDashboard } from 'app/(game)/(village-slug)/hooks/use-admin-dashboard';
 import { ApiContext } from 'app/(game)/providers/api-provider';
@@ -35,6 +35,7 @@ const BULK_AMOUNT = 100_000;
 
 export const EconomyTab = () => {
   const { fetcher } = use(ApiContext);
+  const queryClient = useQueryClient();
   const { setResources, addResources } = useAdminDashboard();
   const [selectedVillageId, setSelectedVillageId] = useState<string>('');
   const [lumber, setLumber] = useState('0');
@@ -61,6 +62,8 @@ export const EconomyTab = () => {
       iron: Number(iron),
       crop: Number(crop),
     });
+    await queryClient.invalidateQueries({ queryKey: ['admin-all-villages'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-villages'] });
   };
 
   const handleAdd = async () => {
@@ -74,6 +77,8 @@ export const EconomyTab = () => {
       iron: Number(iron),
       crop: Number(crop),
     });
+    await queryClient.invalidateQueries({ queryKey: ['admin-all-villages'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-villages'] });
   };
 
   const handleBulkAll = async () => {
@@ -89,6 +94,8 @@ export const EconomyTab = () => {
         crop: BULK_AMOUNT,
       });
     }
+    await queryClient.invalidateQueries({ queryKey: ['admin-all-villages'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-villages'] });
   };
 
   const selectedVillage = villages?.find(

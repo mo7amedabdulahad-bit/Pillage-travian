@@ -158,7 +158,6 @@ export const adminGetVillageDetail = createController(
 // ─── Hero overview for the Player tab ───
 
 const heroItemSchema = z.strictObject({
-  id: z.number(),
   itemId: z.number(),
   amount: z.number(),
 });
@@ -196,10 +195,9 @@ export const adminGetHeroOverview = createController('/admin/hero-overview')(
 
     const { level } = calculateHeroLevel(hero.experience);
     const items = database.selectObjects({
-      sql: 'SELECT id, item_id AS itemId, amount FROM hero_inventory WHERE hero_id = $heroId',
+      sql: 'SELECT item_id AS itemId, amount FROM hero_inventory WHERE hero_id = $heroId',
       bind: { $heroId: hero.id },
       schema: z.strictObject({
-        id: z.number(),
         itemId: z.number(),
         amount: z.number(),
       }),
@@ -250,7 +248,7 @@ export const adminGetEvents = createController('/admin/events')(
 
     return database.selectObjects({
       sql,
-      bind,
+      ...(Object.keys(bind).length > 0 ? { bind } : {}),
       schema: adminEventSchema,
     });
   },
@@ -297,7 +295,7 @@ export const adminGetReports = createController('/admin/reports')(
 
     return database.selectObjects({
       sql,
-      bind,
+      ...(Object.keys(bind).length > 0 ? { bind } : {}),
       schema: adminReportSchema,
     });
   },

@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { use, useState } from 'react';
 import { useAdminDashboard } from 'app/(game)/(village-slug)/hooks/use-admin-dashboard';
 import { ApiContext } from 'app/(game)/providers/api-provider';
@@ -39,6 +39,7 @@ type Village = {
 
 export const PlayerVillageTab = () => {
   const { fetcher } = use(ApiContext);
+  const queryClient = useQueryClient();
   const { renameVillage, deleteVillage, upgradeBuilding, downgradeBuilding } =
     useAdminDashboard();
   const [selectedVillage, setSelectedVillage] = useState<Village | null>(null);
@@ -98,11 +99,15 @@ export const PlayerVillageTab = () => {
     await renameVillage({ villageId, name: renameValue.trim() });
     setRenameTarget(null);
     setRenameValue('');
+    await queryClient.invalidateQueries({ queryKey: ['admin-villages'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-village-detail'] });
   };
 
   const handleDelete = async (villageId: number) => {
     await deleteVillage({ villageId });
     setSelectedVillage(null);
+    await queryClient.invalidateQueries({ queryKey: ['admin-villages'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-village-detail'] });
   };
 
   const handleBuildingLevelChange = async (
@@ -119,6 +124,9 @@ export const PlayerVillageTab = () => {
       const next = { ...prev };
       delete next[fieldId];
       return next;
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['admin-village-detail', villageId],
     });
   };
 

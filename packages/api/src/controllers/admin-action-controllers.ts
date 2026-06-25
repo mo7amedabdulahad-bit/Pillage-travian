@@ -564,7 +564,7 @@ export const adminStartWorldWonder = createController(
     // Bypass preconditions: ensure the player's hero holds a plan first.
     const hero = db.selectObject({
       sql: 'SELECT id FROM heroes WHERE player_id = $playerId LIMIT 1',
-      bind: { $playerId: PLAYER_ID },
+      bind: { $playerId: village.player_id },
       schema: z.object({ id: z.number() }),
     });
     if (hero) {
@@ -575,7 +575,11 @@ export const adminStartWorldWonder = createController(
     db.exec({
       sql: `INSERT INTO world_wonders (village_id, owner_player_id, owner_faction_id, current_level, started_at)
             VALUES ($villageId, $playerId, 'player', 0, $now)`,
-      bind: { $villageId: parsed.villageId, $playerId: PLAYER_ID, $now: now },
+      bind: {
+        $villageId: parsed.villageId,
+        $playerId: village.player_id,
+        $now: now,
+      },
     });
 
     db.exec({
