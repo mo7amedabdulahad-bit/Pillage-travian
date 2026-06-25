@@ -9,6 +9,7 @@ import type {
 } from './npc-brain-types';
 import { buildOfflineSummary } from './offline-summary';
 import { processAggressionDecayBatch } from './subsystems/aggression-escalation';
+import { processAlliedDefence } from './subsystems/allied-defence';
 import {
   applyFormulaBuildResult,
   type FormulaFieldLevelData,
@@ -17,6 +18,7 @@ import {
 } from './subsystems/build-simulation';
 import { processGrowthBatch } from './subsystems/growth-simulation';
 import { processMemoryDecayBatch } from './subsystems/memory-decay';
+import { processNpcWonderCompetition } from './subsystems/npc-wonder-competition';
 import { processProactiveAttacks } from './subsystems/proactive-attack';
 import { processDueRetaliations } from './subsystems/retaliation-execution';
 import { calculateWorldThreatLevel } from './world-threat-level';
@@ -153,6 +155,12 @@ export const reconcileNpcBrain = (
     speed,
     worldThreatLevel,
   );
+
+  // ─── 7. NPC Wonder Competition (acquire plans, start/upgrade WW) ───
+  processNpcWonderCompetition(db, now, speed);
+
+  // ─── 8. Allied Defence (NPC allies reinforce player WW) ───
+  processAlliedDefence(db, now, speed);
 
   return {
     retaliationsResolved: resolvedRetaliations,

@@ -534,4 +534,31 @@ export const upgradeDb = (database: DbFacade): void => {
   } catch (_e) {
     // Table may already be up to date
   }
+
+  // ─── Phase 4G: NPC wonder competition columns ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN holds_plan INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN has_plan INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_village_state ADD COLUMN garrison_power INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_faction_state ADD COLUMN last_plan_attempt_ms INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE npc_faction_state ADD COLUMN last_reinforcement_ms INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
 };

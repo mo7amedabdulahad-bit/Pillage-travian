@@ -6,6 +6,10 @@ import {
   consumeConstructionPlan,
   hasConstructionPlan,
 } from '../hero-controllers';
+import {
+  type NpcWonderMilestoneType,
+  saveNpcWonderMilestoneReport,
+} from './utils/reports';
 
 /**
  * Resolves a worldWonderUpgrade event.
@@ -17,7 +21,8 @@ import {
 export const worldWonderUpgradeResolver: Resolver<
   GameEvent<'worldWonderUpgrade'>
 > = (database, args) => {
-  const { villageId, targetLevel, ownerPlayerId, resolvesAt } = args;
+  const { villageId, targetLevel, ownerPlayerId, ownerFactionId, resolvesAt } =
+    args;
 
   // 1. Update world_wonders table
   database.exec({
@@ -53,6 +58,19 @@ export const worldWonderUpgradeResolver: Resolver<
   // 4. At Level 20: trigger server end (player wins)
   if (targetLevel === 20 && ownerPlayerId !== null) {
     endServer(database, 'player', ownerPlayerId, resolvesAt);
+    saveNpcWonderMilestoneReport(database, 'player', 'finished', targetLevel);
+  }
+
+  // 5. Milestone reports for NPC factions
+  if (targetLevel === 10 || targetLevel === 15) {
+    const milestoneType: NpcWonderMilestoneType =
+      targetLevel === 15 ? 'no_attack' : 'upgrade';
+    saveNpcWonderMilestoneReport(
+      database,
+      ownerFactionId,
+      milestoneType,
+      targetLevel,
+    );
   }
 };
 

@@ -232,7 +232,9 @@ export const migrateAndSeed = (
           faction_key TEXT PRIMARY KEY NOT NULL,
           last_faction_attack_ms INTEGER NOT NULL DEFAULT 0,
           current_wave_stage INTEGER NOT NULL DEFAULT 0,
-          wave_locked_until_ms INTEGER NOT NULL DEFAULT 0
+          wave_locked_until_ms INTEGER NOT NULL DEFAULT 0,
+          last_plan_attempt_ms INTEGER NOT NULL DEFAULT 0,
+          last_reinforcement_ms INTEGER NOT NULL DEFAULT 0
         ) STRICT;
       `,
     });

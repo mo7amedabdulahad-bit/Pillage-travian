@@ -222,6 +222,68 @@ export const saveConstructionPlanObtainedReport = (
   });
 };
 
+export type NpcWonderMilestoneType =
+  | 'started'
+  | 'upgrade'
+  | 'no_attack'
+  | 'finished';
+
+export const saveNpcWonderMilestoneReport = (
+  database: DbFacade,
+  factionKey: string,
+  milestoneType: NpcWonderMilestoneType,
+  level?: number,
+): void => {
+  const now = Date.now();
+
+  // Find the WW village for this faction
+  const wwVillage = database.selectObject({
+    sql: `
+      SELECT ww.village_id AS villageId, ww.current_level AS currentLevel
+      FROM world_wonders ww
+      WHERE ww.owner_faction_id = $faction
+      LIMIT 1
+    `,
+    bind: { $faction: factionKey },
+    schema: z.strictObject({
+      villageId: z.number(),
+      currentLevel: z.number(),
+    }),
+  });
+
+  const villageId = wwVillage?.villageId ?? 0;
+  const currentLevel = level ?? wwVillage?.currentLevel ?? 0;
+
+  const data = JSON.stringify({
+    factionKey,
+    milestoneType,
+    level: currentLevel,
+    timestamp: now,
+  });
+
+  database.exec({
+    sql: `
+      INSERT INTO reports (
+        type,
+        village_id,
+        target_village_id,
+        timestamp,
+        attacker_faction_id,
+        defender_faction_id,
+        data,
+        is_read
+      )
+      VALUES ($type, $villageId, NULL, $timestamp, NULL, NULL, $data, 0)
+    `,
+    bind: {
+      $type: 'npc_wonder_milestone',
+      $villageId: villageId,
+      $timestamp: now,
+      $data: data,
+    },
+  });
+};
+
 export const saveScoutReports = (
   database: DbFacade,
   data: ScoutReportData,

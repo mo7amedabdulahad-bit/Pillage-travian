@@ -47,5 +47,10 @@ CREATE TABLE npc_village_state
   -- Build scheduling: next time this village is eligible for a build check
   next_build_check_ms INTEGER NOT NULL DEFAULT 0,
 
+  -- NPC wonder competition
+  holds_plan INTEGER NOT NULL DEFAULT 0,
+  has_plan INTEGER NOT NULL DEFAULT 0,
+  garrison_power INTEGER NOT NULL DEFAULT 0,
+
   FOREIGN KEY (village_id) REFERENCES villages (id) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;

@@ -6,6 +6,8 @@ import {
   grantConstructionPlan,
   hasConstructionPlan,
 } from '../hero-controllers';
+import { processNpcWonderCompetition } from '../resolvers/utils/npc-brain/subsystems/npc-wonder-competition';
+import { saveNpcWonderMilestoneReport } from '../resolvers/utils/reports';
 import {
   endServer,
   worldWonderUpgradeResolver,
@@ -375,5 +377,189 @@ describe('getEventDuration - worldWonderUpgrade', () => {
       createMockWorldWonderEvent({ targetLevel: 5 }),
     );
     expect(duration5).toBeGreaterThan(duration1);
+  });
+});
+
+describe('saveNpcWonderMilestoneReport', () => {
+  test('creates a milestone report with correct type and data', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 5);
+
+    saveNpcWonderMilestoneReport(database, 'npc1', 'upgrade', 10);
+
+    const report = database.selectObject({
+      sql: "SELECT type, data FROM reports WHERE type = 'npc_wonder_milestone' LIMIT 1",
+      schema: z.strictObject({ type: z.string(), data: z.string() }),
+    })!;
+    expect(report.type).toBe('npc_wonder_milestone');
+    const data = JSON.parse(report.data);
+    expect(data.factionKey).toBe('npc1');
+    expect(data.milestoneType).toBe('upgrade');
+    expect(data.level).toBe(10);
+  });
+
+  test('creates a STARTED milestone report', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 0);
+
+    saveNpcWonderMilestoneReport(database, 'npc1', 'started');
+
+    const report = database.selectObject({
+      sql: "SELECT data FROM reports WHERE type = 'npc_wonder_milestone' LIMIT 1",
+      schema: z.strictObject({ data: z.string() }),
+    })!;
+    const data = JSON.parse(report.data);
+    expect(data.milestoneType).toBe('started');
+  });
+
+  test('creates a no_attack milestone report', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 14);
+
+    saveNpcWonderMilestoneReport(database, 'npc1', 'no_attack', 15);
+
+    const report = database.selectObject({
+      sql: "SELECT data FROM reports WHERE type = 'npc_wonder_milestone' LIMIT 1",
+      schema: z.strictObject({ data: z.string() }),
+    })!;
+    const data = JSON.parse(report.data);
+    expect(data.milestoneType).toBe('no_attack');
+    expect(data.level).toBe(15);
+  });
+
+  test('creates a finished milestone report', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 19);
+
+    saveNpcWonderMilestoneReport(database, 'npc1', 'finished', 20);
+
+    const report = database.selectObject({
+      sql: "SELECT data FROM reports WHERE type = 'npc_wonder_milestone' LIMIT 1",
+      schema: z.strictObject({ data: z.string() }),
+    })!;
+    const data = JSON.parse(report.data);
+    expect(data.milestoneType).toBe('finished');
+    expect(data.level).toBe(20);
+  });
+});
+
+describe('worldWonderUpgradeResolver - milestone reports', () => {
+  test('at level 10: creates an upgrade milestone report', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 9);
+
+    worldWonderUpgradeResolver(database, {
+      id: 10,
+      type: 'worldWonderUpgrade',
+      villageId,
+      startsAt: Date.now(),
+      duration: 1000,
+      resolvesAt: Date.now(),
+      targetLevel: 10,
+      ownerPlayerId: PLAYER_ID,
+      ownerFactionId: 'npc1',
+    });
+
+    const report = database.selectObject({
+      sql: "SELECT data FROM reports WHERE type = 'npc_wonder_milestone' LIMIT 1",
+      schema: z.strictObject({ data: z.string() }),
+    })!;
+    const data = JSON.parse(report.data);
+    expect(data.milestoneType).toBe('upgrade');
+    expect(data.level).toBe(10);
+  });
+
+  test('at level 15: creates a no_attack milestone report', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 14);
+
+    worldWonderUpgradeResolver(database, {
+      id: 11,
+      type: 'worldWonderUpgrade',
+      villageId,
+      startsAt: Date.now(),
+      duration: 1000,
+      resolvesAt: Date.now(),
+      targetLevel: 15,
+      ownerPlayerId: PLAYER_ID,
+      ownerFactionId: 'npc1',
+    });
+
+    const report = database.selectObject({
+      sql: "SELECT data FROM reports WHERE type = 'npc_wonder_milestone' LIMIT 1",
+      schema: z.strictObject({ data: z.string() }),
+    })!;
+    const data = JSON.parse(report.data);
+    expect(data.milestoneType).toBe('no_attack');
+    expect(data.level).toBe(15);
+  });
+
+  test('at level 20: creates a finished milestone report', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 19);
+
+    worldWonderUpgradeResolver(database, {
+      id: 12,
+      type: 'worldWonderUpgrade',
+      villageId,
+      startsAt: Date.now(),
+      duration: 1000,
+      resolvesAt: Date.now(),
+      targetLevel: 20,
+      ownerPlayerId: PLAYER_ID,
+      ownerFactionId: 'player',
+    });
+
+    const milestoneReport = database.selectObject({
+      sql: "SELECT data FROM reports WHERE type = 'npc_wonder_milestone' LIMIT 1",
+      schema: z.strictObject({ data: z.string() }),
+    })!;
+    const milestoneData = JSON.parse(milestoneReport.data);
+    expect(milestoneData.milestoneType).toBe('finished');
+    expect(milestoneData.level).toBe(20);
+  });
+});
+
+describe('processNpcWonderCompetition', () => {
+  test('does not run if server has ended', async () => {
+    const database = await prepareTestDatabase();
+    const timestamp = Date.now();
+
+    endServer(database, 'player', PLAYER_ID, timestamp);
+
+    // Should not throw
+    processNpcWonderCompetition(database, timestamp, 1);
+  });
+
+  test('does not run during warmup period', async () => {
+    const database = await prepareTestDatabase();
+    const serverCreated = database.selectValue({
+      sql: 'SELECT created_at FROM servers LIMIT 1',
+      schema: z.number(),
+    })!;
+
+    // Call immediately after server creation (within warmup)
+    processNpcWonderCompetition(database, serverCreated + 1000, 1);
+
+    // No plans should have been captured
+    const plansHeld = database.selectValue({
+      sql: 'SELECT COUNT(*) FROM npc_village_state WHERE holds_plan = 1',
+      schema: z.number(),
+    })!;
+    expect(plansHeld).toBe(0);
   });
 });

@@ -258,4 +258,13 @@ export const npcVillageStateSeeder = (database: DbFacade): void => {
     `,
     bind: { $playerId: PLAYER_ID },
   });
+
+  // Set has_plan = 1 for Natar villages (each holds one Construction Plan)
+  database.exec({
+    sql: `
+      UPDATE npc_village_state
+      SET has_plan = 1
+      WHERE faction_key = 'natars'
+    `,
+  });
 };
