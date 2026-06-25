@@ -1947,13 +1947,29 @@ export const resolveTroopMovementCombat = (
           // Check if admin building blocks conquest
           const adminBuilding = _hasPalaceOrResidence(database, targetId);
           if (!adminBuilding.exists) {
-            _transferVillageOwnership(
-              database,
-              targetId,
-              PLAYER_ID,
-              resolvesAt,
-            );
-            reportConquered = true;
+            // Check if WW village blocks conquest (plan §3.3: unconquerable after L1)
+            const wwLevel =
+              database.selectValue({
+                sql: 'SELECT world_wonder_level FROM villages WHERE id = $villageId',
+                bind: { $villageId: targetId },
+                schema: z.number(),
+              }) ?? 0;
+            if (wwLevel >= 1) {
+              // WW village cannot be conquered — reset loyalty
+              reportConquered = false;
+              database.exec({
+                sql: 'UPDATE villages SET loyalty = $loyalty WHERE id = $villageId',
+                bind: { $loyalty: 100, $villageId: targetId },
+              });
+            } else {
+              _transferVillageOwnership(
+                database,
+                targetId,
+                PLAYER_ID,
+                resolvesAt,
+              );
+              reportConquered = true;
+            }
           } else {
             // Loyalty 0 but building protects — can't conquer
             reportProtectedBuildingName =

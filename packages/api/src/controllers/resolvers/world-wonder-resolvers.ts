@@ -15,8 +15,8 @@ import {
  * Resolves a worldWonderUpgrade event.
  *
  * When the event fires the WW level has already been incremented at event
- * creation time (resource deduction + level bump). This resolver finalises
- * the level-up in the DB and triggers side effects.
+ * creation time (via runEventCreationSideEffects). This resolver handles
+ * side effects only: plan consumption at L1, endServer at L20, milestone reports.
  */
 export const worldWonderUpgradeResolver: Resolver<
   GameEvent<'worldWonderUpgrade'>
@@ -24,19 +24,7 @@ export const worldWonderUpgradeResolver: Resolver<
   const { villageId, targetLevel, ownerPlayerId, ownerFactionId, resolvesAt } =
     args;
 
-  // 1. Update world_wonders table
-  database.exec({
-    sql: 'UPDATE world_wonders SET current_level = $level WHERE village_id = $villageId',
-    bind: { $level: targetLevel, $villageId: villageId },
-  });
-
-  // 2. Update villages denormalised column
-  database.exec({
-    sql: 'UPDATE villages SET world_wonder_level = $level WHERE id = $villageId',
-    bind: { $level: targetLevel, $villageId: villageId },
-  });
-
-  // 3. At Level 1: consume the Construction Plan from the hero's inventory
+  // 1. At Level 1: consume the Construction Plan from the hero's inventory
   if (targetLevel === 1 && ownerPlayerId !== null) {
     const heroRow = database.selectObject({
       sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
@@ -55,13 +43,25 @@ export const worldWonderUpgradeResolver: Resolver<
     });
   }
 
-  // 4. At Level 20: trigger server end (player wins)
-  if (targetLevel === 20 && ownerPlayerId !== null) {
-    endServer(database, 'player', ownerPlayerId, resolvesAt);
-    saveNpcWonderMilestoneReport(database, 'player', 'finished', targetLevel);
+  // 2. At Level 20: trigger server end
+  if (targetLevel === 20) {
+    if (ownerFactionId === 'player' && ownerPlayerId !== null) {
+      // Player wins
+      endServer(database, 'player', ownerPlayerId, resolvesAt);
+      saveNpcWonderMilestoneReport(database, 'player', 'finished', targetLevel);
+    } else if (ownerFactionId !== 'player' && ownerPlayerId !== null) {
+      // NPC faction wins — Defeat for the player
+      endServer(database, 'natars', ownerPlayerId, resolvesAt);
+      saveNpcWonderMilestoneReport(
+        database,
+        ownerFactionId,
+        'finished',
+        targetLevel,
+      );
+    }
   }
 
-  // 5. Milestone reports for NPC factions
+  // 3. Milestone reports for NPC factions
   if (targetLevel === 10 || targetLevel === 15) {
     const milestoneType: NpcWonderMilestoneType =
       targetLevel === 15 ? 'no_attack' : 'upgrade';

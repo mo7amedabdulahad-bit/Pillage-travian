@@ -1353,6 +1353,8 @@ export const constructionPlans: HeroItem[] = [
     tribe: 'any',
     basePrice: null,
     heroBonus: [],
+    consumable: true,
+    stackable: false,
   },
 ];
 

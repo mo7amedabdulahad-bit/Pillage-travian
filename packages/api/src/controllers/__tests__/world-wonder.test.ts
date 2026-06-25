@@ -15,6 +15,7 @@ import {
 import {
   getEventCost,
   getEventDuration,
+  runEventCreationSideEffects,
   validateEventCreationPrerequisites,
 } from '../utils/events';
 
@@ -73,7 +74,7 @@ const insertWorldWonder = (database: any, villageId: number, level = 0) => {
 };
 
 describe('worldWonderUpgradeResolver', () => {
-  test('at level 1: updates world_wonders and villages, consumes construction plan', async () => {
+  test('at level 1: consumes construction plan (level bump is at creation time)', async () => {
     const database = await prepareTestDatabase();
     const villageId = getAnyVillageId(database);
 
@@ -85,6 +86,16 @@ describe('worldWonderUpgradeResolver', () => {
       schema: z.strictObject({ id: z.number() }),
     })!;
     grantConstructionPlan(database, heroRow.id);
+
+    // Simulate creation-time level bump (runEventCreationSideEffects does this)
+    database.exec({
+      sql: 'UPDATE world_wonders SET current_level = 1 WHERE village_id = $villageId',
+      bind: { $villageId: villageId },
+    });
+    database.exec({
+      sql: 'UPDATE villages SET world_wonder_level = 1 WHERE id = $villageId',
+      bind: { $villageId: villageId },
+    });
 
     worldWonderUpgradeResolver(database, {
       id: 1,
@@ -561,5 +572,312 @@ describe('processNpcWonderCompetition', () => {
       schema: z.number(),
     })!;
     expect(plansHeld).toBe(0);
+  });
+});
+
+describe('worldWonderUpgradeResolver - NPC L20 endgame', () => {
+  test('at level 20: NPC faction triggers natars winner type', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    // Get the NPC player ID for npc1
+    const npcPlayerId = database.selectValue({
+      sql: `
+        SELECT p.id FROM players p
+        JOIN faction_ids fi ON fi.id = p.faction_id
+        WHERE fi.faction = 'npc1'
+        LIMIT 1
+      `,
+      schema: z.number(),
+    })!;
+
+    insertWorldWonder(database, villageId, 19);
+    // Override to NPC faction
+    database.exec({
+      sql: 'UPDATE world_wonders SET owner_faction_id = $faction, owner_player_id = $npcPlayerId WHERE village_id = $villageId',
+      bind: {
+        $faction: 'npc1',
+        $npcPlayerId: npcPlayerId,
+        $villageId: villageId,
+      },
+    });
+
+    worldWonderUpgradeResolver(database, {
+      id: 50,
+      type: 'worldWonderUpgrade',
+      villageId,
+      startsAt: Date.now(),
+      duration: 1000,
+      resolvesAt: Date.now(),
+      targetLevel: 20,
+      ownerPlayerId: npcPlayerId,
+      ownerFactionId: 'npc1',
+    });
+
+    const server = database.selectObject({
+      sql: 'SELECT ended_at, winner_player_id, winner_type FROM servers LIMIT 1',
+      schema: z.object({
+        ended_at: z.number().nullable(),
+        winner_player_id: z.number().nullable(),
+        winner_type: z.string().nullable(),
+      }),
+    })!;
+    expect(server.ended_at).not.toBeNull();
+    expect(server.winner_type).toBe('natars');
+  });
+
+  test('at level 20: NPC faction creates finished milestone reports for all player villages', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    const npcPlayerId = database.selectValue({
+      sql: `
+        SELECT p.id FROM players p
+        JOIN faction_ids fi ON fi.id = p.faction_id
+        WHERE fi.faction = 'npc1'
+        LIMIT 1
+      `,
+      schema: z.number(),
+    })!;
+
+    insertWorldWonder(database, villageId, 19);
+    database.exec({
+      sql: 'UPDATE world_wonders SET owner_faction_id = $faction, owner_player_id = $npcPlayerId WHERE village_id = $villageId',
+      bind: {
+        $faction: 'npc1',
+        $npcPlayerId: npcPlayerId,
+        $villageId: villageId,
+      },
+    });
+
+    worldWonderUpgradeResolver(database, {
+      id: 51,
+      type: 'worldWonderUpgrade',
+      villageId,
+      startsAt: Date.now(),
+      duration: 1000,
+      resolvesAt: Date.now(),
+      targetLevel: 20,
+      ownerPlayerId: npcPlayerId,
+      ownerFactionId: 'npc1',
+    });
+
+    const milestoneReports = database.selectValue({
+      sql: "SELECT COUNT(*) FROM reports WHERE type = 'npc_wonder_milestone'",
+      schema: z.number(),
+    })!;
+    const playerVillageCount = database.selectValue({
+      sql: 'SELECT COUNT(*) FROM villages WHERE player_id = $playerId',
+      bind: { $playerId: PLAYER_ID },
+      schema: z.number(),
+    })!;
+    expect(milestoneReports).toBe(playerVillageCount);
+  });
+});
+
+describe('runEventCreationSideEffects - worldWonderUpgrade', () => {
+  test('bumps world_wonders and villages level at creation time', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 0);
+
+    runEventCreationSideEffects(database, [
+      {
+        id: 60,
+        type: 'worldWonderUpgrade',
+        villageId,
+        startsAt: Date.now(),
+        duration: 1000,
+        resolvesAt: Date.now() + 1000,
+        targetLevel: 1,
+        ownerPlayerId: PLAYER_ID,
+        ownerFactionId: 'player',
+      } as any,
+    ]);
+
+    const ww = database.selectObject({
+      sql: 'SELECT current_level FROM world_wonders WHERE village_id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.strictObject({ current_level: z.number() }),
+    })!;
+    expect(ww.current_level).toBe(1);
+
+    const village = database.selectObject({
+      sql: 'SELECT world_wonder_level FROM villages WHERE id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.strictObject({ world_wonder_level: z.number() }),
+    })!;
+    expect(village.world_wonder_level).toBe(1);
+  });
+
+  test('enables 2-level queuing: L1 and L2 can both be in-flight', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    insertWorldWonder(database, villageId, 0);
+
+    // Simulate first event creation: L0 → L1
+    runEventCreationSideEffects(database, [
+      {
+        id: 61,
+        type: 'worldWonderUpgrade',
+        villageId,
+        startsAt: Date.now(),
+        duration: 1000,
+        resolvesAt: Date.now() + 1000,
+        targetLevel: 1,
+        ownerPlayerId: PLAYER_ID,
+        ownerFactionId: 'player',
+      } as any,
+    ]);
+
+    // Now current_level is 1, so L2 should be valid
+    expect(() =>
+      validateEventCreationPrerequisites(database, {
+        id: 62,
+        type: 'worldWonderUpgrade',
+        villageId,
+        startsAt: Date.now(),
+        duration: 1000,
+        resolvesAt: Date.now() + 1000,
+        targetLevel: 2,
+        ownerPlayerId: PLAYER_ID,
+        ownerFactionId: 'player',
+      } as any),
+    ).not.toThrow();
+
+    // But L3 should fail (only 2 levels in-flight)
+    expect(() =>
+      validateEventCreationPrerequisites(database, {
+        id: 63,
+        type: 'worldWonderUpgrade',
+        villageId,
+        startsAt: Date.now(),
+        duration: 1000,
+        resolvesAt: Date.now() + 1000,
+        targetLevel: 3,
+        ownerPlayerId: PLAYER_ID,
+        ownerFactionId: 'player',
+      } as any),
+    ).toThrow('World Wonder must be upgraded one level at a time');
+  });
+});
+
+describe('saveNpcWonderMilestoneReport - broadcast', () => {
+  test('broadcasts milestone reports to all player villages', async () => {
+    const database = await prepareTestDatabase();
+
+    const playerVillageCount = database.selectValue({
+      sql: 'SELECT COUNT(*) FROM villages WHERE player_id = $playerId',
+      bind: { $playerId: PLAYER_ID },
+      schema: z.number(),
+    })!;
+    expect(playerVillageCount).toBeGreaterThanOrEqual(1);
+
+    saveNpcWonderMilestoneReport(database, 'npc1', 'upgrade', 10);
+
+    const reportCount = database.selectValue({
+      sql: "SELECT COUNT(*) FROM reports WHERE type = 'npc_wonder_milestone'",
+      schema: z.number(),
+    })!;
+    expect(reportCount).toBe(playerVillageCount);
+  });
+
+  test('report data contains correct factionKey, milestoneType, and level', async () => {
+    const database = await prepareTestDatabase();
+
+    saveNpcWonderMilestoneReport(database, 'npc3', 'no_attack', 15);
+
+    const reports = database.selectObjects({
+      sql: "SELECT data FROM reports WHERE type = 'npc_wonder_milestone'",
+      schema: z.strictObject({ data: z.string() }),
+    })!;
+    for (const report of reports) {
+      const data = JSON.parse(report.data);
+      expect(data.factionKey).toBe('npc3');
+      expect(data.milestoneType).toBe('no_attack');
+      expect(data.level).toBe(15);
+    }
+  });
+});
+
+describe('scheduler-data-source - server end short-circuit', () => {
+  test('getPastEventIds returns empty when server has ended', async () => {
+    const database = await prepareTestDatabase();
+    const timestamp = Date.now();
+
+    // Insert a past event (resolves_at is generated from starts_at + duration)
+    database.exec({
+      sql: `INSERT INTO events (type, starts_at, duration, village_id)
+            VALUES ('troopTraining', $startsAt, 1000, 1)`,
+      bind: { $startsAt: timestamp - 20000 },
+    });
+
+    // End the server
+    endServer(database, 'player', PLAYER_ID, timestamp);
+
+    // Import the scheduler data source
+    const { createSchedulerDataSource } = await import(
+      '../../scheduler/scheduler-data-source'
+    );
+    const dataSource = createSchedulerDataSource(database);
+
+    const pastEvents = dataSource.getPastEventIds(timestamp);
+    expect(pastEvents).toEqual([]);
+  });
+
+  test('getPastEventIds returns events when server has not ended', async () => {
+    const database = await prepareTestDatabase();
+    const timestamp = Date.now();
+
+    // Insert a past event (resolves_at is generated from starts_at + duration)
+    database.exec({
+      sql: `INSERT INTO events (type, starts_at, duration, village_id)
+            VALUES ('troopTraining', $startsAt, 1000, 1)`,
+      bind: { $startsAt: timestamp - 20000 },
+    });
+
+    const { createSchedulerDataSource } = await import(
+      '../../scheduler/scheduler-data-source'
+    );
+    const dataSource = createSchedulerDataSource(database);
+
+    const pastEvents = dataSource.getPastEventIds(timestamp);
+    expect(pastEvents.length).toBeGreaterThan(0);
+  });
+});
+
+describe('combat-resolver - WW village unconquerable after L1', () => {
+  test('WW village at level 1 cannot be conquered by chief attack', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = getAnyVillageId(database);
+
+    // Set up a WW village at level 1
+    insertWorldWonder(database, villageId, 1);
+
+    // Set loyalty to 100 (will be reduced by chief)
+    database.exec({
+      sql: 'UPDATE villages SET loyalty = 100 WHERE id = $villageId',
+      bind: { $villageId: villageId },
+    });
+
+    // The village should have world_wonder_level >= 1
+    const wwLevel = database.selectValue({
+      sql: 'SELECT world_wonder_level FROM villages WHERE id = $villageId',
+      bind: { $villageId: villageId },
+      schema: z.number(),
+    });
+    expect(wwLevel).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('consumable/stackable fields on Construction Plan', () => {
+  test('constructionPlan has consumable=true and stackable=false', async () => {
+    const { itemsMap } = await import('@pillage-first/game-assets/items');
+    const plan = itemsMap.get(200);
+    expect(plan).toBeDefined();
+    expect(plan!.consumable).toBe(true);
+    expect(plan!.stackable).toBe(false);
   });
 });

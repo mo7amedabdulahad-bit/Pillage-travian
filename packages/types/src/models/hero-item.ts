@@ -72,6 +72,8 @@ export type HeroItem = {
   basePrice: number | null;
   effects?: Omit<Effect, 'sourceSpecifier' | 'villageId'>[];
   heroBonus?: HeroBonus[];
+  consumable?: boolean;
+  stackable?: boolean;
 };
 
 export const heroItemSchema = z

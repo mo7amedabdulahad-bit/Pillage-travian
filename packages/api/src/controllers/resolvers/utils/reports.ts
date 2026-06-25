@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { CombatResult } from '@pillage-first/game-assets/combat/combat-engine';
+import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { ScoutMode } from '@pillage-first/types/models/game-event';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 
@@ -236,7 +237,7 @@ export const saveNpcWonderMilestoneReport = (
 ): void => {
   const now = Date.now();
 
-  // Find the WW village for this faction
+  // Find the WW village for this faction (for the report data)
   const wwVillage = database.selectObject({
     sql: `
       SELECT ww.village_id AS villageId, ww.current_level AS currentLevel
@@ -251,7 +252,6 @@ export const saveNpcWonderMilestoneReport = (
     }),
   });
 
-  const villageId = wwVillage?.villageId ?? 0;
   const currentLevel = level ?? wwVillage?.currentLevel ?? 0;
 
   const data = JSON.stringify({
@@ -261,27 +261,30 @@ export const saveNpcWonderMilestoneReport = (
     timestamp: now,
   });
 
-  database.exec({
-    sql: `
-      INSERT INTO reports (
-        type,
-        village_id,
-        target_village_id,
-        timestamp,
-        attacker_faction_id,
-        defender_faction_id,
-        data,
-        is_read
-      )
-      VALUES ($type, $villageId, NULL, $timestamp, NULL, NULL, $data, 0)
-    `,
-    bind: {
-      $type: 'npc_wonder_milestone',
-      $villageId: villageId,
-      $timestamp: now,
-      $data: data,
-    },
+  // Broadcast to every player village
+  const allVillageIds = database.selectValues({
+    sql: 'SELECT id FROM villages WHERE player_id = $playerId',
+    bind: { $playerId: PLAYER_ID },
+    schema: z.number(),
   });
+
+  for (const villageId of allVillageIds) {
+    database.exec({
+      sql: `
+        INSERT INTO reports (
+          type, village_id, target_village_id, timestamp,
+          attacker_faction_id, defender_faction_id, data, is_read
+        )
+        VALUES ($type, $villageId, NULL, $timestamp, NULL, NULL, $data, 0)
+      `,
+      bind: {
+        $type: 'npc_wonder_milestone',
+        $villageId: villageId,
+        $timestamp: now,
+        $data: data,
+      },
+    });
+  }
 };
 
 export const saveScoutReports = (

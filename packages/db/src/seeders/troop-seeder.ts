@@ -609,4 +609,20 @@ export const troopSeeder = (database: DbFacade, server: Server): void => {
     ['unit_id', 'amount', 'tile_id', 'source_tile_id'],
     results,
   );
+
+  // Recompute garrison_power for all NPC villages so the NPC wonder
+  // competition strength gate works correctly.
+  database.exec({
+    sql: `
+      UPDATE npc_village_state
+      SET garrison_power = (
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM troops t
+        JOIN villages v ON v.tile_id = t.tile_id
+        WHERE v.id = npc_village_state.village_id
+          AND t.source_tile_id = t.tile_id
+          AND t.amount > 0
+      )
+    `,
+  });
 };

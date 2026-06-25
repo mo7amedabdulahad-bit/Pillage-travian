@@ -197,14 +197,26 @@ const tryAcquirePlan = (
     bind: { $villageId: natarVillage.villageId },
   });
 
-  db.exec({
+  // Find the faction's strongest village (the one that will hold the plan)
+  const wwVillage = db.selectValue({
     sql: `
-      UPDATE npc_village_state
-      SET holds_plan = 1
-      WHERE faction_key = $faction
+      SELECT v.id FROM villages v
+      JOIN players p ON p.id = v.player_id
+      JOIN faction_ids fi ON fi.id = p.faction_id
+      WHERE fi.faction = $faction
+      ORDER BY v.total_fields DESC LIMIT 1
     `,
     bind: { $faction: factionKey },
+    schema: z.number(),
   });
+
+  if (wwVillage) {
+    // Set holds_plan only on the WW village, clear it on all others
+    db.exec({
+      sql: 'UPDATE npc_village_state SET holds_plan = CASE WHEN village_id = $wwVillage THEN 1 ELSE 0 END WHERE faction_key = $faction',
+      bind: { $faction: factionKey, $wwVillage: wwVillage },
+    });
+  }
 
   // Save milestone report: STARTED
   saveNpcWonderMilestoneReport(db, factionKey, 'started');
@@ -338,7 +350,6 @@ const processNpcWwUpgrade = (
       FROM events
       WHERE village_id = $villageId
         AND type = 'worldWonderUpgrade'
-        AND resolved_at IS NULL
     `,
       bind: { $villageId: ww.villageId },
       schema: z.number(),

@@ -66,12 +66,26 @@ export const natarVillagesSeeder = (
     return;
   }
 
-  const outerRingThreshold = Math.max(4, server.configuration.mapSize * 0.3);
-  const outerCandidates = candidates.filter(
-    (tile) => Math.hypot(tile.x, tile.y) >= outerRingThreshold,
-  );
+  const mapSize = server.configuration.mapSize;
+  const minRadius = mapSize * 0.35;
+  const maxRadius = mapSize * 0.5;
+  const outerCandidates = candidates.filter((tile) => {
+    const distance = Math.hypot(tile.x, tile.y);
+    return distance >= minRadius && distance <= maxRadius;
+  });
+  // Fallback: if no tiles in 35%-50% band, widen to 20%-60%
   const placementPool =
-    outerCandidates.length >= count ? outerCandidates : candidates;
+    outerCandidates.length >= count
+      ? outerCandidates
+      : candidates.filter((tile) => {
+            const distance = Math.hypot(tile.x, tile.y);
+            return distance >= mapSize * 0.2 && distance <= mapSize * 0.6;
+          }).length >= count
+        ? candidates.filter((tile) => {
+            const distance = Math.hypot(tile.x, tile.y);
+            return distance >= mapSize * 0.2 && distance <= mapSize * 0.6;
+          })
+        : candidates;
   const byAngle = [...placementPool].sort(
     (a, b) => Math.atan2(a.y, a.x) - Math.atan2(b.y, b.x),
   );

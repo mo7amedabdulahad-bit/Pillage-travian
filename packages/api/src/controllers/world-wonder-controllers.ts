@@ -37,16 +37,6 @@ export const startWorldWonder = makeWWController(
         throw new Error('Village does not belong to player');
       }
 
-      const planHeld = db.selectValue({
-        sql: 'SELECT construction_plan_held FROM villages WHERE id = $villageId',
-        bind: { $villageId: villageId },
-        schema: z.number(),
-      });
-
-      if (planHeld !== 1) {
-        throw new Error('Village does not hold a Construction Plan');
-      }
-
       const treasuryLevel =
         db.selectValue({
           sql: `

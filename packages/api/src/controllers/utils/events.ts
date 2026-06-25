@@ -503,6 +503,45 @@ export const validateEventCreationPrerequisites = (
     if (isBuildingFieldOccupied) {
       throw new Error('Building field is already occupied');
     }
+
+    // Check if target village is a WW village and the building is forbidden
+    const isWwVillage =
+      database.selectValue({
+        sql: 'SELECT is_world_wonder_village FROM villages WHERE id = $villageId',
+        bind: { $villageId: villageId },
+        schema: z.number(),
+      }) ?? 0;
+    if (isWwVillage === 1) {
+      const forbiddenInWw = [
+        'ROMAN_WALL',
+        'TEUTONIC_WALL',
+        'HUN_WALL',
+        'GAUL_WALL',
+        'EGYPTIAN_WALL',
+        'SPARTAN_WALL',
+        'NATAR_WALL',
+        'NATURE_WALL',
+        'VIKING_WALL',
+        'RESIDENCE',
+        'PALACE',
+      ];
+      // Look up the building ID from the field
+      const buildingId = database.selectValue({
+        sql: `
+          SELECT bi.building
+          FROM building_fields bf
+          JOIN building_ids bi ON bi.id = bf.building_id
+          WHERE bf.village_id = $villageId AND bf.field_id = $fieldId
+        `,
+        bind: { $villageId: villageId, $fieldId: buildingFieldId },
+        schema: z.string(),
+      });
+      if (buildingId && forbiddenInWw.includes(buildingId)) {
+        throw new Error(
+          `${buildingId} cannot be built in a World Wonder village`,
+        );
+      }
+    }
   }
 
   if (isScheduledBuildingEvent(event)) {
@@ -595,6 +634,20 @@ export const runEventCreationSideEffects = (
     for (const { troops } of events as GameEvent<'troopMovementSettle'>[]) {
       removeTroops(database, troops);
     }
+  }
+
+  // World Wonder: bump level immediately at creation time so 2 levels can be
+  // queued in-flight (the resolver handles side effects only).
+  if (isWorldWonderUpgradeEvent(event)) {
+    const { villageId, targetLevel } = event;
+    database.exec({
+      sql: 'UPDATE world_wonders SET current_level = $level WHERE village_id = $villageId',
+      bind: { $level: targetLevel, $villageId: villageId },
+    });
+    database.exec({
+      sql: 'UPDATE villages SET world_wonder_level = $level WHERE id = $villageId',
+      bind: { $level: targetLevel, $villageId: villageId },
+    });
   }
 };
 

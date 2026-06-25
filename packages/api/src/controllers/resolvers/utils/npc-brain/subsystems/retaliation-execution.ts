@@ -10,7 +10,7 @@ import {
   scaleTroops,
 } from '../helpers';
 import type { FactionKey, RetaliationResolution } from '../npc-brain-types';
-import { NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
+import { isPassiveFaction, NPC_BRAIN_CONSTANTS } from '../npc-brain-types';
 import { getNpcTroopMultiplier } from '../world-threat-level';
 import { materializeNpcTroops } from './troop-regeneration';
 
@@ -71,6 +71,11 @@ export const processDueRetaliations = (
   const processedQueueIds: number[] = [];
 
   for (const item of dueQueueItems) {
+    // Skip Natars — they are passive defenders and never attack proactively
+    if (isPassiveFaction(item.factionKey)) {
+      processedQueueIds.push(item.id);
+      continue;
+    }
     try {
       const resolution = executeRetaliationAttack(
         db,
@@ -149,6 +154,12 @@ export const processDueRetaliations = (
   const mapSize = getMapSize(db);
 
   for (const intent of armedIntents) {
+    // Skip Natars — they are passive defenders
+    if (isPassiveFaction(intent.factionKey)) {
+      clearedVillageIds.push(intent.villageId);
+      continue;
+    }
+
     // Materialize troops on-demand for this village
     materializeNpcTroops(
       db,

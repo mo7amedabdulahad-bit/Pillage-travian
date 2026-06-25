@@ -186,6 +186,7 @@ const getPlayerVillages = (
   x: number;
   y: number;
   isWwVillage: number;
+  wwLevel: number;
 }[] => {
   return db.selectObjects({
     sql: `
@@ -194,7 +195,8 @@ const getPlayerVillages = (
         v.tile_id AS tileId,
         t.x,
         t.y,
-        v.is_world_wonder_village AS isWwVillage
+        v.is_world_wonder_village AS isWwVillage,
+        v.world_wonder_level AS wwLevel
       FROM villages v
       JOIN tiles t ON t.id = v.tile_id
       WHERE v.player_id = $playerId;
@@ -207,6 +209,7 @@ const getPlayerVillages = (
     x: number;
     y: number;
     isWwVillage: number;
+    wwLevel: number;
   }[];
 };
 
@@ -523,7 +526,7 @@ export const processProactiveAttacks = (
         continue;
       }
 
-      // Find nearest player village (enemy factions prefer WW villages: -30% distance)
+      // Find nearest player village (enemy factions prefer WW villages at L>=5: -30% distance)
       const isEnemy = reputation < ALLY_THRESHOLD;
       let nearestPlayerVillage = playerVillages[0];
       let nearestDistance = Number.POSITIVE_INFINITY;
@@ -532,8 +535,8 @@ export const processProactiveAttacks = (
           { x: village.x, y: village.y },
           { x: pv.x, y: pv.y },
         );
-        // Enemy factions preferentially target WW villages
-        if (isEnemy && pv.isWwVillage) {
+        // Enemy factions preferentially target WW villages at level >= 5
+        if (isEnemy && pv.isWwVillage && pv.wwLevel >= 5) {
           dist *= 0.7;
         }
         if (dist < nearestDistance) {
