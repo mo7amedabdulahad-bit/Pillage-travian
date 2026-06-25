@@ -50,6 +50,7 @@ export const ServerControlTab = () => {
   };
 
   const settingsKeys = [
+    'isAdminModeEnabled',
     'isInstantBuildingConstructionEnabled',
     'isInstantUnitTrainingEnabled',
     'isInstantUnitImprovementEnabled',
