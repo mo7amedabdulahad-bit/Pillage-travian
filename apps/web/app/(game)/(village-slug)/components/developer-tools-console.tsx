@@ -182,6 +182,7 @@ export const DeveloperToolsConsole = ({
     isInstantHeroReviveEnabled: t('Instant hero revives'),
     isFreeHeroReviveEnabled: t('Free hero revives'),
     isMaxLevelUpgradeEnabled: t('Max level upgrade button'),
+    isAdminModeEnabled: t('Admin mode'),
   };
 
   const SETTING_DESCRIPTIONS: Record<keyof DeveloperSettings, string> = {
@@ -212,6 +213,9 @@ export const DeveloperToolsConsole = ({
     isFreeHeroReviveEnabled: t('Heroes do not cost any resources to revive.'),
     isMaxLevelUpgradeEnabled: t(
       'Shows a button to upgrade buildings directly to max level.',
+    ),
+    isAdminModeEnabled: t(
+      'Enables the admin dashboard with village management tools.',
     ),
   };
 

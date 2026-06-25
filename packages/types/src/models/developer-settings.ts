@@ -14,6 +14,7 @@ export const developerSettingsSchema = z
     isInstantHeroReviveEnabled: z.boolean(),
     isFreeHeroReviveEnabled: z.boolean(),
     isMaxLevelUpgradeEnabled: z.boolean(),
+    isAdminModeEnabled: z.boolean(),
   })
   .meta({ id: 'DeveloperSettings' });
 
