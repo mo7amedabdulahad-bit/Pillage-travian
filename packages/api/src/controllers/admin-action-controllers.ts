@@ -416,7 +416,7 @@ export const adminCreateNatarVillage = createController(
       bind: { $factionId: natarFactionId },
     });
     const npcPlayerId = db.selectValue({
-      sql: 'SELECT id FROM players ORDER BY id DESC LIMIT 1',
+      sql: 'SELECT last_insert_rowid()',
       schema: z.number(),
     });
     if (!npcPlayerId) {
@@ -430,7 +430,7 @@ export const adminCreateNatarVillage = createController(
       bind: { $playerId: npcPlayerId, $tileId: tile.id },
     });
     const villageId = db.selectValue({
-      sql: 'SELECT id FROM villages ORDER BY id DESC LIMIT 1',
+      sql: 'SELECT last_insert_rowid()',
       schema: z.number(),
     });
     if (!villageId) {

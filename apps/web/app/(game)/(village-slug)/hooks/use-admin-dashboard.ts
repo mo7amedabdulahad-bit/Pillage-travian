@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { use, useCallback } from 'react';
 import { ApiContext } from 'app/(game)/providers/api-provider';
 
@@ -21,17 +21,6 @@ export const useAdminDashboard = () => {
     },
     [fetcher],
   );
-
-  const { data: integrityReport, refetch: refetchIntegrity } = useQuery({
-    queryKey: ['admin-integrity'],
-    queryFn: async () => {
-      const response = await fetcher<AdminActionResponse>(
-        '/admin/integrity-report',
-      );
-      return response.data;
-    },
-    refetchInterval: 10000,
-  });
 
   const { mutateAsync: spawnTroops } = useMutation<
     AdminActionResponse,
@@ -283,8 +272,6 @@ export const useAdminDashboard = () => {
   });
 
   return {
-    integrityReport,
-    refetchIntegrity,
     spawnTroops,
     removeTroops,
     setResources,
