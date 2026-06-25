@@ -9,6 +9,31 @@ import { playerSchema } from '@pillage-first/types/models/player';
 import { resourceSchema } from '@pillage-first/types/models/resource';
 import { resourceFieldCompositionSchema } from '@pillage-first/types/models/resource-field-composition';
 import { serverDbSchema } from '@pillage-first/types/models/server';
+import {
+  adminActionResponseSchema,
+  adminAddResourcesSchema,
+  adminCancelEventSchema,
+  adminCancelRetaliationSchema,
+  adminCreateNatarVillageSchema,
+  adminDeleteVillageSchema,
+  adminDowngradeBuildingSchema,
+  adminEndServerSchema,
+  adminGrantConstructionPlanSchema,
+  adminLevelUpHeroSchema,
+  adminRemoveTroopsSchema,
+  adminRenameVillageSchema,
+  adminSetGameSpeedSchema,
+  adminSetHeroHealthSchema,
+  adminSetNpcAggressionSchema,
+  adminSetResourcesSchema,
+  adminSetWorldWonderLevelSchema,
+  adminSpawnHeroItemSchema,
+  adminSpawnTroopsSchema,
+  adminStartWorldWonderSchema,
+  adminTeleportVillageSchema,
+  adminTriggerNpcBrainTickSchema,
+  adminUpgradeBuildingSchema,
+} from './controllers/schemas/admin-action-schemas';
 import { getDeveloperSettingsSchema } from './controllers/schemas/developer-tools-schemas.ts';
 import {
   addTileToFarmListSchema,
@@ -782,6 +807,401 @@ export const paths = {
       summary: 'Recent NPC activity',
       responses: {
         '200': { description: 'Activity feed' },
+      },
+    },
+  },
+  // ─── Admin Actions ───
+  '/admin/spawn-troops': {
+    post: {
+      summary: 'Spawn troops in a village',
+      requestBody: {
+        content: { 'application/json': { schema: adminSpawnTroopsSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/remove-troops': {
+    post: {
+      summary: 'Remove troops from a village',
+      requestBody: {
+        content: { 'application/json': { schema: adminRemoveTroopsSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/set-resources': {
+    post: {
+      summary: 'Set exact resource amounts for a village',
+      requestBody: {
+        content: { 'application/json': { schema: adminSetResourcesSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/add-resources': {
+    post: {
+      summary: 'Add resources to a village',
+      requestBody: {
+        content: { 'application/json': { schema: adminAddResourcesSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/upgrade-building': {
+    post: {
+      summary: 'Instantly upgrade a building',
+      requestBody: {
+        content: { 'application/json': { schema: adminUpgradeBuildingSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/downgrade-building': {
+    post: {
+      summary: 'Instantly downgrade a building',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminDowngradeBuildingSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/spawn-hero-item': {
+    post: {
+      summary: 'Give hero any item',
+      requestBody: {
+        content: { 'application/json': { schema: adminSpawnHeroItemSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/set-hero-health': {
+    post: {
+      summary: 'Set hero health',
+      requestBody: {
+        content: { 'application/json': { schema: adminSetHeroHealthSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/level-up-hero': {
+    post: {
+      summary: 'Level up hero by N levels',
+      requestBody: {
+        content: { 'application/json': { schema: adminLevelUpHeroSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/create-natar-village': {
+    post: {
+      summary: 'Spawn a new Natar village',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminCreateNatarVillageSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/grant-construction-plan': {
+    post: {
+      summary: 'Grant Construction Plan to hero',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminGrantConstructionPlanSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/start-world-wonder': {
+    post: {
+      summary: 'Start a World Wonder in a village',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminStartWorldWonderSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/set-world-wonder-level': {
+    post: {
+      summary: 'Set a World Wonder to a specific level',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminSetWorldWonderLevelSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/end-server': {
+    post: {
+      summary: 'Force-end the server',
+      requestBody: {
+        content: { 'application/json': { schema: adminEndServerSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/reset-server-end': {
+    post: {
+      summary: 'Reset server end state',
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/trigger-npc-brain-tick': {
+    post: {
+      summary: 'Force-run a single NPC brain reconciliation',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminTriggerNpcBrainTickSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/set-game-speed': {
+    post: {
+      summary: 'Change server speed',
+      requestBody: {
+        content: { 'application/json': { schema: adminSetGameSpeedSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/set-npc-aggression': {
+    post: {
+      summary: 'Set aggression level for an NPC village',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminSetNpcAggressionSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/cancel-retaliation': {
+    post: {
+      summary: 'Cancel a queued retaliation',
+      requestBody: {
+        content: {
+          'application/json': { schema: adminCancelRetaliationSchema },
+        },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/cancel-event': {
+    post: {
+      summary: 'Cancel a pending event',
+      requestBody: {
+        content: { 'application/json': { schema: adminCancelEventSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/teleport-village': {
+    post: {
+      summary: 'Move a village to a new tile',
+      requestBody: {
+        content: { 'application/json': { schema: adminTeleportVillageSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/rename-village': {
+    post: {
+      summary: 'Rename any village',
+      requestBody: {
+        content: { 'application/json': { schema: adminRenameVillageSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/delete-village': {
+    post: {
+      summary: 'Delete a village',
+      requestBody: {
+        content: { 'application/json': { schema: adminDeleteVillageSchema } },
+      },
+      responses: {
+        '200': {
+          description: 'Result',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
+      },
+    },
+  },
+  '/admin/integrity-report': {
+    get: {
+      summary: 'Run integrity checks and return report',
+      responses: {
+        '200': {
+          description: 'Integrity report',
+          content: {
+            'application/json': { schema: adminActionResponseSchema },
+          },
+        },
       },
     },
   },

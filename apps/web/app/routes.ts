@@ -82,10 +82,7 @@ export default [
                 'oasis-bonus-finder',
                 '(game)/(village-slug)/(oasis-bonus-finder)/page.tsx',
               ),
-              route(
-                'npc-dashboard',
-                '(game)/(village-slug)/(npc-dashboard)/page.tsx',
-              ),
+              route('admin', '(game)/(village-slug)/(admin)/page.tsx'),
               ...prefix('players', [
                 index('(game)/(village-slug)/(players)/page.tsx'),
                 route(

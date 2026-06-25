@@ -14,5 +14,8 @@ CREATE TABLE developer_settings
   is_free_unit_research_enabled INTEGER NOT NULL CHECK (is_free_unit_research_enabled IN (0, 1)),
   is_instant_hero_revive_enabled INTEGER NOT NULL CHECK (is_instant_hero_revive_enabled IN (0, 1)),
   is_free_hero_revive_enabled INTEGER NOT NULL CHECK (is_free_hero_revive_enabled IN (0, 1)),
-  is_max_level_upgrade_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_max_level_upgrade_enabled IN (0, 1))
+  is_max_level_upgrade_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_max_level_upgrade_enabled IN (0, 1)),
+
+  -- Admin
+  is_admin_mode_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_admin_mode_enabled IN (0, 1))
 ) STRICT;

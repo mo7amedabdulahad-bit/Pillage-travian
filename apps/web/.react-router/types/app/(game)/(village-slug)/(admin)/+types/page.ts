@@ -5,7 +5,7 @@ import type { GetInfo, GetAnnotations } from "react-router/internal";
 type Module = typeof import("../page.js")
 
 type Info = GetInfo<{
-  file: "(game)/(village-slug)/(npc-dashboard)/page.tsx",
+  file: "(game)/(village-slug)/(admin)/page.tsx",
   module: Module
 }>
 
@@ -25,7 +25,7 @@ type Matches = [{
   id: "(game)/(village-slug)/fixed-width-layout";
   module: typeof import("../../fixed-width-layout.js");
 }, {
-  id: "(game)/(village-slug)/(npc-dashboard)/page";
+  id: "(game)/(village-slug)/(admin)/page";
   module: typeof import("../page.js");
 }];
 

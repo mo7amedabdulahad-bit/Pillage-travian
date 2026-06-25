@@ -561,4 +561,11 @@ export const upgradeDb = (database: DbFacade): void => {
       sql: 'ALTER TABLE npc_faction_state ADD COLUMN last_reinforcement_ms INTEGER NOT NULL DEFAULT 0;',
     });
   } catch (_e) {}
+
+  // ─── Admin Dashboard: is_admin_mode_enabled developer setting ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE developer_settings ADD COLUMN is_admin_mode_enabled INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
 };

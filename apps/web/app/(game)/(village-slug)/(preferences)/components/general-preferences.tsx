@@ -357,7 +357,7 @@ export const GeneralPreferences = () => {
           </Text>
           <div className="flex flex-1 justify-end items-center">
             <Link
-              to="../npc-dashboard"
+              to="../admin"
               className={buttonVariants()}
             >
               {t('Open Dashboard')}
