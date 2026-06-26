@@ -17,7 +17,9 @@ export type WallType =
   | 'TEUTONIC_WALL'
   | 'EGYPTIAN_WALL'
   | 'HUN_WALL'
-  | 'SPARTAN_WALL';
+  | 'SPARTAN_WALL'
+  | 'NATAR_WALL'
+  | 'NATURE_WALL';
 
 export type DefenseModifiers = {
   wallType: WallType | null;
@@ -54,6 +56,8 @@ const WALL_BONUS_BASE: Record<WallType, number> = {
   EGYPTIAN_WALL: 1.025,
   HUN_WALL: 1.015,
   SPARTAN_WALL: 1.02,
+  NATAR_WALL: 1.02,
+  NATURE_WALL: 1.015,
 };
 
 /** Wall durability: higher = harder to destroy with rams */
