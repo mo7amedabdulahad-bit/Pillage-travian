@@ -144,6 +144,11 @@ const BreweryCelebration = lazyWithRetry(async () => ({
     .BreweryCelebration,
 }));
 
+const WorldWonderTab = lazyWithRetry(async () => ({
+  default: (await import('./components/world-wonder/world-wonder-tab'))
+    .WorldWonderTab,
+}));
+
 const BarracksTroopTraining = lazyWithRetry(async () => ({
   default: (
     await import(
@@ -213,7 +218,13 @@ const buildingDetailsTabMap = new Map<
       ['simulator', RallyPointSimulator],
     ]),
   ],
-  ['TREASURY', new Map([['artifacts', TreasuryArtifacts]])],
+  [
+    'TREASURY',
+    new Map([
+      ['artifacts', TreasuryArtifacts],
+      ['world-wonder', WorldWonderTab],
+    ]),
+  ],
   ['EMBASSY', new Map([['relations', EmbassyRelations]])],
   ['TOWN_HALL', new Map([['celebrations', TownHallCelebrations]])],
   [
@@ -244,6 +255,7 @@ const buildingDetailsTabMap = new Map<
 // t('send-troops')
 // t('simulator')
 // t('artifacts')
+// t('world-wonder')
 // t('trade')
 // t('trade-routes')
 // t('unit-research')

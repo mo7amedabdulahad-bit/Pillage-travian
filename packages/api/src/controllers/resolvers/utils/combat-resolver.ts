@@ -1992,56 +1992,65 @@ export const resolveTroopMovementCombat = (
   }
 
   // 10. Save report (BEFORE return event so report is always saved even if
-  //    return event creation fails)
-  saveCombatReport(
-    database,
-    {
-      ...result,
-      attackerVillageName: attackerVillage.name,
-      defenderVillageName: targetVillage.name,
-      attackerPlayerName: attackerVillage.playerName,
-      defenderPlayerName: targetVillage.playerName,
-      attackerTribe: attackerVillage.tribe,
-      defenderTribe: targetVillage.tribe,
-      initialAttackerTroops: attackerTroopsRaw,
-      initialDefenderTroops: defenderTroops.map((d) => ({
-        unitId: d.unitId,
-        amount: d.amount,
-      })),
-      isRaid,
-      ...(reportLoyaltyReduction !== undefined && {
-        loyaltyReduction: reportLoyaltyReduction,
-        newLoyalty: reportNewLoyalty,
-        conquered: reportConquered,
-        protectedBuildingName: reportProtectedBuildingName,
-        protectedBuildingLevel: reportProtectedBuildingLevel,
-      }),
-      ...(catapultReport && {
-        catapultTarget1: catapultReport.target1,
-        catapultLevelsDestroyed1: catapultReport.levelsDestroyed1,
-        catapultTarget1Destroyed: catapultReport.target1Destroyed,
-        catapultTarget1IsRandom: catapultReport.target1IsRandom,
-        catapultTarget1RequestedName: catapultReport.target1RequestedName,
-        catapultTarget1WasFallback: catapultReport.target1WasFallback,
-        ...(catapultReport.target2 && {
-          catapultTarget2: catapultReport.target2,
-          catapultLevelsDestroyed2: catapultReport.levelsDestroyed2,
-          catapultTarget2Destroyed: catapultReport.target2Destroyed,
-          catapultTarget2IsRandom: catapultReport.target2IsRandom,
-          catapultTarget2RequestedName: catapultReport.target2RequestedName,
-          catapultTarget2WasFallback: catapultReport.target2WasFallback,
+  //    return event creation fails). Wrapped in try-catch so a report save
+  //    failure cannot block the Construction Plan grant or return event.
+  try {
+    saveCombatReport(
+      database,
+      {
+        ...result,
+        attackerVillageName: attackerVillage.name,
+        defenderVillageName: targetVillage.name,
+        attackerPlayerName: attackerVillage.playerName,
+        defenderPlayerName: targetVillage.playerName,
+        attackerTribe: attackerVillage.tribe,
+        defenderTribe: targetVillage.tribe,
+        initialAttackerTroops: attackerTroopsRaw,
+        initialDefenderTroops: defenderTroops.map((d) => ({
+          unitId: d.unitId,
+          amount: d.amount,
+        })),
+        isRaid,
+        ...(reportLoyaltyReduction !== undefined && {
+          loyaltyReduction: reportLoyaltyReduction,
+          newLoyalty: reportNewLoyalty,
+          conquered: reportConquered,
+          protectedBuildingName: reportProtectedBuildingName,
+          protectedBuildingLevel: reportProtectedBuildingLevel,
         }),
-        ...(catapultReport.villageDestroyed && {
-          villageDestroyed: true,
+        ...(catapultReport && {
+          catapultTarget1: catapultReport.target1,
+          catapultLevelsDestroyed1: catapultReport.levelsDestroyed1,
+          catapultTarget1Destroyed: catapultReport.target1Destroyed,
+          catapultTarget1IsRandom: catapultReport.target1IsRandom,
+          catapultTarget1RequestedName: catapultReport.target1RequestedName,
+          catapultTarget1WasFallback: catapultReport.target1WasFallback,
+          ...(catapultReport.target2 && {
+            catapultTarget2: catapultReport.target2,
+            catapultLevelsDestroyed2: catapultReport.levelsDestroyed2,
+            catapultTarget2Destroyed: catapultReport.target2Destroyed,
+            catapultTarget2IsRandom: catapultReport.target2IsRandom,
+            catapultTarget2RequestedName: catapultReport.target2RequestedName,
+            catapultTarget2WasFallback: catapultReport.target2WasFallback,
+          }),
+          ...(catapultReport.villageDestroyed && {
+            villageDestroyed: true,
+          }),
         }),
-      }),
-    },
-    villageId,
-    targetId,
-    resolvesAt,
-    attackerVillage.factionId,
-    targetVillage.factionId,
-  );
+      },
+      villageId,
+      targetId,
+      resolvesAt,
+      attackerVillage.factionId,
+      targetVillage.factionId,
+    );
+  } catch (reportErr) {
+    console.error(
+      '[CombatReport] saveCombatReport THREW:',
+      String(reportErr),
+      (reportErr as Error)?.stack,
+    );
+  }
 
   // 10b. Construction Plan drop (Phase 4E): if attacker won a full attack
   //      against a Natar village with a surviving Hero, grant the plan.
@@ -2077,15 +2086,23 @@ export const resolveTroopMovementCombat = (
           bind: { $villageId: targetId },
         });
 
-        saveConstructionPlanObtainedReport(
-          database,
-          villageId,
-          targetId,
-          heroRow.id,
-          resolvesAt,
-          attackerVillage.factionId,
-          targetVillage.factionId,
-        );
+        try {
+          saveConstructionPlanObtainedReport(
+            database,
+            villageId,
+            targetId,
+            heroRow.id,
+            resolvesAt,
+            attackerVillage.factionId,
+            targetVillage.factionId,
+          );
+        } catch (planReportErr) {
+          console.error(
+            '[ConstructionPlan] saveConstructionPlanObtainedReport THREW:',
+            String(planReportErr),
+            (planReportErr as Error)?.stack,
+          );
+        }
       }
     }
   }

@@ -10,6 +10,7 @@ export const useReportFilters = () => {
     'scout-attack',
     'scout-defence',
     'trade',
+    'construction_plan_obtained',
   ]);
 
   const onReportFiltersChange = (newReportFilters: ReportType[]) => {

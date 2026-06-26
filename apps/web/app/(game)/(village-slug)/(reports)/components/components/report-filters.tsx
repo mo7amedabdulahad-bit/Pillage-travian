@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { BsShieldFill } from 'react-icons/bs';
 import { CiBag1 } from 'react-icons/ci';
 import { GiSpyglass } from 'react-icons/gi';
-import { LuScale, LuSword } from 'react-icons/lu';
+import { LuScale, LuScroll, LuSword } from 'react-icons/lu';
 import { PiPathBold } from 'react-icons/pi';
 import type { ReportType } from '@pillage-first/types/models/report';
 import { SectionContent } from 'app/(game)/(village-slug)/components/building-layout';
@@ -78,6 +78,13 @@ export const ReportFilters = ({
           value="trade"
         >
           <LuScale className="size-4" />
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          data-tooltip-id="general-tooltip"
+          data-tooltip-content={t('Toggle construction plan reports')}
+          value="construction_plan_obtained"
+        >
+          <LuScroll className="size-4" />
         </ToggleGroupItem>
       </ToggleGroup>
     </SectionContent>

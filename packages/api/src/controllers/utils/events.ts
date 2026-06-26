@@ -233,6 +233,7 @@ export const insertEvents = (database: DbFacade, events: GameEvent[]): void => {
   }
 
   const stmt = database.prepare({ sql });
+  stmt.reset();
   stmt.bind(params).stepReset();
 };
 

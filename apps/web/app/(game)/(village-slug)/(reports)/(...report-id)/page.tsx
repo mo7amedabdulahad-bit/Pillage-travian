@@ -199,6 +199,50 @@ const ReportPage = ({ params }: Route.ComponentProps) => {
     );
   }
 
+  if (report.type === 'construction_plan_obtained') {
+    return (
+      <>
+        <title>{title}</title>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink to="../village">{t('Village')}</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink to="../reports">{t('Reports')}</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              {t('Report - {{reportId}}', { reportId })}
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="mt-4 flex flex-col gap-6">
+          <Text
+            as="h1"
+            className="border-b border-border pb-2 text-2xl font-bold"
+          >
+            {t('Construction Plan Obtained')}
+          </Text>
+          <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/10 p-4">
+            <Text>
+              {t(
+                'Your hero successfully obtained a World Wonder Construction Plan from a Natar village.',
+              )}
+            </Text>
+            <Text className="text-sm text-muted-foreground">
+              {t(
+                'The Construction Plan has been added to your hero inventory. It is required to start building a World Wonder.',
+              )}
+            </Text>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   const attackerTribe = combatData.attackerTribe as Tribe;
   const defenderTribe = combatData.defenderTribe as Tribe;
   const attackerUnits = toUnitCounts(

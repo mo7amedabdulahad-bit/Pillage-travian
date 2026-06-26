@@ -68,6 +68,9 @@ export const ReportList = ({
         village: data?.attackerVillageName ?? report.targetVillageId ?? '?',
       });
     }
+    if (report.type === 'construction_plan_obtained') {
+      return t('Construction Plan obtained');
+    }
 
     return t('Report');
   };
@@ -100,6 +103,9 @@ export const ReportList = ({
     }
     if (report.type === 'scout-attack' || report.type === 'scout-defence') {
       return icons.revealedIncomingTroopsAmount({ className: 'size-4' });
+    }
+    if (report.type === 'construction_plan_obtained') {
+      return icons.defenceBonus({ className: 'size-4' });
     }
     return icons.defence({ className: 'size-4' });
   };

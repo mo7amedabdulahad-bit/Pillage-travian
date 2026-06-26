@@ -84,6 +84,16 @@ export const startWorldWonder = makeWWController(
         throw new Error('Hero does not hold a Construction Plan');
       }
 
+      // Look up the WORLD_WONDER building_id from the lookup table
+      const wwBuildingId = db.selectValue({
+        sql: "SELECT id FROM building_ids WHERE building = 'WORLD_WONDER'",
+        schema: z.number(),
+      });
+
+      if (!wwBuildingId) {
+        throw new Error('WORLD_WONDER building type not found');
+      }
+
       db.exec({
         sql: `
           INSERT INTO world_wonders (village_id, owner_player_id, owner_faction_id, current_level, started_at)
@@ -99,6 +109,12 @@ export const startWorldWonder = makeWWController(
       db.exec({
         sql: 'UPDATE villages SET is_world_wonder_village = 1 WHERE id = $villageId',
         bind: { $villageId: villageId },
+      });
+
+      // Replace the wall (field 40) with the World Wonder building on the canvas
+      db.exec({
+        sql: 'UPDATE building_fields SET building_id = $buildingId, level = 0 WHERE village_id = $villageId AND field_id = 40',
+        bind: { $buildingId: wwBuildingId, $villageId: villageId },
       });
 
       createEvents<'worldWonderUpgrade'>(db, {
