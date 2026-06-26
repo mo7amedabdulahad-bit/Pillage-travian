@@ -9,6 +9,10 @@ export const reportTypeSchema = z.enum([
   'scout-defence',
   'adventure',
   'trade',
+  'construction_plan_obtained',
+  'npc_wonder_milestone',
+  'world_wonder_level',
+  'server_end',
 ]);
 
 export const reportListItemSchema = z.strictObject({
