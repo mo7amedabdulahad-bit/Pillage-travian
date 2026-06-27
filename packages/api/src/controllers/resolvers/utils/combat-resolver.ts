@@ -1954,6 +1954,7 @@ export const resolveTroopMovementCombat = (
   let reportConquered: boolean | undefined;
   let reportProtectedBuildingName: string | undefined;
   let reportProtectedBuildingLevel: number | undefined;
+  let natarPlanAvailable = 0;
 
   // Chiefs fire when: not a raid, AND either attacker won OR no defenders remain
   const noDefendersRemain = defenderTroops.every((t) => t.amount === 0);
@@ -1995,6 +1996,13 @@ export const resolveTroopMovementCombat = (
 
             if (isNatarWw === 1) {
               // Natar WW village: transfer ownership, keep WW level
+              // Save construction plan availability BEFORE _transferWWOwnership deletes the row
+              natarPlanAvailable =
+                database.selectValue({
+                  sql: 'SELECT construction_plan_available FROM natar_villages WHERE village_id = $villageId',
+                  bind: { $villageId: targetId },
+                  schema: z.number(),
+                }) ?? 0;
               _transferVillageOwnership(
                 database,
                 targetId,
@@ -2123,55 +2131,40 @@ export const resolveTroopMovementCombat = (
 
   // 10b. Construction Plan drop (Phase 4E): if attacker won a full attack
   //      against a Natar village with a surviving Hero, grant the plan.
+  //      natarPlanAvailable was saved before _transferWWOwnership deleted the row.
   if (
     !isRaid &&
     result.attackerWins &&
     attackerHeroSurvived &&
-    npcVillageData?.factionKey === 'natars'
+    npcVillageData?.factionKey === 'natars' &&
+    natarPlanAvailable === 1
   ) {
-    const natarPlanRow = database.selectObject({
-      sql: `
-        SELECT nv.construction_plan_available
-        FROM natar_villages nv
-        WHERE nv.village_id = $villageId
-      `,
-      bind: { $villageId: targetId },
-      schema: z.strictObject({ construction_plan_available: z.number() }),
+    // Look up attacker's hero
+    const heroRow = database.selectObject({
+      sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
+      bind: { $playerId: attackerVillage.playerId },
+      schema: z.strictObject({ id: z.number() }),
     });
 
-    if (natarPlanRow?.construction_plan_available === 1) {
-      // Look up attacker's hero
-      const heroRow = database.selectObject({
-        sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
-        bind: { $playerId: attackerVillage.playerId },
-        schema: z.strictObject({ id: z.number() }),
-      });
+    if (heroRow && !hasConstructionPlan(database, heroRow.id)) {
+      grantConstructionPlan(database, heroRow.id);
 
-      if (heroRow && !hasConstructionPlan(database, heroRow.id)) {
-        grantConstructionPlan(database, heroRow.id);
-
-        database.exec({
-          sql: 'UPDATE natar_villages SET construction_plan_available = 0 WHERE village_id = $villageId',
-          bind: { $villageId: targetId },
-        });
-
-        try {
-          saveConstructionPlanObtainedReport(
-            database,
-            villageId,
-            targetId,
-            heroRow.id,
-            resolvesAt,
-            attackerVillage.factionId,
-            targetVillage.factionId,
-          );
-        } catch (planReportErr) {
-          console.error(
-            '[ConstructionPlan] saveConstructionPlanObtainedReport THREW:',
-            String(planReportErr),
-            (planReportErr as Error)?.stack,
-          );
-        }
+      try {
+        saveConstructionPlanObtainedReport(
+          database,
+          villageId,
+          targetId,
+          heroRow.id,
+          resolvesAt,
+          attackerVillage.factionId,
+          targetVillage.factionId,
+        );
+      } catch (planReportErr) {
+        console.error(
+          '[ConstructionPlan] saveConstructionPlanObtainedReport THREW:',
+          String(planReportErr),
+          (planReportErr as Error)?.stack,
+        );
       }
     }
   }
