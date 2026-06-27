@@ -141,7 +141,7 @@ const GID_MAP: Record<string, string> = {
   HORSE_DRINKING_TROUGH: '41',
   GREAT_WAREHOUSE: '38',
   GREAT_GRANARY: '39',
-  WORLD_WONDER: '40',
+  WORLD_WONDER: '35',
   HOSPITAL: '46',
   WATERWORKS: '45',
   TRAPPER: '36',

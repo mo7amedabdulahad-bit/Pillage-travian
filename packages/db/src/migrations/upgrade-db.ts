@@ -568,4 +568,38 @@ export const upgradeDb = (database: DbFacade): void => {
       sql: 'ALTER TABLE developer_settings ADD COLUMN is_admin_mode_enabled INTEGER NOT NULL DEFAULT 0;',
     });
   } catch (_e) {}
+
+  // ─── Phase 5: World Wonder System — natar_villages WW columns ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE natar_villages ADD COLUMN is_ww_village INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE natar_villages ADD COLUMN ww_level INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE natar_villages ADD COLUMN attack_block_until INTEGER DEFAULT NULL;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE natar_villages ADD COLUMN last_attacked_at INTEGER DEFAULT NULL;',
+    });
+  } catch (_e) {}
+
+  // ─── Phase 5: World Wonder System — servers global WW tracking ───
+  try {
+    database.exec({
+      sql: 'ALTER TABLE servers ADD COLUMN ww_level INTEGER NOT NULL DEFAULT 0;',
+    });
+  } catch (_e) {}
+  try {
+    database.exec({
+      sql: 'ALTER TABLE servers ADD COLUMN ww_tribe_id INTEGER DEFAULT NULL;',
+    });
+  } catch (_e) {}
 };

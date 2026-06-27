@@ -218,13 +218,7 @@ const buildingDetailsTabMap = new Map<
       ['simulator', RallyPointSimulator],
     ]),
   ],
-  [
-    'TREASURY',
-    new Map([
-      ['artifacts', TreasuryArtifacts],
-      ['world-wonder', WorldWonderTab],
-    ]),
-  ],
+  ['TREASURY', new Map([['artifacts', TreasuryArtifacts]])],
   ['EMBASSY', new Map([['relations', EmbassyRelations]])],
   ['TOWN_HALL', new Map([['celebrations', TownHallCelebrations]])],
   [
@@ -246,6 +240,7 @@ const buildingDetailsTabMap = new Map<
   ['GREAT_STABLE', new Map([['train', GreatStableTroopTraining]])],
   ['WORKSHOP', new Map([['train', WorkshopTroopTraining]])],
   ['HOSPITAL', new Map([['train', HospitalTroopTraining]])],
+  ['WORLD_WONDER', new Map([['world-wonder', WorldWonderTab]])],
 ]);
 
 // t('loyalty')

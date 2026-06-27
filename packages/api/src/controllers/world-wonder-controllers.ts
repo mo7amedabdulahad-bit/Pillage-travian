@@ -17,124 +17,11 @@ const makeWWController = (
 };
 
 /**
- * POST /villages/:villageId/world-wonder/start
- * Starts a World Wonder in a village that holds a Construction Plan.
- */
-export const startWorldWonder = makeWWController(
-  '/villages/:villageId/world-wonder/start',
-  'post',
-  (database, { path }) => {
-    const villageId = Number(path.villageId);
-
-    database.transaction((db: any) => {
-      const village = db.selectObject({
-        sql: 'SELECT player_id FROM villages WHERE id = $villageId',
-        bind: { $villageId: villageId },
-        schema: z.strictObject({ player_id: z.number() }),
-      });
-
-      if (!village || village.player_id !== PLAYER_ID) {
-        throw new Error('Village does not belong to player');
-      }
-
-      const treasuryLevel =
-        db.selectValue({
-          sql: `
-          SELECT COALESCE(bf.level, 0)
-          FROM building_fields bf
-          JOIN building_ids bi ON bi.id = bf.building_id
-          WHERE bf.village_id = $villageId AND bi.building = 'TREASURY'
-        `,
-          bind: { $villageId: villageId },
-          schema: z.number(),
-        }) ?? 0;
-
-      if (treasuryLevel < 10) {
-        throw new Error('Treasury must be at least level 10');
-      }
-
-      const existingWw =
-        db.selectValue({
-          sql: 'SELECT COUNT(*) FROM world_wonders WHERE owner_player_id = $playerId',
-          bind: { $playerId: PLAYER_ID },
-          schema: z.number(),
-        }) ?? 0;
-
-      if (existingWw > 0) {
-        throw new Error('Player already owns a World Wonder');
-      }
-
-      const isWwVillage = db.selectValue({
-        sql: 'SELECT is_world_wonder_village FROM villages WHERE id = $villageId',
-        bind: { $villageId: villageId },
-        schema: z.number(),
-      });
-
-      if (isWwVillage === 1) {
-        throw new Error('Village is already a World Wonder village');
-      }
-
-      const heroRow = db.selectObject({
-        sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
-        bind: { $playerId: PLAYER_ID },
-        schema: z.strictObject({ id: z.number() }),
-      });
-
-      if (!heroRow || !hasConstructionPlan(db, heroRow.id)) {
-        throw new Error('Hero does not hold a Construction Plan');
-      }
-
-      // Look up the WORLD_WONDER building_id from the lookup table
-      const wwBuildingId = db.selectValue({
-        sql: "SELECT id FROM building_ids WHERE building = 'WORLD_WONDER'",
-        schema: z.number(),
-      });
-
-      if (!wwBuildingId) {
-        throw new Error('WORLD_WONDER building type not found');
-      }
-
-      db.exec({
-        sql: `
-          INSERT INTO world_wonders (village_id, owner_player_id, owner_faction_id, current_level, started_at)
-          VALUES ($villageId, $playerId, 'player', 0, $startedAt)
-        `,
-        bind: {
-          $villageId: villageId,
-          $playerId: PLAYER_ID,
-          $startedAt: Date.now(),
-        },
-      });
-
-      db.exec({
-        sql: 'UPDATE villages SET is_world_wonder_village = 1 WHERE id = $villageId',
-        bind: { $villageId: villageId },
-      });
-
-      // Replace the wall (field 40) with the World Wonder building on the canvas
-      db.exec({
-        sql: 'UPDATE building_fields SET building_id = $buildingId, level = 0 WHERE village_id = $villageId AND field_id = 40',
-        bind: { $buildingId: wwBuildingId, $villageId: villageId },
-      });
-
-      createEvents<'worldWonderUpgrade'>(db, {
-        villageId,
-        type: 'worldWonderUpgrade',
-        targetLevel: 1,
-        ownerPlayerId: PLAYER_ID,
-        ownerFactionId: 'player',
-      } as any);
-    });
-
-    triggerKick();
-
-    return { ok: true };
-  },
-);
-
-/**
  * POST /villages/:villageId/world-wonder/upgrade
  * Queues the next WW level upgrade.
+ *
+ * Players conquer Natar WW villages, then upgrade the WW.
+ * Requires: active construction plan (hero inventory) for L0→L1.
  */
 export const upgradeWorldWonder = makeWWController(
   '/villages/:villageId/world-wonder/upgrade',
@@ -145,7 +32,7 @@ export const upgradeWorldWonder = makeWWController(
     database.transaction((db: any) => {
       const ww = db.selectObject({
         sql: `
-          SELECT ww.current_level, ww.owner_player_id
+          SELECT ww.current_level, ww.owner_player_id, ww.owner_faction_id
           FROM world_wonders ww
           WHERE ww.village_id = $villageId AND ww.owner_player_id = $playerId
         `,
@@ -153,6 +40,7 @@ export const upgradeWorldWonder = makeWWController(
         schema: z.strictObject({
           current_level: z.number(),
           owner_player_id: z.number(),
+          owner_faction_id: z.string(),
         }),
       });
 
@@ -168,12 +56,45 @@ export const upgradeWorldWonder = makeWWController(
 
       const nextLevel = ww.current_level + 1;
 
+      // For L0→L1 upgrade: require a construction plan in hero inventory
+      if (ww.current_level === 0) {
+        const heroRow = db.selectObject({
+          sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
+          bind: { $playerId: PLAYER_ID },
+          schema: z.strictObject({ id: z.number() }),
+        });
+
+        if (!heroRow || !hasConstructionPlan(db, heroRow.id)) {
+          throw new Error(
+            'A Construction Plan is required to upgrade the World Wonder from Level 0 to Level 1',
+          );
+        }
+      }
+
+      // For L50+ upgrades: require two plans (yours + alliance member's)
+      if (ww.current_level >= 49) {
+        const heroRow = db.selectObject({
+          sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
+          bind: { $playerId: PLAYER_ID },
+          schema: z.strictObject({ id: z.number() }),
+        });
+
+        if (!heroRow || !hasConstructionPlan(db, heroRow.id)) {
+          throw new Error(
+            'A Construction Plan is required for Level 50+ upgrades',
+          );
+        }
+
+        // Check for alliance member's plan (simplified: check if any alliance member has a plan)
+        // TODO: Implement proper alliance plan sharing for L50+
+      }
+
       createEvents<'worldWonderUpgrade'>(db, {
         villageId,
         type: 'worldWonderUpgrade',
         targetLevel: nextLevel,
         ownerPlayerId: PLAYER_ID,
-        ownerFactionId: 'player',
+        ownerFactionId: ww.owner_faction_id,
       } as any);
     });
 
@@ -196,6 +117,17 @@ export const renameWorldWonder = makeWWController(
 
     if (typeof name !== 'string' || name.length === 0 || name.length > 25) {
       throw new Error('Name must be between 1 and 25 characters');
+    }
+
+    // WW can only be renamed before level 11
+    const ww = database.selectObject({
+      sql: 'SELECT current_level FROM world_wonders WHERE village_id = $villageId AND owner_player_id = $playerId',
+      bind: { $villageId: villageId, $playerId: PLAYER_ID },
+      schema: z.strictObject({ current_level: z.number() }),
+    });
+
+    if (ww && ww.current_level >= 11) {
+      throw new Error('World Wonder cannot be renamed after Level 11');
     }
 
     database.exec({
@@ -253,14 +185,41 @@ export const getWorldWonder = makeWWController(
 
     if (ww.currentLevel >= 20) {
       cannotBeUpgradedReason = 'World Wonder has reached maximum level (20)';
-    } else {
-      // Check if player has enough resources for next level
-      // The actual resource check happens in the upgrade mutation
+    } else if (ww.currentLevel === 0) {
+      // Check if player has construction plan for L0→L1
+      const heroRow = database.selectObject({
+        sql: 'SELECT id FROM heroes WHERE player_id = $playerId',
+        bind: { $playerId: PLAYER_ID },
+        schema: z.strictObject({ id: z.number() }),
+      });
+      if (!heroRow || !hasConstructionPlan(database, heroRow.id)) {
+        cannotBeUpgradedReason =
+          'A Construction Plan is required to upgrade from Level 0 to Level 1';
+      }
+    }
+
+    // Check if this is a Natar-owned WW (not yet conquered)
+    const isNatarOwned = ww.ownerFactionId === 'natars';
+
+    // Get attack block timestamp for Natar WW villages
+    let attackBlockUntil: number | null = null;
+    if (isNatarOwned) {
+      attackBlockUntil = database.selectValue({
+        sql: `
+          SELECT nv.attack_block_until
+          FROM natar_villages nv
+          WHERE nv.village_id = $villageId
+        `,
+        bind: { $villageId: villageId },
+        schema: z.number().nullable(),
+      });
     }
 
     return {
       ...ww,
       cannotBeUpgradedReason,
+      isNatarOwned,
+      attackBlockUntil,
     };
   },
 );
@@ -283,6 +242,7 @@ export const getWorldWonderLeaderboard = makeWWController(
           ww.started_at AS startedAt,
           ww.name,
           v.name AS villageName,
+          v.is_world_wonder_village AS isWWVillage,
           t.x,
           t.y
         FROM world_wonders ww
@@ -298,6 +258,7 @@ export const getWorldWonderLeaderboard = makeWWController(
         startedAt: z.number(),
         name: z.string().nullable(),
         villageName: z.string(),
+        isWWVillage: z.number(),
         x: z.number(),
         y: z.number(),
       }),

@@ -72,6 +72,22 @@ export const addTileToFarmList = createController(
       throw new Error('Farm list cannot have more than 100 tiles');
     }
 
+    // WW villages cannot be added to farm lists
+    const isWWVillage = database.selectValue({
+      sql: `
+        SELECT EXISTS(
+          SELECT 1 FROM villages v
+          JOIN natar_villages nv ON nv.village_id = v.id
+          WHERE v.tile_id = $tileId AND nv.is_ww_village = 1
+        )
+      `,
+      bind: { $tileId: tileId },
+      schema: z.number(),
+    });
+    if (isWWVillage) {
+      throw new Error('World Wonder villages cannot be added to farm lists');
+    }
+
     database.exec({
       sql: 'INSERT OR REPLACE INTO farm_list_tiles (farm_list_id, tile_id, troops_meta) VALUES ($farmListId, $tile_id, $troops_meta)',
       bind: {

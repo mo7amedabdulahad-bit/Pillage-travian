@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { use } from 'react';
-import { playerVillagesCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { ApiContext } from 'app/(game)/providers/api-provider';
 
@@ -14,6 +13,8 @@ export type WorldWonderState = {
   lastAttackAt: number | null;
   nextAttackAt: number | null;
   cannotBeUpgradedReason: string | null;
+  isNatarOwned: boolean;
+  attackBlockUntil: number | null;
 } | null;
 
 export const useWorldWonder = () => {
@@ -35,33 +36,6 @@ export const useWorldWonder = () => {
     worldWonder,
     isLoading,
   };
-};
-
-export const useStartWorldWonder = () => {
-  const { fetcher } = use(ApiContext);
-  const { currentVillage } = useCurrentVillage();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      await fetcher(`/villages/${currentVillage.id}/world-wonder/start`, {
-        method: 'POST',
-      });
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ['world-wonder', currentVillage.id],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [playerVillagesCacheKey],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ['hero-inventory'],
-        }),
-      ]);
-    },
-  });
 };
 
 export const useUpgradeWorldWonder = () => {
@@ -111,6 +85,7 @@ export type WorldWonderLeaderboardEntry = {
   startedAt: number;
   name: string | null;
   villageName: string;
+  isWWVillage: number;
   x: number;
   y: number;
 };

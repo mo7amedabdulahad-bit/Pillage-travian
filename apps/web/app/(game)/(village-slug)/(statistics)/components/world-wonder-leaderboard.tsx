@@ -67,6 +67,9 @@ export const WorldWonderLeaderboard = () => {
                 <Text>{t('Name')}</Text>
               </TableHeaderCell>
               <TableHeaderCell>
+                <Text>{t('Owner')}</Text>
+              </TableHeaderCell>
+              <TableHeaderCell>
                 <Text>{t('Faction')}</Text>
               </TableHeaderCell>
               <TableHeaderCell>
@@ -101,6 +104,17 @@ export const WorldWonderLeaderboard = () => {
                   <TableCell>
                     <Text className="font-medium">
                       {name || t('Unnamed Wonder')}
+                    </Text>
+                  </TableCell>
+                  <TableCell>
+                    <Text
+                      className={
+                        ownerFactionId === 'natars'
+                          ? 'text-gray-400'
+                          : 'text-green-500'
+                      }
+                    >
+                      {ownerFactionId === 'natars' ? t('Natars') : t('Player')}
                     </Text>
                   </TableCell>
                   <TableCell>

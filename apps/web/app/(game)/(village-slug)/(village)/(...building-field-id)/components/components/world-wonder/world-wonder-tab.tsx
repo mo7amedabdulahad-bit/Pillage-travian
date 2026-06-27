@@ -10,12 +10,10 @@ import {
   SectionContent,
 } from 'app/(game)/(village-slug)/components/building-layout';
 import { Resources } from 'app/(game)/(village-slug)/components/resources';
-import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useHeroInventory } from 'app/(game)/(village-slug)/hooks/use-hero-inventory';
 import { useServer } from 'app/(game)/(village-slug)/hooks/use-server';
 import {
   useRenameWorldWonder,
-  useStartWorldWonder,
   useUpgradeWorldWonder,
   useWorldWonder,
 } from 'app/(game)/(village-slug)/hooks/use-world-wonder';
@@ -41,18 +39,9 @@ export const WorldWonderTab = () => {
   const { t } = useTranslation();
   const { worldWonder } = useWorldWonder();
   const { heroInventory } = useHeroInventory();
-  const { currentVillage } = useCurrentVillage();
   const { serverSpeed } = useServer();
-  const startMutation = useStartWorldWonder();
   const upgradeMutation = useUpgradeWorldWonder();
   const renameMutation = useRenameWorldWonder();
-
-  const treasuryLevel =
-    currentVillage.buildingFields.find((bf) => bf.buildingId === 'TREASURY')
-      ?.level ?? 0;
-  const isWwVillage = currentVillage.buildingFields.some(
-    (bf) => bf.buildingId === 'WORLD_WONDER',
-  );
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');
@@ -71,10 +60,6 @@ export const WorldWonderTab = () => {
     ? worldWonder.currentLevel >= MAX_LEVEL
     : false;
 
-  const handleStart = () => {
-    startMutation.mutate();
-  };
-
   const handleUpgrade = () => {
     upgradeMutation.mutate();
   };
@@ -87,61 +72,62 @@ export const WorldWonderTab = () => {
     }
   };
 
-  if (!worldWonder) {
+  // Show Natar-owned WW status (not yet conquered)
+  if (worldWonder?.isNatarOwned) {
     return (
       <Section>
         <SectionContent>
           <Bookmark tab="world-wonder" />
-          <Text as="h2">{t('Start World Wonder')}</Text>
+          <Text as="h2">{t('World Wonder Village (Natar-Owned)')}</Text>
           <Text>
             {t(
-              'A World Wonder is the ultimate goal. Once started, it must be upgraded to Level 20 to win the game.',
+              'This village is owned by Natars and contains a World Wonder. Conquer it using Chiefs/Senators to take control.',
             )}
           </Text>
         </SectionContent>
 
         <SectionContent>
-          <Text as="h3">{t('Prerequisites')}</Text>
-          <div className="flex flex-col gap-2">
-            <PrerequisiteRow
-              label={t('Treasury Level 10 or higher')}
-              met={treasuryLevel >= 10}
-            />
-            <PrerequisiteRow
-              label={t('Construction Plan in hero inventory')}
-              met={hasPlan}
-            />
-            {!isWwVillage && (
-              <PrerequisiteRow
-                label={t('This village is not already a World Wonder')}
-                met={true}
-              />
+          <Text as="h3">{t('Status')}</Text>
+          <div className="flex flex-col gap-1 text-sm">
+            <Text>
+              {t('Current Level')}: {worldWonder.currentLevel} / {MAX_LEVEL}
+            </Text>
+            <Text>
+              {t('Owner')}: {t('Natars')}
+            </Text>
+            {worldWonder.attackBlockUntil && (
+              <Text className="text-yellow-500">
+                {t('Attacks open')}:{' '}
+                {new Date(worldWonder.attackBlockUntil).toLocaleDateString()}
+              </Text>
             )}
           </div>
         </SectionContent>
 
         <SectionContent>
-          <Text as="h3">{t('Cost to start (Level 1)')}</Text>
-          <Resources resources={nextLevelCost} />
+          <Text as="h3">{t('How to Conquer')}</Text>
           <Text className="text-sm text-muted-foreground">
-            {t('Duration')}: {formatTime(nextLevelDuration)}
+            {t(
+              'Send Chiefs/Senators to lower the loyalty. When loyalty reaches 0, the village joins your empire. The World Wonder retains its current level.',
+            )}
           </Text>
         </SectionContent>
+      </Section>
+    );
+  }
 
+  // No WW in this village
+  if (!worldWonder) {
+    return (
+      <Section>
         <SectionContent>
-          <Button
-            onClick={handleStart}
-            disabled={
-              !hasPlan ||
-              treasuryLevel < 10 ||
-              isWwVillage ||
-              startMutation.isPending
-            }
-          >
-            {startMutation.isPending
-              ? t('Starting...')
-              : t('Start World Wonder')}
-          </Button>
+          <Bookmark tab="world-wonder" />
+          <Text as="h2">{t('World Wonder')}</Text>
+          <Text>
+            {t(
+              'This village does not contain a World Wonder. Conquer a Natar World Wonder village to take control of one.',
+            )}
+          </Text>
         </SectionContent>
       </Section>
     );
@@ -176,6 +162,21 @@ export const WorldWonderTab = () => {
           <Text className="text-sm text-muted-foreground">
             {t('Duration')}: {formatTime(nextLevelDuration)}
           </Text>
+
+          {worldWonder.currentLevel === 0 && (
+            <div className="mt-2">
+              <Text className="text-sm font-medium mb-1">
+                {t('Prerequisites for Level 0 to Level 1:')}
+              </Text>
+              <div className="flex flex-col gap-1">
+                <PrerequisiteRow
+                  label={t('Construction Plan in hero inventory')}
+                  met={hasPlan}
+                />
+              </div>
+            </div>
+          )}
+
           {worldWonder.cannotBeUpgradedReason && (
             <Text className="text-sm text-red-500 mb-2">
               {t(worldWonder.cannotBeUpgradedReason)}
@@ -222,49 +223,51 @@ export const WorldWonderTab = () => {
         </div>
       </SectionContent>
 
-      <SectionContent>
-        {isRenaming ? (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              maxLength={25}
-              placeholder={t('Enter name (max 25 chars)')}
-              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-            />
-            <Button
-              onClick={handleRename}
-              disabled={
-                newName.trim().length === 0 ||
-                newName.length > 25 ||
-                renameMutation.isPending
-              }
-            >
-              {t('Save')}
-            </Button>
+      {worldWonder.currentLevel < 11 && (
+        <SectionContent>
+          {isRenaming ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                maxLength={25}
+                placeholder={t('Enter name (max 25 chars)')}
+                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+              <Button
+                onClick={handleRename}
+                disabled={
+                  newName.trim().length === 0 ||
+                  newName.length > 25 ||
+                  renameMutation.isPending
+                }
+              >
+                {t('Save')}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRenaming(false);
+                  setNewName('');
+                }}
+              >
+                {t('Cancel')}
+              </Button>
+            </div>
+          ) : (
             <Button
               variant="outline"
               onClick={() => {
-                setIsRenaming(false);
-                setNewName('');
+                setIsRenaming(true);
+                setNewName(worldWonder.name ?? '');
               }}
             >
-              {t('Cancel')}
+              {worldWonder.name ? t('Rename') : t('Set name')}
             </Button>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setIsRenaming(true);
-              setNewName(worldWonder.name ?? '');
-            }}
-          >
-            {worldWonder.name ? t('Rename') : t('Set name')}
-          </Button>
-        )}
-      </SectionContent>
+          )}
+        </SectionContent>
+      )}
     </Section>
   );
 };

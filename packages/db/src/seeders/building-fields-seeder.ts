@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
-import { buildingFieldsFactory } from '@pillage-first/game-assets/village';
+import {
+  buildingFieldsFactory,
+  wwVillageFieldsFactory,
+} from '@pillage-first/game-assets/village';
 import {
   type Building,
   buildingIdSchema,
@@ -36,6 +39,17 @@ export const buildingFieldsSeeder = (
     buildingIdRows.map((b) => [b.building, b.id]),
   );
 
+  // Collect WW village IDs for special handling
+  const wwVillageRows = database.selectObjects({
+    sql: `
+      SELECT nv.village_id
+      FROM natar_villages nv
+      WHERE nv.is_ww_village = 1
+    `,
+    schema: z.strictObject({ village_id: z.number() }),
+  });
+  const wwVillageIds = new Set(wwVillageRows.map((r) => r.village_id));
+
   const villages = database.selectObjects({
     sql: `
       SELECT
@@ -70,6 +84,21 @@ export const buildingFieldsSeeder = (
     x,
     y,
   } of villages) {
+    // WW villages get a special 14-field layout with WW on slot 35
+    if (wwVillageIds.has(village_id)) {
+      const buildingFieldsWithoutVillageId = wwVillageFieldsFactory();
+      const buildingFields = buildingFieldsWithoutVillageId.map(
+        ({ field_id, building_id, level }) => [
+          village_id,
+          field_id,
+          buildingIdMap.get(building_id)!,
+          level,
+        ],
+      );
+      results.push(...buildingFields);
+      continue;
+    }
+
     if (player_id === PLAYER_ID) {
       const buildingFieldsWithoutVillageId = buildingFieldsFactory(
         'player',

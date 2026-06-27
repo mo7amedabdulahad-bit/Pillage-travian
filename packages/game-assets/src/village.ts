@@ -396,3 +396,33 @@ export const buildingFieldsFactory = (
     { building_id: wallBuildingId, field_id: 40, level: wallBuildingLevel },
   ];
 };
+
+/**
+ * Creates building fields for a World Wonder village.
+ * WW villages have 14 fields total:
+ * - Fields 1-6: Resource fields (wood, clay, iron, crop)
+ * - Fields 7-13: Buildings (warehouse, granary, rally point, etc.)
+ * - Field 35: WonderOfTheWorld (WORLD_WONDER) at level 0
+ * - NO wall (field 40)
+ */
+export const wwVillageFieldsFactory = (): BuildingField[] => {
+  return [
+    // Resource fields (6 total)
+    { field_id: 1, building_id: 'WOODCUTTER', level: 10 },
+    { field_id: 2, building_id: 'CLAY_PIT', level: 10 },
+    { field_id: 3, building_id: 'IRON_MINE', level: 10 },
+    { field_id: 4, building_id: 'WHEAT_FIELD', level: 10 },
+    { field_id: 5, building_id: 'WOODCUTTER', level: 10 },
+    { field_id: 6, building_id: 'CLAY_PIT', level: 10 },
+    // Village buildings (7 total)
+    { field_id: 7, building_id: 'WAREHOUSE', level: 5 },
+    { field_id: 8, building_id: 'GRANARY', level: 5 },
+    { field_id: 9, building_id: 'RALLY_POINT', level: 1 },
+    { field_id: 10, building_id: 'MAIN_BUILDING', level: 1 },
+    { field_id: 11, building_id: 'MARKETPLACE', level: 1 },
+    { field_id: 12, building_id: 'SMITHY', level: 1 },
+    { field_id: 13, building_id: 'ACADEMY', level: 1 },
+    // World Wonder building on slot 35 (level 0 — Natars build it up)
+    { field_id: 35, building_id: 'WORLD_WONDER', level: 0 },
+  ];
+};

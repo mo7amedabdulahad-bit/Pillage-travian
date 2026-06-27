@@ -17,5 +17,7 @@ CREATE TABLE servers
   ended_at INTEGER,
   winner_player_id INTEGER,
   winner_type TEXT CHECK (winner_type IS NULL OR winner_type IN ('player', 'natars')),
-  win_condition_met_at INTEGER
+  win_condition_met_at INTEGER,
+  ww_level INTEGER NOT NULL DEFAULT 0,
+  ww_tribe_id INTEGER DEFAULT NULL
 ) STRICT, WITHOUT ROWID;

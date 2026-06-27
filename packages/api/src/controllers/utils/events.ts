@@ -133,6 +133,31 @@ const validateTroopMovementPayload = (
     throw new Error('Target village not found');
   }
 
+  // Time-gated attacks: block attacks on WW villages until attack_block_until
+  if (
+    (event.type === 'troopMovementAttack' ||
+      event.type === 'troopMovementRaid') &&
+    targetVillage
+  ) {
+    const attackBlockUntil = database.selectValue({
+      sql: `
+        SELECT nv.attack_block_until
+        FROM natar_villages nv
+        WHERE nv.village_id = $targetId
+      `,
+      bind: { $targetId: event.targetId },
+      schema: z.number().nullable(),
+    });
+
+    if (attackBlockUntil != null && Date.now() < attackBlockUntil) {
+      const remainingMs = attackBlockUntil - Date.now();
+      const remainingDays = Math.ceil(remainingMs / (24 * 3_600_000));
+      throw new Error(
+        `This World Wonder village cannot be attacked yet. Attacks open in approximately ${remainingDays} day(s).`,
+      );
+    }
+  }
+
   // NOTE: Ally/reputation-based restrictions are handled at the game event/reputation layer, not here.
 
   if (
@@ -640,7 +665,7 @@ export const runEventCreationSideEffects = (
   // World Wonder: bump level immediately at creation time so 2 levels can be
   // queued in-flight (the resolver handles side effects only).
   if (isWorldWonderUpgradeEvent(event)) {
-    const { villageId, targetLevel } = event;
+    const { villageId, targetLevel, ownerFactionId } = event;
     database.exec({
       sql: 'UPDATE world_wonders SET current_level = $level WHERE village_id = $villageId',
       bind: { $level: targetLevel, $villageId: villageId },
@@ -649,6 +674,33 @@ export const runEventCreationSideEffects = (
       sql: 'UPDATE villages SET world_wonder_level = $level WHERE id = $villageId',
       bind: { $level: targetLevel, $villageId: villageId },
     });
+
+    // Update global WW tracking on servers table
+    const currentServerWWLevel =
+      database.selectValue({
+        sql: 'SELECT ww_level FROM servers LIMIT 1',
+        schema: z.number(),
+      }) ?? 0;
+
+    if (targetLevel > currentServerWWLevel) {
+      // Get the tribe_id for the faction
+      const tribeId = database.selectValue({
+        sql: `
+          SELECT ti.id
+          FROM faction_ids fi
+          JOIN players p ON p.faction_id = fi.id
+          WHERE fi.faction = $faction
+          LIMIT 1
+        `,
+        bind: { $faction: ownerFactionId },
+        schema: z.number().nullable(),
+      });
+
+      database.exec({
+        sql: 'UPDATE servers SET ww_level = $level, ww_tribe_id = $tribeId',
+        bind: { $level: targetLevel, $tribeId: tribeId ?? null },
+      });
+    }
   }
 };
 

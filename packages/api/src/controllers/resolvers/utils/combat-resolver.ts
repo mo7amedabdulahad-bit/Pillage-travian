@@ -391,6 +391,40 @@ const _transferVillageOwnership = (
   // since tribe is preserved.
 };
 
+/**
+ * Transfers World Wonder ownership when a Natar WW village is conquered.
+ * Updates the world_wonders table with the new owner.
+ */
+const _transferWWOwnership = (
+  database: DbFacade,
+  villageId: number,
+  newPlayerId: number,
+  newFactionId: string,
+): void => {
+  // Update world_wonders table with new owner
+  database.exec({
+    sql: `
+      UPDATE world_wonders
+      SET owner_player_id = $playerId,
+          owner_faction_id = $factionId
+      WHERE village_id = $villageId
+    `,
+    bind: {
+      $playerId: newPlayerId,
+      $factionId: newFactionId,
+      $villageId: villageId,
+    },
+  });
+
+  // Update the natar_villages row to reflect it's no longer Natar-owned
+  database.exec({
+    sql: `
+      DELETE FROM natar_villages WHERE village_id = $villageId
+    `,
+    bind: { $villageId: villageId },
+  });
+};
+
 const _hasPalaceOrResidence = (
   database: DbFacade,
   villageId: number,
@@ -1947,28 +1981,63 @@ export const resolveTroopMovementCombat = (
           // Check if admin building blocks conquest
           const adminBuilding = _hasPalaceOrResidence(database, targetId);
           if (!adminBuilding.exists) {
-            // Check if WW village blocks conquest (plan §3.3: unconquerable after L1)
-            const wwLevel =
+            // Check if this is a Natar WW village — WW villages are always conquerable
+            const isNatarWw =
               database.selectValue({
-                sql: 'SELECT world_wonder_level FROM villages WHERE id = $villageId',
+                sql: `
+                  SELECT nv.is_ww_village
+                  FROM natar_villages nv
+                  WHERE nv.village_id = $villageId
+                `,
                 bind: { $villageId: targetId },
                 schema: z.number(),
               }) ?? 0;
-            if (wwLevel >= 1) {
-              // WW village cannot be conquered — reset loyalty
-              reportConquered = false;
-              database.exec({
-                sql: 'UPDATE villages SET loyalty = $loyalty WHERE id = $villageId',
-                bind: { $loyalty: 100, $villageId: targetId },
-              });
-            } else {
+
+            if (isNatarWw === 1) {
+              // Natar WW village: transfer ownership, keep WW level
               _transferVillageOwnership(
                 database,
                 targetId,
                 PLAYER_ID,
                 resolvesAt,
               );
+              const attackerFactionKey =
+                database.selectValue({
+                  sql: 'SELECT faction FROM faction_ids WHERE id = $factionId',
+                  bind: { $factionId: attackerVillage.factionId },
+                  schema: z.string(),
+                }) ?? 'player';
+              _transferWWOwnership(
+                database,
+                targetId,
+                attackerVillage.playerId,
+                attackerFactionKey,
+              );
               reportConquered = true;
+            } else {
+              // Regular village: check if WW level >= 1 blocks conquest
+              const wwLevel =
+                database.selectValue({
+                  sql: 'SELECT world_wonder_level FROM villages WHERE id = $villageId',
+                  bind: { $villageId: targetId },
+                  schema: z.number(),
+                }) ?? 0;
+              if (wwLevel >= 1) {
+                // Player-owned WW village cannot be conquered — reset loyalty
+                reportConquered = false;
+                database.exec({
+                  sql: 'UPDATE villages SET loyalty = $loyalty WHERE id = $villageId',
+                  bind: { $loyalty: 100, $villageId: targetId },
+                });
+              } else {
+                _transferVillageOwnership(
+                  database,
+                  targetId,
+                  PLAYER_ID,
+                  resolvesAt,
+                );
+                reportConquered = true;
+              }
             }
           } else {
             // Loyalty 0 but building protects — can't conquer

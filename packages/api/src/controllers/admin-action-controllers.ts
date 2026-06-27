@@ -587,14 +587,14 @@ export const adminStartWorldWonder = createController(
       bind: { $villageId: parsed.villageId },
     });
 
-    // Replace the wall (field 40) with the World Wonder building on the canvas
+    // Place the World Wonder building on slot 35
     const wwBuildingId = db.selectValue({
       sql: "SELECT id FROM building_ids WHERE building = 'WORLD_WONDER'",
       schema: z.number(),
     });
     if (wwBuildingId) {
       db.exec({
-        sql: 'UPDATE building_fields SET building_id = $buildingId, level = 0 WHERE village_id = $villageId AND field_id = 40',
+        sql: 'UPDATE building_fields SET building_id = $buildingId, level = 0 WHERE village_id = $villageId AND field_id = 35',
         bind: { $buildingId: wwBuildingId, $villageId: parsed.villageId },
       });
     }

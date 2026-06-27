@@ -172,8 +172,8 @@ export const migrateAndSeed = (
     villageSeeder(db, server);
     occupiedOasisSeeder(db, server);
     db.exec({ sql: createNatarVillagesTable });
-    natarVillagesSeeder(db, server);
     db.exec({ sql: createWorldWondersTable });
+    natarVillagesSeeder(db, server);
 
     onProgress?.();
 

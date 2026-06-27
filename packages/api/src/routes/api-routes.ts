@@ -148,7 +148,6 @@ import {
   getWorldWonder,
   getWorldWonderLeaderboard,
   renameWorldWonder,
-  startWorldWonder,
   upgradeWorldWonder,
 } from '../controllers/world-wonder-controllers';
 import type { Route } from './route.ts';
@@ -318,7 +317,6 @@ const apiRoutes: Route[] = [
   // World Wonder
   createRoute(getWorldWonder as any),
   createRoute(getWorldWonderLeaderboard as any),
-  createRoute(startWorldWonder as any),
   createRoute(upgradeWorldWonder as any),
   createRoute(renameWorldWonder as any),
 ];
