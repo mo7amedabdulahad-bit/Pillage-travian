@@ -95,12 +95,6 @@ export const WorldWonderTab = () => {
             <Text>
               {t('Owner')}: {t('Natars')}
             </Text>
-            {worldWonder.attackBlockUntil && (
-              <Text className="text-yellow-500">
-                {t('Attacks open')}:{' '}
-                {new Date(worldWonder.attackBlockUntil).toLocaleDateString()}
-              </Text>
-            )}
           </div>
         </SectionContent>
 

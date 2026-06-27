@@ -14,7 +14,6 @@ export type WorldWonderState = {
   nextAttackAt: number | null;
   cannotBeUpgradedReason: string | null;
   isNatarOwned: boolean;
-  attackBlockUntil: number | null;
 } | null;
 
 export const useWorldWonder = () => {

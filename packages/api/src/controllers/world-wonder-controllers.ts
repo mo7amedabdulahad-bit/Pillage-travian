@@ -201,25 +201,10 @@ export const getWorldWonder = makeWWController(
     // Check if this is a Natar-owned WW (not yet conquered)
     const isNatarOwned = ww.ownerFactionId === 'natars';
 
-    // Get attack block timestamp for Natar WW villages
-    let attackBlockUntil: number | null = null;
-    if (isNatarOwned) {
-      attackBlockUntil = database.selectValue({
-        sql: `
-          SELECT nv.attack_block_until
-          FROM natar_villages nv
-          WHERE nv.village_id = $villageId
-        `,
-        bind: { $villageId: villageId },
-        schema: z.number().nullable(),
-      });
-    }
-
     return {
       ...ww,
       cannotBeUpgradedReason,
       isNatarOwned,
-      attackBlockUntil,
     };
   },
 );
