@@ -146,6 +146,7 @@ import {
 import { getArtifactsAroundVillage } from '../controllers/world-items-controllers';
 import {
   getWorldWonder,
+  getWorldWonderLeaderboard,
   renameWorldWonder,
   startWorldWonder,
   upgradeWorldWonder,
@@ -316,6 +317,7 @@ const apiRoutes: Route[] = [
 
   // World Wonder
   createRoute(getWorldWonder as any),
+  createRoute(getWorldWonderLeaderboard as any),
   createRoute(startWorldWonder as any),
   createRoute(upgradeWorldWonder as any),
   createRoute(renameWorldWonder as any),

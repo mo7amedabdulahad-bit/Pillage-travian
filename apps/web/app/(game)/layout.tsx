@@ -15,6 +15,7 @@ import {
 import type { ToasterProps } from 'sonner';
 import type { Route } from '@react-router/types/app/(game)/+types/layout';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
+import { GameResultScreen } from 'app/(game)/components/game-result-screen';
 import { LoadingSimulation } from 'app/(game)/components/loading-simulation/LoadingSimulation';
 import { Notifier } from 'app/(game)/components/notifier';
 import { WhileYouWereAway } from 'app/(game)/components/while-you-were-away/WhileYouWereAway';
@@ -106,6 +107,8 @@ const NPCBrainGate = ({ children }: { children: React.ReactNode }) => {
           onDismiss={dismissSummary}
         />
       )}
+      {/* Show game result screen if the server has ended */}
+      <GameResultScreen />
       {children}
     </>
   );

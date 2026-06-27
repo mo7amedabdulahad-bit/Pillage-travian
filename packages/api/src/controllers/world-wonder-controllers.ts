@@ -217,9 +217,64 @@ export const getWorldWonder = makeWWController(
   (database, { path }) => {
     const villageId = Number(path.villageId);
 
-    return (
-      database.selectObject({
-        sql: `
+    const ww = database.selectObject({
+      sql: `
+      SELECT
+        ww.village_id AS villageId,
+        ww.owner_player_id AS ownerPlayerId,
+        ww.owner_faction_id AS ownerFactionId,
+        ww.current_level AS currentLevel,
+        ww.started_at AS startedAt,
+        ww.name,
+        ww.last_attack_at AS lastAttackAt,
+        ww.next_attack_at AS nextAttackAt
+      FROM world_wonders ww
+      WHERE ww.village_id = $villageId
+      `,
+      bind: { $villageId: villageId },
+      schema: z.object({
+        villageId: z.number(),
+        ownerPlayerId: z.number().nullable(),
+        ownerFactionId: z.string(),
+        currentLevel: z.number(),
+        startedAt: z.number(),
+        name: z.string().nullable(),
+        lastAttackAt: z.number().nullable(),
+        nextAttackAt: z.number().nullable(),
+      }),
+    });
+
+    if (!ww) {
+      return null;
+    }
+
+    // Compute cannotBeUpgradedReason
+    let cannotBeUpgradedReason: string | null = null;
+
+    if (ww.currentLevel >= 20) {
+      cannotBeUpgradedReason = 'World Wonder has reached maximum level (20)';
+    } else {
+      // Check if player has enough resources for next level
+      // The actual resource check happens in the upgrade mutation
+    }
+
+    return {
+      ...ww,
+      cannotBeUpgradedReason,
+    };
+  },
+);
+
+/**
+ * GET /world-wonders/leaderboard
+ * Returns all World Wonders on the server (player + NPC factions).
+ */
+export const getWorldWonderLeaderboard = makeWWController(
+  '/world-wonders/leaderboard',
+  'get',
+  (database) => {
+    return database.selectObjects({
+      sql: `
         SELECT
           ww.village_id AS villageId,
           ww.owner_player_id AS ownerPlayerId,
@@ -227,23 +282,25 @@ export const getWorldWonder = makeWWController(
           ww.current_level AS currentLevel,
           ww.started_at AS startedAt,
           ww.name,
-          ww.last_attack_at AS lastAttackAt,
-          ww.next_attack_at AS nextAttackAt
+          v.name AS villageName,
+          t.x,
+          t.y
         FROM world_wonders ww
-        WHERE ww.village_id = $villageId
+        JOIN villages v ON v.id = ww.village_id
+        JOIN tiles t ON t.id = v.tile_id
+        ORDER BY ww.current_level DESC, ww.started_at ASC
       `,
-        bind: { $villageId: villageId },
-        schema: z.object({
-          villageId: z.number(),
-          ownerPlayerId: z.number().nullable(),
-          ownerFactionId: z.string(),
-          currentLevel: z.number(),
-          startedAt: z.number(),
-          name: z.string().nullable(),
-          lastAttackAt: z.number().nullable(),
-          nextAttackAt: z.number().nullable(),
-        }),
-      }) ?? null
-    );
+      schema: z.strictObject({
+        villageId: z.number(),
+        ownerPlayerId: z.number().nullable(),
+        ownerFactionId: z.string(),
+        currentLevel: z.number(),
+        startedAt: z.number(),
+        name: z.string().nullable(),
+        villageName: z.string(),
+        x: z.number(),
+        y: z.number(),
+      }),
+    });
   },
 );

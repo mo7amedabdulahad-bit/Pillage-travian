@@ -10,6 +10,7 @@ import {
   SectionContent,
 } from 'app/(game)/(village-slug)/components/building-layout';
 import { Resources } from 'app/(game)/(village-slug)/components/resources';
+import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useHeroInventory } from 'app/(game)/(village-slug)/hooks/use-hero-inventory';
 import { useServer } from 'app/(game)/(village-slug)/hooks/use-server';
 import {
@@ -40,10 +41,18 @@ export const WorldWonderTab = () => {
   const { t } = useTranslation();
   const { worldWonder } = useWorldWonder();
   const { heroInventory } = useHeroInventory();
+  const { currentVillage } = useCurrentVillage();
   const { serverSpeed } = useServer();
   const startMutation = useStartWorldWonder();
   const upgradeMutation = useUpgradeWorldWonder();
   const renameMutation = useRenameWorldWonder();
+
+  const treasuryLevel =
+    currentVillage.buildingFields.find((bf) => bf.buildingId === 'TREASURY')
+      ?.level ?? 0;
+  const isWwVillage = currentVillage.buildingFields.some(
+    (bf) => bf.buildingId === 'WORLD_WONDER',
+  );
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');
@@ -96,12 +105,18 @@ export const WorldWonderTab = () => {
           <div className="flex flex-col gap-2">
             <PrerequisiteRow
               label={t('Treasury Level 10 or higher')}
-              met={false}
+              met={treasuryLevel >= 10}
             />
             <PrerequisiteRow
               label={t('Construction Plan in hero inventory')}
               met={hasPlan}
             />
+            {!isWwVillage && (
+              <PrerequisiteRow
+                label={t('This village is not already a World Wonder')}
+                met={true}
+              />
+            )}
           </div>
         </SectionContent>
 
@@ -116,7 +131,12 @@ export const WorldWonderTab = () => {
         <SectionContent>
           <Button
             onClick={handleStart}
-            disabled={!hasPlan || startMutation.isPending}
+            disabled={
+              !hasPlan ||
+              treasuryLevel < 10 ||
+              isWwVillage ||
+              startMutation.isPending
+            }
           >
             {startMutation.isPending
               ? t('Starting...')
@@ -156,9 +176,16 @@ export const WorldWonderTab = () => {
           <Text className="text-sm text-muted-foreground">
             {t('Duration')}: {formatTime(nextLevelDuration)}
           </Text>
+          {worldWonder.cannotBeUpgradedReason && (
+            <Text className="text-sm text-red-500 mb-2">
+              {t(worldWonder.cannotBeUpgradedReason)}
+            </Text>
+          )}
           <Button
             onClick={handleUpgrade}
-            disabled={upgradeMutation.isPending}
+            disabled={
+              !!worldWonder.cannotBeUpgradedReason || upgradeMutation.isPending
+            }
           >
             {upgradeMutation.isPending
               ? t('Upgrading...')

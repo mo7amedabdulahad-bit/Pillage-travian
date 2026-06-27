@@ -3,6 +3,7 @@ import type { Route } from '@react-router/types/app/(game)/(village-slug)/(stati
 import { GameWorldOverview } from 'app/(game)/(village-slug)/(statistics)/components/game-world-overview';
 import { PopulationRankings } from 'app/(game)/(village-slug)/(statistics)/components/population-rankings';
 import { VillageRankings } from 'app/(game)/(village-slug)/(statistics)/components/village-rankings';
+import { WorldWonderLeaderboard } from 'app/(game)/(village-slug)/(statistics)/components/world-wonder-leaderboard';
 import { useTabParam } from 'app/(game)/(village-slug)/hooks/routes/use-tab-param';
 import { Text } from 'app/components/text';
 import {
@@ -14,7 +15,7 @@ import {
 } from 'app/components/ui/breadcrumb';
 import { Tab, TabList, TabPanel, Tabs } from 'app/components/ui/tabs';
 
-const tabs = ['population', 'villages', 'overview'];
+const tabs = ['population', 'villages', 'overview', 'world-wonders'];
 
 const StatisticsPage = ({ params }: Route.ComponentProps) => {
   const { serverSlug, villageSlug } = params;
@@ -48,6 +49,7 @@ const StatisticsPage = ({ params }: Route.ComponentProps) => {
           <Tab value="population">{t('Population')}</Tab>
           <Tab value="villages">{t('Villages')}</Tab>
           <Tab value="overview">{t('Overview')}</Tab>
+          <Tab value="world-wonders">{t('World Wonders')}</Tab>
         </TabList>
         <TabPanel value="population">
           <PopulationRankings />
@@ -57,6 +59,9 @@ const StatisticsPage = ({ params }: Route.ComponentProps) => {
         </TabPanel>
         <TabPanel value="overview">
           <GameWorldOverview />
+        </TabPanel>
+        <TabPanel value="world-wonders">
+          <WorldWonderLeaderboard />
         </TabPanel>
       </Tabs>
     </>

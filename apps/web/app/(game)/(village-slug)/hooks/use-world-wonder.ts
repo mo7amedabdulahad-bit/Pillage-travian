@@ -13,6 +13,7 @@ export type WorldWonderState = {
   name: string | null;
   lastAttackAt: number | null;
   nextAttackAt: number | null;
+  cannotBeUpgradedReason: string | null;
 } | null;
 
 export const useWorldWonder = () => {
@@ -100,4 +101,35 @@ export const useRenameWorldWonder = () => {
       });
     },
   });
+};
+
+export type WorldWonderLeaderboardEntry = {
+  villageId: number;
+  ownerPlayerId: number | null;
+  ownerFactionId: string;
+  currentLevel: number;
+  startedAt: number;
+  name: string | null;
+  villageName: string;
+  x: number;
+  y: number;
+};
+
+export const useWorldWonderLeaderboard = () => {
+  const { fetcher } = use(ApiContext);
+
+  const { data: leaderboard, isLoading } = useQuery({
+    queryKey: ['world-wonder-leaderboard'],
+    queryFn: async () => {
+      const { data } = await fetcher<WorldWonderLeaderboardEntry[]>(
+        '/world-wonders/leaderboard',
+      );
+      return data;
+    },
+  });
+
+  return {
+    leaderboard,
+    isLoading,
+  };
 };

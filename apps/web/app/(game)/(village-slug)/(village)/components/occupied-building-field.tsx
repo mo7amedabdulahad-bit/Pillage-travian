@@ -460,7 +460,9 @@ const OccupiedBuildingFieldContent = ({
           <img
             src={getVillageBuildingImagePath(
               tribe,
-              getGidFromBuildingId(buildingId),
+              buildingId === 'WORLD_WONDER'
+                ? `40_${Math.min(level, 5)}`
+                : getGidFromBuildingId(buildingId),
               timeOfDay,
             )}
             alt={t(`BUILDINGS.${buildingId}.NAME`)}

@@ -56,6 +56,7 @@ import { usePlayerVillageListing } from 'app/(game)/(village-slug)/hooks/use-pla
 import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
 import { useReports } from 'app/(game)/(village-slug)/hooks/use-reports';
 import { useVillageTroops } from 'app/(game)/(village-slug)/hooks/use-village-troops';
+import { useWorldWonderLeaderboard } from 'app/(game)/(village-slug)/hooks/use-world-wonder';
 import { CurrentVillageBuildingQueueContextProvider } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
 import {
   CurrentVillageStateContext,
@@ -589,6 +590,12 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
   const { apiWorker } = use(ApiContext);
   const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
   const { preferences } = usePreferences();
+  const { leaderboard } = useWorldWonderLeaderboard();
+
+  const highestWwLevel =
+    leaderboard && leaderboard.length > 0
+      ? Math.max(...leaderboard.map((ww) => ww.currentLevel))
+      : 0;
 
   return (
     <header className="flex flex-col flex-shrink-0 w-full p-2 pt-0 lg:p-0 relative z-50 bg-linear-to-r from-gray-200 via-white to-gray-200 dark:from-muted/60 dark:via-card dark:to-muted/60">
@@ -619,6 +626,20 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
                     </DesktopTopRowItem>
                   </Link>
                 </li>
+                {highestWwLevel > 0 && (
+                  <li className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
+                    <span className="text-yellow-500 font-semibold">WW</span>
+                    <span className="relative inline-flex h-2 w-12 rounded-full bg-muted overflow-hidden">
+                      <span
+                        className="absolute top-0 left-0 h-full bg-yellow-500 origin-left transition-transform"
+                        style={{
+                          transform: `scaleX(${(highestWwLevel / 20) * 100}%)`,
+                        }}
+                      />
+                    </span>
+                    <span className="font-medium">{highestWwLevel}/20</span>
+                  </li>
+                )}
                 <li>
                   <Link to="preferences">
                     <DesktopTopRowItem
