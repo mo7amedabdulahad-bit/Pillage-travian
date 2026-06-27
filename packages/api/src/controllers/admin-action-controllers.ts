@@ -913,7 +913,8 @@ export const adminGetIntegrityReport = createController(
     'warning',
     `SELECT COUNT(*) FROM npc_village_state nvs
      JOIN natar_villages nv ON nv.village_id = nvs.village_id
-     WHERE nvs.has_plan = 1 AND nv.construction_plan_available = 0`,
+     WHERE nvs.has_plan = 1 AND nv.construction_plan_available = 0
+       AND nv.is_ww_village = 0`,
   );
   runCheck(
     'NPC factions holding a plan but with no World Wonder',
@@ -941,7 +942,14 @@ export const adminGetIntegrityReport = createController(
   runCheck(
     'Duplicate WW per player',
     'error',
-    'SELECT COUNT(*) FROM (SELECT owner_player_id, COUNT(*) as cnt FROM world_wonders WHERE owner_player_id IS NOT NULL GROUP BY owner_player_id HAVING cnt > 1)',
+    `SELECT COUNT(*) FROM (
+      SELECT owner_player_id, COUNT(*) as cnt
+      FROM world_wonders
+      WHERE owner_player_id IS NOT NULL
+        AND owner_faction_id != 'natars'
+      GROUP BY owner_player_id
+      HAVING cnt > 1
+    )`,
   );
   runCheck(
     'Villages with negative resources',
