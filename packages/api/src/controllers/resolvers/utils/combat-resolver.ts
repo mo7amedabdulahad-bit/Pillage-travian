@@ -249,7 +249,8 @@ const _transferVillageOwnership = (
   resolvesAt: number,
 ): void => {
   // 1. Transfer ownership, reset loyalty, and generate slug if missing
-  // NOTE: tribe_id is NOT changed — the village keeps its original tribe
+  // NOTE: tribe_id is NOT changed here for regular villages.
+  // For WW villages, the caller updates tribe_id separately after this call.
 
   database.exec({
     sql: `UPDATE villages
@@ -1709,6 +1710,7 @@ export const resolveTroopMovementCombat = (
     sql: `
       SELECT
         v.name as name,
+        v.tribe_id as tribeId,
         p.id as playerId,
         p.name as playerName,
         p.faction_id as factionId,
@@ -1722,6 +1724,7 @@ export const resolveTroopMovementCombat = (
     bind: { $id: villageId },
     schema: z.object({
       name: z.string(),
+      tribeId: z.number(),
       playerId: z.number(),
       playerName: z.string(),
       factionId: z.number(),
@@ -2009,6 +2012,15 @@ export const resolveTroopMovementCombat = (
                 PLAYER_ID,
                 resolvesAt,
               );
+              // Change the conquered WW village's tribe to match the attacker
+              // so building images render correctly
+              database.exec({
+                sql: 'UPDATE villages SET tribe_id = $tribeId WHERE id = $villageId',
+                bind: {
+                  $tribeId: attackerVillage.tribeId,
+                  $villageId: targetId,
+                },
+              });
               const attackerFactionKey =
                 database.selectValue({
                   sql: 'SELECT faction FROM faction_ids WHERE id = $factionId',
